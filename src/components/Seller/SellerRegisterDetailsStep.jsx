@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Building2, User } from 'lucide-react';
+import { Building2, CreditCard, FileText, User } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 
 const initialForm = {
   fullName: '',
+  cccd: '',
+  taxCode: '',
   birthDate: '',
   password: '',
   confirmPassword: '',
@@ -27,6 +29,14 @@ export function SellerRegisterDetailsStep({ phone, onNext, onBack }) {
   const validate = () => {
     const next = {};
     if (!form.fullName.trim()) next.fullName = 'Vui lòng nhập họ tên';
+    if (!form.cccd.trim()) next.cccd = 'Vui lòng nhập số CCCD';
+    else if (!/^\d{12}$/.test(form.cccd.replace(/\s/g, ''))) {
+      next.cccd = 'CCCD phải gồm đúng 12 chữ số';
+    }
+    if (!form.taxCode.trim()) next.taxCode = 'Vui lòng nhập mã số thuế';
+    else if (!/^\d{10}(-\d{3})?$/.test(form.taxCode.replace(/\s/g, ''))) {
+      next.taxCode = 'Mã số thuế không hợp lệ (10 số hoặc 10-3)';
+    }
     if (!form.birthDate) next.birthDate = 'Vui lòng chọn ngày sinh';
     if (!form.password) next.password = 'Vui lòng nhập mật khẩu';
     else if (form.password.length < 6) {
@@ -63,7 +73,7 @@ export function SellerRegisterDetailsStep({ phone, onNext, onBack }) {
         </div>
         <div className="space-y-3">
           <Input
-            label="Họ và tên"
+            label="Họ và tên *"
             name="fullName"
             placeholder="Nguyễn Văn A"
             value={form.fullName}
@@ -71,7 +81,32 @@ export function SellerRegisterDetailsStep({ phone, onNext, onBack }) {
             error={errors.fullName}
           />
           <Input
-            label="Ngày sinh"
+            label="Số CCCD *"
+            name="cccd"
+            inputMode="numeric"
+            placeholder="001234567890"
+            maxLength={12}
+            value={form.cccd}
+            onChange={handleChange}
+            error={errors.cccd}
+          />
+          <Input
+            label="Mã số thuế *"
+            name="taxCode"
+            placeholder="0123456789 hoặc 0123456789-001"
+            value={form.taxCode}
+            onChange={handleChange}
+            error={errors.taxCode}
+          />
+          <p className="flex items-center gap-3 text-xs text-gray-500">
+            <CreditCard className="h-3.5 w-3.5 shrink-0" />
+            CCCD gồm 12 chữ số
+            <span className="text-gray-300">|</span>
+            <FileText className="h-3.5 w-3.5 shrink-0" />
+            MST: 10 số hoặc 10-3 (chi nhánh)
+          </p>
+          <Input
+            label="Ngày sinh *"
             name="birthDate"
             type="date"
             value={form.birthDate}
@@ -79,7 +114,7 @@ export function SellerRegisterDetailsStep({ phone, onNext, onBack }) {
             error={errors.birthDate}
           />
           <Input
-            label="Mật khẩu"
+            label="Mật khẩu *"
             name="password"
             type="password"
             placeholder="Tối thiểu 6 ký tự"
@@ -88,7 +123,7 @@ export function SellerRegisterDetailsStep({ phone, onNext, onBack }) {
             error={errors.password}
           />
           <Input
-            label="Xác nhận mật khẩu"
+            label="Xác nhận mật khẩu *"
             name="confirmPassword"
             type="password"
             value={form.confirmPassword}
@@ -106,7 +141,7 @@ export function SellerRegisterDetailsStep({ phone, onNext, onBack }) {
         </div>
         <div className="space-y-3">
           <Input
-            label="Tên Shop"
+            label="Tên Shop *"
             name="shopName"
             placeholder="Tên cửa hàng của bạn"
             value={form.shopName}
@@ -114,7 +149,7 @@ export function SellerRegisterDetailsStep({ phone, onNext, onBack }) {
             error={errors.shopName}
           />
           <Input
-            label="Email Shop"
+            label="Email Shop *"
             name="shopEmail"
             type="email"
             placeholder="shop@email.com"
@@ -127,7 +162,7 @@ export function SellerRegisterDetailsStep({ phone, onNext, onBack }) {
               htmlFor="shopDescription"
               className="block text-sm font-medium text-gray-700"
             >
-              Mô tả Shop
+              Mô tả Shop *
             </label>
             <textarea
               id="shopDescription"
