@@ -31,34 +31,40 @@ export function Modal({ open, onClose, title, children, className }) {
     >
       <button
         type="button"
-        className="absolute inset-0 bg-black/50 backdrop-blur-[1px]"
+        className="absolute inset-0 bg-brand-darker/70 backdrop-blur-md"
         aria-label="Đóng"
         onClick={onClose}
       />
       <div
         className={cn(
-          'relative z-10 w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl',
+          'relative z-10 w-full max-w-md max-h-[90vh] overflow-hidden rounded-3xl bg-white shadow-elevated',
           className
         )}
       >
         {title && (
-          <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-            <h2 id="modal-title" className="text-lg font-semibold text-gray-900">
-              {title}
-            </h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              type="button"
-              onClick={onClose}
-              aria-label="Đóng"
-              className="text-gray-500 hover:text-gray-800"
-            >
-              <X className="h-5 w-5" />
-            </Button>
+          <div className="relative overflow-hidden px-6 py-5">
+            <div className="absolute inset-0 bg-gradient-brand opacity-95" />
+            <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
+            <div className="relative flex items-center justify-between">
+              <h2 id="modal-title" className="text-lg font-bold text-white">
+                {title}
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                type="button"
+                onClick={onClose}
+                aria-label="Đóng"
+                className="text-white/90 hover:bg-white/20 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
         )}
-        <div className={cn(!title && 'pt-6')}>{children}</div>
+        <div className={cn('max-h-[calc(90vh-5rem)] overflow-y-auto', !title && 'pt-6')}>
+          {children}
+        </div>
       </div>
     </div>
   );

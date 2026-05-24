@@ -33,10 +33,10 @@ export function SellerLogin({ onSwitchToRegister }) {
   };
 
   return (
-    <Card className="mx-auto max-w-md shadow-md">
+    <Card className="mx-auto max-w-md border-0 shadow-elevated">
       <CardHeader className="text-center">
-        <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
-          <LogIn className="h-6 w-6 text-slate-700" />
+        <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-brand shadow-glow">
+          <LogIn className="h-7 w-7 text-white" />
         </div>
         <CardTitle>Đăng nhập Seller</CardTitle>
         <p className="text-sm text-gray-500">
@@ -79,7 +79,7 @@ export function SellerLogin({ onSwitchToRegister }) {
             </button>
           </div>
 
-          <Button type="submit" className="w-full bg-slate-800 hover:bg-slate-900" size="lg">
+          <Button type="submit" className="w-full" size="lg">
             <Mail className="h-4 w-4" />
             Đăng nhập
           </Button>

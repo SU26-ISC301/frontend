@@ -36,14 +36,14 @@ export function BuyerAuthModal({ open, onClose }) {
     <Modal open={open} onClose={handleClose} title={titles[view]}>
       <div className="px-6 pb-6">
         {view !== VIEWS.OTP && (
-          <div className="mb-6 flex rounded-lg bg-gray-100 p-1">
+          <div className="mb-6 flex rounded-2xl bg-gray-100/80 p-1">
             <button
               type="button"
               className={cn(
-                'flex-1 rounded-md py-2 text-sm font-medium transition-colors',
+                'flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all',
                 view === VIEWS.LOGIN
-                  ? 'bg-white text-shopee shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-white text-brand-primary shadow-sm'
+                  : 'text-brand-muted hover:text-brand-dark'
               )}
               onClick={() => setView(VIEWS.LOGIN)}
             >
@@ -52,10 +52,10 @@ export function BuyerAuthModal({ open, onClose }) {
             <button
               type="button"
               className={cn(
-                'flex-1 rounded-md py-2 text-sm font-medium transition-colors',
+                'flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all',
                 view === VIEWS.REGISTER
-                  ? 'bg-white text-shopee shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-gradient-brand text-white shadow-glow'
+                  : 'text-brand-muted hover:text-brand-dark'
               )}
               onClick={() => setView(VIEWS.REGISTER)}
             >

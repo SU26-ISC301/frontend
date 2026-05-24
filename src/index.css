@@ -3,7 +3,54 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply bg-brand-surface font-sans text-brand-dark antialiased;
+  }
+}
+
+@layer components {
+  .page-mesh {
+    @apply bg-brand-surface bg-mesh-light;
+  }
+
+  .glass {
+    @apply border border-white/70 bg-white/85 shadow-card backdrop-blur-xl;
+  }
+
+  .glass-dark {
+    @apply border border-white/10 bg-white/5 backdrop-blur-xl;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-brand bg-clip-text text-transparent;
+  }
+
+  .card-interactive {
+    @apply transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-elevated;
+  }
+
+  .input-field {
+    @apply h-11 w-full rounded-xl border border-gray-200/80 bg-white px-4 text-sm shadow-sm transition-all placeholder:text-gray-400 focus:border-brand-primary focus:outline-none focus:ring-4 focus:ring-brand-primary/15 disabled:cursor-not-allowed disabled:bg-gray-50;
+  }
+
+  .section-title {
+    @apply text-xl font-bold tracking-tight text-brand-dark sm:text-2xl;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

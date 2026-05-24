@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Send, User } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { DateInput } from '../ui/date-input';
 
 const initialForm = {
   fullName: '',
@@ -79,13 +80,14 @@ export function BuyerRegisterForm({ onSendOtp }) {
         onChange={handleChange}
         error={errors.phone}
       />
-      <Input
+      <DateInput
         label="Ngày sinh"
         name="birthDate"
-        type="date"
         value={form.birthDate}
         onChange={handleChange}
         error={errors.birthDate}
+        max={new Date().toISOString().split('T')[0]}
+        min="1900-01-01"
       />
       <Input
         label="Mật khẩu"
@@ -111,7 +113,7 @@ export function BuyerRegisterForm({ onSendOtp }) {
       </Button>
       <p className="flex items-center justify-center gap-1 text-xs text-gray-500">
         <User className="h-3.5 w-3.5" />
-        Mã OTP sẽ được gửi đến số điện thoại của bạn
+        Mã OTP sẽ được gửi đến Mail của bạn
       </p>
     </form>
   );

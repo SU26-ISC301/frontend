@@ -2,18 +2,23 @@ import { cn } from '../../lib/utils';
 
 const variants = {
   default:
-    'bg-shopee text-white hover:bg-shopee-hover shadow-sm disabled:opacity-50 disabled:pointer-events-none',
+    'bg-gradient-brand text-white shadow-glow hover:brightness-110 hover:shadow-glow disabled:opacity-50 disabled:pointer-events-none',
+  dark:
+    'bg-brand-dark text-white shadow-md hover:bg-brand-darker disabled:opacity-50',
+  accent:
+    'bg-brand-accent text-brand-dark font-semibold hover:brightness-105 disabled:opacity-50',
   outline:
-    'border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 disabled:opacity-50',
-  ghost: 'text-gray-700 hover:bg-gray-100 disabled:opacity-50',
-  link: 'text-shopee hover:text-shopee-hover underline-offset-4 hover:underline p-0 h-auto',
+    'border-2 border-gray-200 bg-white text-brand-dark hover:border-brand-primary/40 hover:bg-shopee-light disabled:opacity-50',
+  ghost:
+    'text-brand-muted hover:bg-gray-100 hover:text-brand-dark disabled:opacity-50',
+  link: 'text-brand-primary hover:text-shopee-hover underline-offset-4 hover:underline p-0 h-auto shadow-none',
 };
 
 const sizes = {
-  default: 'h-10 px-4 py-2 text-sm',
-  sm: 'h-8 px-3 text-xs',
-  lg: 'h-11 px-6 text-base',
-  icon: 'h-10 w-10 p-0',
+  default: 'h-11 px-5 py-2 text-sm',
+  sm: 'h-9 px-3.5 text-xs rounded-xl',
+  lg: 'h-12 px-7 text-base rounded-2xl',
+  icon: 'h-11 w-11 p-0 rounded-xl',
 };
 
 export function Button({
@@ -28,7 +33,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shopee focus-visible:ring-offset-2',
+        'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 active:scale-[0.98]',
         variants[variant],
         sizes[size],
         className
