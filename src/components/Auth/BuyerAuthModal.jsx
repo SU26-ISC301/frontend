@@ -21,11 +21,6 @@ export function BuyerAuthModal({ open, onClose }) {
     setRegisterData(null);
   };
 
-  const handleSendOtp = (data) => {
-    setRegisterData(data);
-    setView(VIEWS.OTP);
-  };
-
   const titles = {
     [VIEWS.LOGIN]: 'Đăng nhập',
     [VIEWS.REGISTER]: 'Đăng ký tài khoản',

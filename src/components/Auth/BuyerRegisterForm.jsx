@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Send, User, Loader2, CheckCircle2 } from 'lucide-react';
+import { Send, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { DateInput } from '../ui/date-input';
