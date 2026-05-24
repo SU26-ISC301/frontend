@@ -66,9 +66,9 @@ export function BuyerAuthModal({ open, onClose }) {
 
         {view === VIEWS.LOGIN && (
           <>
+            {/* 1. ĐỔI onSubmit THÀNH onSuccess VÀ ĐÓNG MODAL KHI ĐĂNG NHẬP XONG */}
             <BuyerLoginForm
-              onSubmit={(data) => {
-                console.log('Buyer login:', data);
+              onSuccess={() => {
                 handleClose();
               }}
             />
@@ -87,7 +87,10 @@ export function BuyerAuthModal({ open, onClose }) {
 
         {view === VIEWS.REGISTER && (
           <>
-            <BuyerRegisterForm onSendOtp={handleSendOtp} />
+            {/* 2. TRUYỀN HÀM CHUYỂN TAB VÀO ĐÂY ĐỂ NÚT BẤM BÊN TRONG HOẠT ĐỘNG */}
+            <BuyerRegisterForm
+              onSwitchToLogin={() => setView(VIEWS.LOGIN)}
+            />
             <p className="mt-4 text-center text-sm text-gray-500">
               Đã có tài khoản?{' '}
               <button

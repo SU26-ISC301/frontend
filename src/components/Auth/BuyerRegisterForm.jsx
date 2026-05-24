@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Send, User } from 'lucide-react';
+import { Send, User, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { DateInput } from '../ui/date-input';
+import { authApi } from '../../api/authAPI';
 
 const initialForm = {
   fullName: '',
@@ -13,14 +14,18 @@ const initialForm = {
   confirmPassword: '',
 };
 
-export function BuyerRegisterForm({ onSendOtp }) {
+export function BuyerRegisterForm({ onSuccess, onSwitchToLogin }) {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: '' }));
+    setApiError('');
   };
 
   const validate = () => {
@@ -46,14 +51,63 @@ export function BuyerRegisterForm({ onSendOtp }) {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-    onSendOtp?.(form);
+
+    setIsLoading(true);
+    try {
+      const payload = {
+        fullName: form.fullName,
+        email: form.email,
+        phone: form.phone,
+        dateOfBirth: form.birthDate,
+        password: form.password
+      };
+
+      await authApi.register(payload);
+
+      // KHI ĐĂNG KÝ THÀNH CÔNG: Xóa form và Bật cờ success
+      setForm(initialForm);
+      setIsSuccess(true);
+
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Đăng ký thất bại. Vui lòng thử lại!';
+      setApiError(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  if (isSuccess) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 space-y-4 text-center">
+        <CheckCircle2 className="w-16 h-16 text-green-500" />
+        <h3 className="text-xl font-semibold text-gray-900">Đăng ký thành công!</h3>
+        <p className="text-sm text-gray-500 mb-4">
+          Tài khoản của bạn đã được tạo. Vui lòng đăng nhập để trải nghiệm.
+        </p>
+        <Button
+          className="w-full"
+          onClick={() => {
+            // Gọi hàm của Modal (truyền từ component cha) để chuyển sang tab đăng nhập
+            if (onSwitchToLogin) onSwitchToLogin();
+          }}
+        >
+          Đăng Nhập Ngay
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      {apiError && (
+        <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
+          {apiError}
+        </div>
+      )}
+
       <Input
         label="Họ và tên"
         name="fullName"
@@ -107,14 +161,14 @@ export function BuyerRegisterForm({ onSendOtp }) {
         onChange={handleChange}
         error={errors.confirmPassword}
       />
-      <Button type="submit" className="w-full" size="lg">
-        <Send className="h-4 w-4" />
-        Gửi mã OTP
+      <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+        ) : (
+          <Send className="h-4 w-4 mr-2" />
+        )}
+        {isLoading ? 'Đang xử lý...' : 'Đăng ký tài khoản'}
       </Button>
-      <p className="flex items-center justify-center gap-1 text-xs text-gray-500">
-        <User className="h-3.5 w-3.5" />
-        Mã OTP sẽ được gửi đến Mail của bạn
-      </p>
     </form>
   );
 }

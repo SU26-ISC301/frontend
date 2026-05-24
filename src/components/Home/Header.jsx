@@ -1,12 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Store, UserCircle } from 'lucide-react';
+import { Search, Store, UserCircle, LogOut } from 'lucide-react';
 import { BrandLogo } from '../layout/BrandLogo';
 import { Button } from '../ui/button';
 import { BuyerAuthModal } from '../Auth/BuyerAuthModal';
 
 export function Header() {
   const [authOpen, setAuthOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    // Khi trang vừa load, check xem trong máy có token không
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      setIsLoggedIn(true);
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    setIsLoggedIn(false);
+    window.location.reload(); // Tải lại trang
+  };
 
   return (
     <>
@@ -62,15 +78,38 @@ export function Header() {
                 </Button>
               </div>
 
-              <Button
-                variant="dark"
-                className="shrink-0"
-                onClick={() => setAuthOpen(true)}
-              >
-                <UserCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">Đăng nhập</span>
-                <span className="sm:hidden">Tài khoản</span>
-              </Button>
+              {/* 5. PHẦN RENDER NÚT HIỂN THỊ */}
+              {isLoggedIn ? (
+                /* NẾU ĐÃ LOGIN -> Hiện Avatar + Nút Đăng xuất */
+                <div className="flex items-center gap-4 shrink-0">
+                  <div className="h-10 w-10 overflow-hidden rounded-full border border-gray-200 bg-gray-100 flex items-center justify-center shadow-sm">
+                    <img
+                      src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
+                      alt="Avatar"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-red-600 transition-colors"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span className="hidden sm:inline">Đăng xuất</span>
+                  </button>
+                </div>
+              ) : (
+                /* NẾU CHƯA LOGIN -> Hiện nút Đăng nhập như cũ */
+                <Button
+                  variant="dark"
+                  className="shrink-0"
+                  onClick={() => setAuthOpen(true)}
+                >
+                  <UserCircle className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Đăng nhập</span>
+                  <span className="sm:hidden">Tài khoản</span>
+                </Button>
+              )}
+
             </div>
           </div>
         </div>
