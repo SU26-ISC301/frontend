@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Building2, CreditCard, FileText, User } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { DateInput } from '../ui/date-input';
+import { ShopLogoUpload } from './ShopLogoUpload';
 
 const initialForm = {
   fullName: '',
@@ -13,11 +15,11 @@ const initialForm = {
   shopName: '',
   shopEmail: '',
   shopDescription: '',
-  shopLogoUrl: '',
 };
 
 export function SellerRegisterDetailsStep({ phone, onNext, onBack }) {
   const [form, setForm] = useState(initialForm);
+  const [shopLogo, setShopLogo] = useState(null);
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
@@ -50,9 +52,6 @@ export function SellerRegisterDetailsStep({ phone, onNext, onBack }) {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.shopEmail)) {
       next.shopEmail = 'Email không hợp lệ';
     }
-    if (!form.shopDescription.trim()) {
-      next.shopDescription = 'Vui lòng nhập mô tả shop';
-    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -60,13 +59,13 @@ export function SellerRegisterDetailsStep({ phone, onNext, onBack }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
-    onNext({ phone, ...form });
+    onNext({ phone, ...form, shopLogo });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Phần 1: Cá nhân */}
-      <section className="rounded-lg border border-gray-200 bg-gray-50/80 p-4 sm:p-5">
+      <section className="rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 sm:p-5">
         <div className="mb-4 flex items-center gap-2">
           <User className="h-5 w-5 text-slate-700" />
           <h3 className="font-semibold text-gray-900">Thông tin cá nhân</h3>
@@ -105,13 +104,14 @@ export function SellerRegisterDetailsStep({ phone, onNext, onBack }) {
             <FileText className="h-3.5 w-3.5 shrink-0" />
             MST: 10 số hoặc 10-3 (chi nhánh)
           </p>
-          <Input
+          <DateInput
             label="Ngày sinh *"
             name="birthDate"
-            type="date"
             value={form.birthDate}
             onChange={handleChange}
             error={errors.birthDate}
+            max={new Date().toISOString().split('T')[0]}
+            min="1900-01-01"
           />
           <Input
             label="Mật khẩu *"
@@ -134,7 +134,7 @@ export function SellerRegisterDetailsStep({ phone, onNext, onBack }) {
       </section>
 
       {/* Phần 2: Shop */}
-      <section className="rounded-lg border border-gray-200 bg-gray-50/80 p-4 sm:p-5">
+      <section className="rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 sm:p-5">
         <div className="mb-4 flex items-center gap-2">
           <Building2 className="h-5 w-5 text-slate-700" />
           <h3 className="font-semibold text-gray-900">Thông tin Shop</h3>
@@ -162,7 +162,8 @@ export function SellerRegisterDetailsStep({ phone, onNext, onBack }) {
               htmlFor="shopDescription"
               className="block text-sm font-medium text-gray-700"
             >
-              Mô tả Shop *
+              Mô tả Shop
+              <span className="ml-1 font-normal text-gray-400">(tùy chọn)</span>
             </label>
             <textarea
               id="shopDescription"
@@ -177,15 +178,7 @@ export function SellerRegisterDetailsStep({ phone, onNext, onBack }) {
               <p className="text-xs text-red-600">{errors.shopDescription}</p>
             )}
           </div>
-          <Input
-            label="Logo URL"
-            name="shopLogoUrl"
-            type="url"
-            placeholder="https://example.com/logo.png"
-            value={form.shopLogoUrl}
-            onChange={handleChange}
-            error={errors.shopLogoUrl}
-          />
+          <ShopLogoUpload value={shopLogo} onChange={setShopLogo} />
         </div>
       </section>
 

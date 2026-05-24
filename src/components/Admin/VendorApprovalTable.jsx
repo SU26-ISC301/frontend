@@ -65,8 +65,8 @@ export function VendorApprovalTable({
     <Card className="shadow-md">
       <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100">
-            <ClipboardList className="h-5 w-5 text-slate-700" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-brand shadow-glow">
+            <ClipboardList className="h-5 w-5 text-white" />
           </div>
           <div>
             <CardTitle>Duyệt gian hàng Seller</CardTitle>

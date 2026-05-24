@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { SellerLayout } from '../components/Seller/SellerLayout';
 import { SellerLogin } from '../components/Seller/SellerLogin';
@@ -14,25 +15,28 @@ export default function SellerCenter() {
 
   return (
     <SellerLayout>
-      <div className="mb-6 text-center">
-        <h1 className="text-2xl font-bold text-slate-800 sm:text-3xl">
-          Chào mừng đến Seller Center
+      <div className="mb-8 text-center">
+        <span className="pill mb-3 border border-white/20 bg-white/10 text-white">
+          <Sparkles className="h-3.5 w-3.5 text-brand-accent" />
+          Seller Center
+        </span>
+        <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+          Bán hàng cùng ShopVN
         </h1>
-        <p className="mt-1 text-sm text-gray-600 sm:text-base">
-          Đăng nhập hoặc đăng ký để bắt đầu bán hàng trên sàn
+        <p className="mt-2 text-sm text-white/60 sm:text-base">
+          Đăng nhập hoặc mở gian hàng mới — quy trình 3 bước đơn giản
         </p>
       </div>
 
-      {/* Tab switcher — ẩn khi đang ở flow đăng ký nhiều bước nếu cần; giữ luôn cho UX */}
-      <div className="mx-auto mb-6 flex max-w-md rounded-lg bg-white p-1 shadow-sm ring-1 ring-gray-200">
+      <div className="mx-auto mb-6 flex max-w-md rounded-2xl border border-white/10 bg-white/10 p-1 backdrop-blur-md">
         <button
           type="button"
           onClick={() => setTab(TABS.LOGIN)}
           className={cn(
-            'flex-1 rounded-md py-2.5 text-sm font-medium transition-colors',
+            'flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all',
             tab === TABS.LOGIN
-              ? 'bg-slate-800 text-white shadow-sm'
-              : 'text-gray-600 hover:bg-gray-50'
+              ? 'bg-white text-brand-dark shadow-md'
+              : 'text-white/70 hover:text-white'
           )}
         >
           Đăng nhập
@@ -41,10 +45,10 @@ export default function SellerCenter() {
           type="button"
           onClick={() => setTab(TABS.REGISTER)}
           className={cn(
-            'flex-1 rounded-md py-2.5 text-sm font-medium transition-colors',
+            'flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all',
             tab === TABS.REGISTER
-              ? 'bg-shopee text-white shadow-sm'
-              : 'text-gray-600 hover:bg-gray-50'
+              ? 'bg-gradient-brand text-white shadow-glow'
+              : 'text-white/70 hover:text-white'
           )}
         >
           Đăng ký Seller

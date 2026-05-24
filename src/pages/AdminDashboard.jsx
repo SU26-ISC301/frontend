@@ -4,10 +4,10 @@ import { VendorApprovalTable } from '../components/Admin/VendorApprovalTable';
 export default function AdminDashboard() {
   return (
     <AdminLayout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Duyệt gian hàng</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Module 1 — Admin phê duyệt hoặc từ chối Seller đăng ký mới
+      <div className="mb-8">
+        <h1 className="section-title">Duyệt gian hàng</h1>
+        <p className="mt-1 text-sm text-brand-muted">
+          Phê duyệt hoặc từ chối hồ sơ Seller đăng ký mới
         </p>
       </div>
 
