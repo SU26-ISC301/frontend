@@ -7,36 +7,29 @@ import { SellerRegisterOtpStep } from './SellerRegisterOtpStep';
 import { SellerPendingApproval } from './SellerPendingApproval';
 
 const STEPS = {
-  PHONE: 1,
-  DETAILS: 2,
-  OTP: 3,
+  EMAIL: 1,
+  OTP: 2,
+  DETAILS: 3,
 };
 
 export function SellerRegister({ onSwitchToLogin }) {
-  const [step, setStep] = useState(STEPS.PHONE);
-  const [phone, setPhone] = useState('');
-  const [registerData, setRegisterData] = useState(null);
+  const [step, setStep] = useState(STEPS.EMAIL);
+  const [email, setEmail] = useState('');
   const [isPending, setIsPending] = useState(false);
 
-  const handlePhoneNext = (value) => {
-    setPhone(value);
-    setStep(STEPS.DETAILS);
-  };
-
-  const handleDetailsNext = (data) => {
-    setRegisterData(data);
+  const handleEmailNext = (value) => {
+    setEmail(value);
     setStep(STEPS.OTP);
   };
 
-  const handleOtpVerified = () => {
+  const handleDetailsNext = (data) => {
     setIsPending(true);
-    console.log('Seller register submitted:', registerData);
+    console.log('Seller register submitted:', data);
   };
 
   const resetToLogin = () => {
-    setStep(STEPS.PHONE);
-    setPhone('');
-    setRegisterData(null);
+    setStep(STEPS.EMAIL);
+    setEmail('');
     setIsPending(false);
     onSwitchToLogin?.();
   };
@@ -50,29 +43,29 @@ export function SellerRegister({ onSwitchToLogin }) {
       <CardHeader>
         <CardTitle>Đăng ký Seller</CardTitle>
         <p className="text-sm text-gray-500">
-          Hoàn thành 3 bước để mở gian hàng trên sàn
+          Xác thực email, sau đó hoàn tất hồ sơ mở gian hàng
         </p>
       </CardHeader>
       <CardContent>
         <StepIndicator currentStep={step} />
 
-        {step === STEPS.PHONE && (
-          <SellerRegisterPhoneStep onNext={handlePhoneNext} />
-        )}
-
-        {step === STEPS.DETAILS && (
-          <SellerRegisterDetailsStep
-            phone={phone}
-            onNext={handleDetailsNext}
-            onBack={() => setStep(STEPS.PHONE)}
-          />
+        {step === STEPS.EMAIL && (
+          <SellerRegisterPhoneStep onNext={handleEmailNext} />
         )}
 
         {step === STEPS.OTP && (
           <SellerRegisterOtpStep
-            phone={phone}
-            onVerified={handleOtpVerified}
-            onBack={() => setStep(STEPS.DETAILS)}
+            email={email}
+            onVerified={() => setStep(STEPS.DETAILS)}
+            onBack={() => setStep(STEPS.EMAIL)}
+          />
+        )}
+
+        {step === STEPS.DETAILS && (
+          <SellerRegisterDetailsStep
+            email={email}
+            onNext={handleDetailsNext}
+            onBack={() => setStep(STEPS.OTP)}
           />
         )}
 
