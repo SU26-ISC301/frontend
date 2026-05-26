@@ -2,9 +2,9 @@ import { Check } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const STEPS = [
-  { id: 1, label: 'Số điện thoại' },
-  { id: 2, label: 'Thông tin đăng ký' },
-  { id: 3, label: 'Xác thực OTP' },
+  { id: 1, label: 'Email' },
+  { id: 2, label: 'Xác thực OTP' },
+  { id: 3, label: 'Thông tin shop' },
 ];
 
 export function StepIndicator({ currentStep }) {

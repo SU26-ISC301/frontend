@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils';
 
 const OTP_LENGTH = 6;
 
-export function BuyerOtpForm({ phone, onVerify, onResend }) {
+export function BuyerOtpForm({ phone, target, fallbackTarget = 'số điện thoại của bạn', onVerify, onResend }) {
   const [digits, setDigits] = useState(Array(OTP_LENGTH).fill(''));
   const [error, setError] = useState('');
   const inputsRef = useRef([]);
@@ -56,9 +56,9 @@ export function BuyerOtpForm({ phone, onVerify, onResend }) {
     onVerify?.(code);
   };
 
-  const maskedPhone = phone
-    ? `${phone.slice(0, 3)}***${phone.slice(-2)}`
-    : 'số điện thoại của bạn';
+  const displayTarget = target || (
+    phone ? `${phone.slice(0, 3)}***${phone.slice(-2)}` : fallbackTarget
+  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -68,7 +68,7 @@ export function BuyerOtpForm({ phone, onVerify, onResend }) {
         </div>
         <p className="text-sm text-gray-600">
           Nhập mã OTP 6 số đã gửi đến{' '}
-          <span className="font-medium text-gray-900">{maskedPhone}</span>
+          <span className="font-medium text-gray-900">{displayTarget}</span>
         </p>
       </div>
 

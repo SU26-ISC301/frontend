@@ -1,16 +1,17 @@
 import { BuyerOtpForm } from '../Auth/BuyerOtpForm';
 import { Button } from '../ui/button';
 
-export function SellerRegisterOtpStep({ phone, onVerified, onBack }) {
+export function SellerRegisterOtpStep({ email, onVerified, onBack }) {
   return (
     <div className="space-y-4">
       <BuyerOtpForm
-        phone={phone}
+        target={email}
+        fallbackTarget="email của bạn"
         onVerify={onVerified}
-        onResend={() => console.log('Resend seller OTP to', phone)}
+        onResend={() => console.log('Resend seller OTP to', email)}
       />
       <Button type="button" variant="ghost" className="w-full" onClick={onBack}>
-        ← Quay lại thông tin đăng ký
+        ← Quay lại nhập email
       </Button>
     </div>
   );

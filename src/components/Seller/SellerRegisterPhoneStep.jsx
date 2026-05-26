@@ -1,28 +1,28 @@
 import { useState } from 'react';
-import { Phone, Search } from 'lucide-react';
+import { Mail, Send } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 
 export function SellerRegisterPhoneStep({ onNext }) {
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
-  const [checking, setChecking] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const normalized = phone.replace(/\s/g, '');
+    const normalized = email.trim().toLowerCase();
 
-    if (!/^0\d{9}$/.test(normalized)) {
-      setError('Số điện thoại phải có 10 chữ số, bắt đầu bằng 0');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+      setError('Email không hợp lệ');
       return;
     }
 
-    setChecking(true);
+    setSending(true);
     setError('');
 
-    // UI mock: simulate phone check
+    // UI mock: simulate sending OTP to email
     setTimeout(() => {
-      setChecking(false);
+      setSending(false);
       onNext(normalized);
     }, 600);
   };
@@ -30,16 +30,16 @@ export function SellerRegisterPhoneStep({ onNext }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <p className="text-sm text-gray-600">
-        Nhập số điện thoại để kiểm tra tài khoản Seller đã tồn tại hay chưa.
+        Nhập email để nhận mã OTP xác thực trước khi tạo hồ sơ shop.
       </p>
       <Input
-        label="Số điện thoại"
-        name="phone"
-        type="tel"
-        placeholder="09xxxxxxxx"
-        value={phone}
+        label="Email"
+        name="email"
+        type="email"
+        placeholder="seller@email.com"
+        value={email}
         onChange={(e) => {
-          setPhone(e.target.value);
+          setEmail(e.target.value);
           setError('');
         }}
         error={error}
@@ -48,20 +48,20 @@ export function SellerRegisterPhoneStep({ onNext }) {
         type="submit"
         className="w-full"
         size="lg"
-        disabled={checking}
+        disabled={sending}
       >
-        {checking ? (
-          'Đang kiểm tra...'
+        {sending ? (
+          'Đang gửi OTP...'
         ) : (
           <>
-            <Search className="h-4 w-4" />
-            Kiểm tra số điện thoại
+            <Send className="h-4 w-4" />
+            Gửi OTP
           </>
         )}
       </Button>
       <p className="flex items-center justify-center gap-1 text-xs text-gray-500">
-        <Phone className="h-3.5 w-3.5" />
-        Số điện thoại sẽ dùng để đăng nhập và nhận OTP
+        <Mail className="h-3.5 w-3.5" />
+        Email này sẽ dùng để xác thực đăng ký Seller
       </p>
     </form>
   );
