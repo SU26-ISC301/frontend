@@ -2,13 +2,17 @@ import { useState } from 'react';
 import { Mail, Send } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { sellerApi } from '../../api/sellerAPI';
 
 export function SellerRegisterPhoneStep({ onNext }) {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
 
-  const handleSubmit = (e) => {
+  const getApiMessage = (err) =>
+    err?.response?.data?.message || err?.message || 'Không gửi được OTP. Vui lòng thử lại.';
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const normalized = email.trim().toLowerCase();
 
@@ -20,11 +24,14 @@ export function SellerRegisterPhoneStep({ onNext }) {
     setSending(true);
     setError('');
 
-    // UI mock: simulate sending OTP to email
-    setTimeout(() => {
+    try {
+      await sellerApi.startRegister(normalized);
       setSending(false);
       onNext(normalized);
-    }, 600);
+    } catch (err) {
+      setSending(false);
+      setError(getApiMessage(err));
+    }
   };
 
   return (

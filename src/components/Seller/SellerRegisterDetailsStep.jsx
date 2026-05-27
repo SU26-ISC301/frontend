@@ -16,6 +16,7 @@ import {
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { cn } from '../../lib/utils';
+import { sellerApi } from '../../api/sellerAPI';
 
 const MAX_IMAGE_SIZE_MB = 5;
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -27,6 +28,7 @@ const initialForm = {
   shopPhone: '',
   category: '',
   phone: '',
+  taxCode: '',
 };
 
 const categories = [
@@ -35,10 +37,44 @@ const categories = [
   'Điện tử',
   'Gia dụng',
   'Mẹ và bé',
-  'Sách và văn phòng phẩm',
-  'Thực phẩm',
-  'Khác',
+  'Sách',
+  'Văn phòng phẩm',
 ];
+
+const disabledInputClass = 'cursor-not-allowed bg-gray-100 text-gray-500';
+
+const getApiMessage = (err) =>
+  err?.code === 'ECONNABORTED'
+    ? 'Quét CCCD mất quá lâu. Vui lòng thử lại hoặc đổi ảnh rõ hơn.'
+    : err?.response?.data?.message || err?.message || 'Có lỗi xảy ra. Vui lòng thử lại.';
+
+const getFirstValue = (source, keys) => {
+  if (!source) return '';
+  for (const key of keys) {
+    const value = source[key];
+    if (value !== undefined && value !== null && String(value).trim() && String(value).trim() !== 'N/A') {
+      return String(value).trim();
+    }
+  }
+  return '';
+};
+
+const normalizeIdentity = (verification) => {
+  const cccd = verification?.cccd ?? verification;
+  const frontData = cccd?.front?.extractedData ?? {};
+  const backData = cccd?.back?.extractedData ?? {};
+  const cccdNumber = cccd?.cccdNumber || cccd?.front?.cardNumber || getFirstValue(frontData, ['id']);
+
+  return {
+    verified: Boolean(verification?.verified ?? cccd?.verified),
+    cccdNumber: cccdNumber || '',
+    taxCode: cccdNumber || '',
+    fullName: getFirstValue(frontData, ['name', 'full_name', 'fullname', 'name_vie']),
+    dateOfBirth: getFirstValue(frontData, ['dob', 'date_of_birth', 'birthday', 'birth_day']),
+    address: getFirstValue(frontData, ['address', 'resident', 'place_of_residence', 'home', 'origin_location']) ||
+      getFirstValue(backData, ['address', 'resident', 'place_of_residence']),
+  };
+};
 
 function IdentityImageUpload({ label, value, onChange, error }) {
   const inputRef = useRef(null);
@@ -167,17 +203,25 @@ function IdentityImageUpload({ label, value, onChange, error }) {
   );
 }
 
-export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
-  const [form, setForm] = useState(initialForm);
+export function SellerRegisterDetailsStep({ email, otpResult, credentials, onNext, onBack }) {
+  const [form, setForm] = useState(() => ({
+    ...initialForm,
+    phone: otpResult?.ownerPhone || '',
+  }));
   const [cccdFront, setCccdFront] = useState(null);
   const [cccdBack, setCccdBack] = useState(null);
   const [facePhoto, setFacePhoto] = useState(null);
+  const [identityInfo, setIdentityInfo] = useState(null);
+  const [identityStatus, setIdentityStatus] = useState({ loading: false, error: '' });
+  const [scanSeconds, setScanSeconds] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState('');
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
+  const lastVerifySignatureRef = useRef('');
 
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -193,10 +237,90 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
     };
   }, [facePhoto?.previewUrl]);
 
+  useEffect(() => {
+    setForm((prev) => {
+      if (!otpResult?.ownerPhone || prev.phone === otpResult.ownerPhone) return prev;
+      return { ...prev, phone: otpResult.ownerPhone };
+    });
+  }, [otpResult?.ownerPhone]);
+
+  useEffect(() => {
+    if (!cccdFront?.file || !cccdBack?.file || !facePhoto?.file) return;
+
+    const signature = [cccdFront.file.name, cccdBack.file.name, facePhoto.file.name].join('|');
+    if (signature === lastVerifySignatureRef.current) return;
+
+    let cancelled = false;
+    lastVerifySignatureRef.current = signature;
+    setIdentityStatus({ loading: true, error: '' });
+    setIdentityInfo(null);
+    setErrors((prev) => ({ ...prev, identity: '' }));
+
+    sellerApi.verifyIdentityWithFace({
+      frontImage: cccdFront.file,
+      backImage: cccdBack.file,
+      faceImage: facePhoto.file,
+    })
+      .then((data) => {
+        if (cancelled) return;
+        const normalized = normalizeIdentity(data);
+        if (!normalized.verified) {
+          setIdentityStatus({ loading: false, error: data?.message || 'Xác thực CCCD chưa đạt.' });
+          return;
+        }
+        setIdentityInfo(normalized);
+        setForm((prev) => ({ ...prev, taxCode: prev.taxCode || normalized.taxCode }));
+        setIdentityStatus({ loading: false, error: '' });
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setIdentityStatus({ loading: false, error: getApiMessage(err) });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cccdFront?.file, cccdBack?.file, facePhoto?.file]);
+
+  useEffect(() => {
+    if (!identityStatus.loading) {
+      setScanSeconds(0);
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      setScanSeconds((seconds) => seconds + 1);
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [identityStatus.loading]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const handleTaxCodeChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 12);
+    setForm((prev) => ({ ...prev, taxCode: value }));
+    setErrors((prev) => ({ ...prev, taxCode: '' }));
+  };
+
+  const resetIdentityResult = () => {
+    setIdentityInfo(null);
+    setIdentityStatus({ loading: false, error: '' });
+    lastVerifySignatureRef.current = '';
+    setScanSeconds(0);
+    setForm((prev) => ({ ...prev, taxCode: '' }));
+  };
+
+  const retryIdentityScan = () => {
+    lastVerifySignatureRef.current = '';
+    setIdentityStatus({ loading: false, error: '' });
+    setIdentityInfo(null);
+    setScanSeconds(0);
   };
 
   const openCamera = async () => {
@@ -259,6 +383,7 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
           fileName: file.name,
           previewUrl: URL.createObjectURL(file),
         });
+        resetIdentityResult();
         setErrors((prev) => ({ ...prev, facePhoto: '' }));
         closeCamera();
       },
@@ -272,6 +397,7 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
       URL.revokeObjectURL(facePhoto.previewUrl);
     }
     setFacePhoto(null);
+    resetIdentityResult();
   };
 
   const validate = () => {
@@ -291,6 +417,14 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
     if (!cccdFront) next.cccdFront = 'Vui lòng upload CCCD mặt trước';
     if (!cccdBack) next.cccdBack = 'Vui lòng upload CCCD mặt sau';
     if (!facePhoto) next.facePhoto = 'Vui lòng xác thực khuôn mặt';
+    if (!identityInfo?.verified) {
+      next.identity = identityStatus.error || 'Vui lòng chờ hệ thống quét và xác thực CCCD';
+    }
+    if (!form.taxCode.trim()) {
+      next.taxCode = 'Vui lòng nhập mã số thuế';
+    } else if (!/^\d{1,12}$/.test(form.taxCode.trim())) {
+      next.taxCode = 'Mã số thuế chỉ gồm chữ số và không quá 12 chữ số';
+    }
     if (!/^0\d{9}$/.test(phone)) {
       next.phone = 'SĐT chủ shop phải có 10 chữ số, bắt đầu bằng 0';
     }
@@ -299,22 +433,33 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
 
-    onNext({
-      email,
-      shopName: form.shopName.trim(),
-      shopDescription: form.shopDescription.trim(),
-      shopEmail: form.shopEmail.trim(),
-      shopPhone: form.shopPhone.replace(/\s/g, ''),
-      category: form.category,
-      phone: form.phone.replace(/\s/g, ''),
-      cccdFront: cccdFront.file,
-      cccdBack: cccdBack.file,
-      facePhoto: facePhoto.file,
-    });
+    setSubmitting(true);
+    setErrors((prev) => ({ ...prev, submit: '' }));
+
+    try {
+      await sellerApi.completeRegister({
+        email,
+        password: credentials?.password,
+        confirmPassword: credentials?.confirmPassword,
+        ownerPhone: form.phone.replace(/\s/g, ''),
+        shopName: form.shopName.trim(),
+        category: form.category,
+        shopEmail: form.shopEmail.trim(),
+        shopPhone: form.shopPhone.replace(/\s/g, ''),
+        cccd: identityInfo.cccdNumber,
+        taxCode: form.taxCode.trim(),
+        ownerDateOfBirth: identityInfo.dateOfBirth,
+      });
+      onNext();
+    } catch (err) {
+      setErrors((prev) => ({ ...prev, submit: getApiMessage(err) }));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -411,6 +556,7 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
               value={cccdFront}
               onChange={(value) => {
                 setCccdFront(value);
+                resetIdentityResult();
                 setErrors((prev) => ({ ...prev, cccdFront: '' }));
               }}
               error={errors.cccdFront}
@@ -420,6 +566,7 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
               value={cccdBack}
               onChange={(value) => {
                 setCccdBack(value);
+                resetIdentityResult();
                 setErrors((prev) => ({ ...prev, cccdBack: '' }));
               }}
               error={errors.cccdBack}
@@ -484,6 +631,83 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
               <p className="text-xs font-medium text-red-500">{errors.facePhoto}</p>
             )}
           </div>
+
+          {(identityStatus.loading || identityStatus.error || identityInfo) && (
+            <div className="mt-4 space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+              {identityStatus.loading && (
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-gray-600">
+                    Đang quét CCCD và so khớp khuôn mặt... {scanSeconds > 0 ? `${scanSeconds}s` : ''}
+                  </p>
+                  {scanSeconds >= 15 && (
+                    <p className="text-xs text-gray-500">
+                      Bước này đang chờ backend gọi FPT.AI, có thể lâu hơn khi server vừa khởi động hoặc ảnh có dung lượng lớn.
+                    </p>
+                  )}
+                </div>
+              )}
+              {identityStatus.error && (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm font-medium text-red-600">{identityStatus.error}</p>
+                  <Button type="button" variant="outline" size="sm" onClick={retryIdentityScan}>
+                    <RotateCcw className="h-4 w-4" />
+                    Quét lại
+                  </Button>
+                </div>
+              )}
+              {identityInfo && (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Input
+                      label="Số CCCD"
+                      value={identityInfo.cccdNumber}
+                      disabled
+                      readOnly
+                      className={disabledInputClass}
+                    />
+                    <div className="space-y-1.5">
+                      <Input
+                        label="Mã số thuế *"
+                        name="taxCode"
+                        inputMode="numeric"
+                        maxLength={12}
+                        value={form.taxCode}
+                        onChange={handleTaxCodeChange}
+                        error={errors.taxCode}
+                      />
+                      <p className="text-xs leading-relaxed text-gray-500">
+                        Căn cứ Thông tư 86/2024/TT-BTC, từ ngày 01/7/2025, mã số thuế cá nhân là số định danh cá nhân. Nếu bạn đã có MST trước đó vui lòng điền lại thông tin, chúng tôi không chịu trách nhiệm cho việc bạn nhập sai thông tin.
+                      </p>
+                    </div>
+                    <Input
+                      label="Tên"
+                      value={identityInfo.fullName}
+                      disabled
+                      readOnly
+                      className={disabledInputClass}
+                    />
+                    <Input
+                      label="Ngày tháng năm sinh"
+                      value={identityInfo.dateOfBirth}
+                      disabled
+                      readOnly
+                      className={disabledInputClass}
+                    />
+                  </div>
+                  <Input
+                    label="Địa chỉ"
+                    value={identityInfo.address}
+                    disabled
+                    readOnly
+                    className={disabledInputClass}
+                  />
+                </>
+              )}
+            </div>
+          )}
+          {errors.identity && (
+            <p className="mt-2 text-xs font-medium text-red-500">{errors.identity}</p>
+          )}
         </section>
 
         <section className="rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 sm:p-5">
@@ -499,7 +723,7 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
               value={email}
               disabled
               readOnly
-              className="cursor-not-allowed bg-gray-100 text-gray-500"
+              className={disabledInputClass}
             />
             <Input
               label="Số điện thoại chủ shop *"
@@ -509,6 +733,9 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
               placeholder="09xxxxxxxx"
               value={form.phone}
               onChange={handleChange}
+              disabled={otpResult?.ownerPhoneLocked}
+              readOnly={otpResult?.ownerPhoneLocked}
+              className={otpResult?.ownerPhoneLocked ? disabledInputClass : ''}
               error={errors.phone}
             />
             <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
@@ -524,12 +751,18 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
           </div>
         </section>
 
+        {errors.submit && (
+          <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+            {errors.submit}
+          </p>
+        )}
+
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
           <Button type="button" variant="outline" onClick={onBack}>
             Quay lại OTP
           </Button>
-          <Button type="submit" size="lg" className="sm:min-w-[180px]">
-            Đăng Ký
+          <Button type="submit" size="lg" className="sm:min-w-[180px]" disabled={submitting || identityStatus.loading}>
+            {submitting ? 'Đang gửi...' : 'Đăng Ký'}
           </Button>
         </div>
       </form>
