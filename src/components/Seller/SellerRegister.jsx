@@ -15,21 +15,32 @@ const STEPS = {
 export function SellerRegister({ onSwitchToLogin }) {
   const [step, setStep] = useState(STEPS.EMAIL);
   const [email, setEmail] = useState('');
+  const [otpResult, setOtpResult] = useState(null);
+  const [credentials, setCredentials] = useState({ password: '', confirmPassword: '' });
   const [isPending, setIsPending] = useState(false);
 
   const handleEmailNext = (value) => {
     setEmail(value);
+    setOtpResult(null);
+    setCredentials({ password: '', confirmPassword: '' });
     setStep(STEPS.OTP);
   };
 
-  const handleDetailsNext = (data) => {
+  const handleOtpContinue = ({ verification, password, confirmPassword }) => {
+    setOtpResult(verification);
+    setCredentials({ password, confirmPassword });
+    setStep(STEPS.DETAILS);
+  };
+
+  const handleDetailsNext = () => {
     setIsPending(true);
-    console.log('Seller register submitted:', data);
   };
 
   const resetToLogin = () => {
     setStep(STEPS.EMAIL);
     setEmail('');
+    setOtpResult(null);
+    setCredentials({ password: '', confirmPassword: '' });
     setIsPending(false);
     onSwitchToLogin?.();
   };
@@ -56,7 +67,10 @@ export function SellerRegister({ onSwitchToLogin }) {
         {step === STEPS.OTP && (
           <SellerRegisterOtpStep
             email={email}
-            onVerified={() => setStep(STEPS.DETAILS)}
+            initialVerification={otpResult}
+            initialCredentials={credentials}
+            onVerified={setOtpResult}
+            onContinue={handleOtpContinue}
             onBack={() => setStep(STEPS.EMAIL)}
           />
         )}
@@ -64,6 +78,8 @@ export function SellerRegister({ onSwitchToLogin }) {
         {step === STEPS.DETAILS && (
           <SellerRegisterDetailsStep
             email={email}
+            otpResult={otpResult}
+            credentials={credentials}
             onNext={handleDetailsNext}
             onBack={() => setStep(STEPS.OTP)}
           />

@@ -5,7 +5,15 @@ import { cn } from '../../lib/utils';
 
 const OTP_LENGTH = 6;
 
-export function BuyerOtpForm({ phone, target, fallbackTarget = 'số điện thoại của bạn', onVerify, onResend }) {
+export function BuyerOtpForm({
+  phone,
+  target,
+  fallbackTarget = 'số điện thoại của bạn',
+  onVerify,
+  onResend,
+  submitting = false,
+  externalError = '',
+}) {
   const [digits, setDigits] = useState(Array(OTP_LENGTH).fill(''));
   const [error, setError] = useState('');
   const inputsRef = useRef([]);
@@ -96,12 +104,12 @@ export function BuyerOtpForm({ phone, target, fallbackTarget = 'số điện tho
         ))}
       </div>
 
-      {error && (
-        <p className="text-center text-xs text-red-600">{error}</p>
+      {(error || externalError) && (
+        <p className="text-center text-xs text-red-600">{error || externalError}</p>
       )}
 
-      <Button type="submit" className="w-full" size="lg">
-        Xác thực OTP
+      <Button type="submit" className="w-full" size="lg" disabled={submitting}>
+        {submitting ? 'Đang xác thực...' : 'Xác thực OTP'}
       </Button>
 
       <p className="text-center text-sm text-gray-500">
