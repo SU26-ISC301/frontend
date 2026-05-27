@@ -1,17 +1,23 @@
 import { useState } from 'react';
 import { Lock, LogIn, Mail, Phone } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { sellerApi } from '../../api/sellerAPI';
 
 export function SellerLogin({ onSwitchToRegister }) {
+  const navigate = useNavigate();
   const [form, setForm] = useState({ identifier: '', password: '' });
   const [errors, setErrors] = useState({});
+  const [apiError, setApiError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: '' }));
+    setApiError('');
   };
 
   const validate = () => {
@@ -26,10 +32,29 @@ export function SellerLogin({ onSwitchToRegister }) {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const getApiMessage = (err) =>
+    err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Đăng nhập thất bại';
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-    console.log('Seller login:', form);
+
+    setIsLoading(true);
+    setApiError('');
+    try {
+      const data = await sellerApi.login({
+        identifier: form.identifier.trim(),
+        password: form.password,
+      });
+      localStorage.setItem('accessToken', data.accessToken);
+      localStorage.setItem('refreshToken', data.refreshToken);
+      localStorage.setItem('vendorInfo', JSON.stringify(data));
+      navigate('/vendor/trangchu');
+    } catch (err) {
+      setApiError(getApiMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -45,6 +70,11 @@ export function SellerLogin({ onSwitchToRegister }) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {apiError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+              {apiError}
+            </div>
+          )}
           <Input
             label="Email hoặc Số điện thoại"
             name="identifier"
@@ -79,9 +109,9 @@ export function SellerLogin({ onSwitchToRegister }) {
             </button>
           </div>
 
-          <Button type="submit" className="w-full" size="lg">
+          <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
             <Mail className="h-4 w-4" />
-            Đăng nhập
+            {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </Button>
         </form>
 
