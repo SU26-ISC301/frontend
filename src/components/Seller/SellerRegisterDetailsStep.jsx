@@ -17,6 +17,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { cn } from '../../lib/utils';
 import { sellerApi } from '../../api/sellerAPI';
+import { authApi } from '../../api/authAPI';
 
 const MAX_IMAGE_SIZE_MB = 5;
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -74,6 +75,18 @@ const normalizeIdentity = (verification) => {
     address: getFirstValue(frontData, ['address', 'resident', 'place_of_residence', 'home', 'origin_location']) ||
       getFirstValue(backData, ['address', 'resident', 'place_of_residence']),
   };
+};
+
+const normalizeDateForApi = (value) => {
+  if (!value) return '';
+  const trimmed = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+  const match = trimmed.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (!match) return trimmed;
+
+  const [, day, month, year] = match;
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 };
 
 function IdentityImageUpload({ label, value, onChange, error }) {
@@ -441,6 +454,15 @@ export function SellerRegisterDetailsStep({ email, otpResult, credentials, onNex
     setErrors((prev) => ({ ...prev, submit: '' }));
 
     try {
+      const ownerDateOfBirth = normalizeDateForApi(identityInfo.dateOfBirth);
+
+      if (otpResult?.profileId) {
+        await authApi.updateProfile(otpResult.profileId, {
+          fullName: identityInfo.fullName,
+          dateOfBirth: ownerDateOfBirth,
+        });
+      }
+
       await sellerApi.completeRegister({
         email,
         password: credentials?.password,
@@ -452,7 +474,8 @@ export function SellerRegisterDetailsStep({ email, otpResult, credentials, onNex
         shopPhone: form.shopPhone.replace(/\s/g, ''),
         cccd: identityInfo.cccdNumber,
         taxCode: form.taxCode.trim(),
-        ownerDateOfBirth: identityInfo.dateOfBirth,
+        ownerFullName: identityInfo.fullName,
+        ownerDateOfBirth,
       });
       onNext();
     } catch (err) {
