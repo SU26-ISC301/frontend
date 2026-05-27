@@ -3,7 +3,6 @@ import {
   Building2,
   Camera,
   CheckCircle2,
-  CreditCard,
   ImagePlus,
   Mail,
   Phone,
@@ -11,6 +10,7 @@ import {
   ShieldCheck,
   Trash2,
   Upload,
+  User,
   X,
 } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -22,10 +22,11 @@ const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 const initialForm = {
   shopName: '',
+  shopDescription: '',
+  shopEmail: '',
+  shopPhone: '',
   category: '',
-  alternateEmail: '',
   phone: '',
-  alternatePhone: '',
 };
 
 const categories = [
@@ -276,22 +277,22 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
   const validate = () => {
     const next = {};
     const phone = form.phone.replace(/\s/g, '');
-    const alternatePhone = form.alternatePhone.replace(/\s/g, '');
+    const shopPhone = form.shopPhone.replace(/\s/g, '');
 
     if (!form.shopName.trim()) next.shopName = 'Vui lòng nhập tên shop';
+    if (!form.shopEmail.trim()) next.shopEmail = 'Vui lòng nhập email shop';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.shopEmail.trim())) {
+      next.shopEmail = 'Email shop không hợp lệ';
+    }
+    if (!/^0\d{9}$/.test(shopPhone)) {
+      next.shopPhone = 'SĐT shop phải có 10 chữ số, bắt đầu bằng 0';
+    }
     if (!form.category) next.category = 'Vui lòng chọn danh mục bán hàng';
     if (!cccdFront) next.cccdFront = 'Vui lòng upload CCCD mặt trước';
     if (!cccdBack) next.cccdBack = 'Vui lòng upload CCCD mặt sau';
     if (!facePhoto) next.facePhoto = 'Vui lòng xác thực khuôn mặt';
-    if (!form.alternateEmail.trim()) next.alternateEmail = 'Vui lòng nhập email bổ sung';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.alternateEmail)) {
-      next.alternateEmail = 'Email bổ sung không hợp lệ';
-    }
     if (!/^0\d{9}$/.test(phone)) {
-      next.phone = 'SĐT phải có 10 chữ số, bắt đầu bằng 0';
-    }
-    if (alternatePhone && !/^0\d{9}$/.test(alternatePhone)) {
-      next.alternatePhone = 'SĐT bổ sung phải có 10 chữ số, bắt đầu bằng 0';
+      next.phone = 'SĐT chủ shop phải có 10 chữ số, bắt đầu bằng 0';
     }
 
     setErrors(next);
@@ -305,10 +306,11 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
     onNext({
       email,
       shopName: form.shopName.trim(),
+      shopDescription: form.shopDescription.trim(),
+      shopEmail: form.shopEmail.trim(),
+      shopPhone: form.shopPhone.replace(/\s/g, ''),
       category: form.category,
-      alternateEmail: form.alternateEmail.trim(),
       phone: form.phone.replace(/\s/g, ''),
-      alternatePhone: form.alternatePhone.replace(/\s/g, ''),
       cccdFront: cccdFront.file,
       cccdBack: cccdBack.file,
       facePhoto: facePhoto.file,
@@ -332,6 +334,44 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
               onChange={handleChange}
               error={errors.shopName}
             />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input
+                label="Email shop *"
+                name="shopEmail"
+                type="email"
+                placeholder="shop@email.com"
+                value={form.shopEmail}
+                onChange={handleChange}
+                error={errors.shopEmail}
+              />
+              <Input
+                label="SĐT shop *"
+                name="shopPhone"
+                type="tel"
+                inputMode="tel"
+                placeholder="09xxxxxxxx"
+                value={form.shopPhone}
+                onChange={handleChange}
+                error={errors.shopPhone}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="shopDescription"
+                className="block text-sm font-semibold text-brand-dark/80"
+              >
+                Mô tả shop
+              </label>
+              <textarea
+                id="shopDescription"
+                name="shopDescription"
+                rows={4}
+                placeholder="Giới thiệu ngắn về shop, sản phẩm hoặc phong cách phục vụ"
+                value={form.shopDescription}
+                onChange={handleChange}
+                className="input-field min-h-28 resize-y"
+              />
+            </div>
             <div className="space-y-1.5">
               <label htmlFor="category" className="block text-sm font-semibold text-brand-dark/80">
                 Danh mục bán hàng *
@@ -448,49 +488,37 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
 
         <section className="rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 sm:p-5">
           <div className="mb-4 flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-slate-700" />
-            <h3 className="font-semibold text-gray-900">Thông tin bổ sung</h3>
+            <User className="h-5 w-5 text-slate-700" />
+            <h3 className="font-semibold text-gray-900">Thông tin chủ shop</h3>
           </div>
           <div className="space-y-3">
             <Input
-              label="Email bổ sung *"
-              name="alternateEmail"
+              label="Email chủ shop"
+              name="ownerEmail"
               type="email"
-              placeholder="backup@email.com"
-              value={form.alternateEmail}
-              onChange={handleChange}
-              error={errors.alternateEmail}
+              value={email}
+              disabled
+              readOnly
+              className="cursor-not-allowed bg-gray-100 text-gray-500"
             />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Input
-                label="Số điện thoại *"
-                name="phone"
-                type="tel"
-                inputMode="tel"
-                placeholder="09xxxxxxxx"
-                value={form.phone}
-                onChange={handleChange}
-                error={errors.phone}
-              />
-              <Input
-                label="Số điện thoại bổ sung"
-                name="alternatePhone"
-                type="tel"
-                inputMode="tel"
-                placeholder="09xxxxxxxx"
-                value={form.alternatePhone}
-                onChange={handleChange}
-                error={errors.alternatePhone}
-              />
-            </div>
+            <Input
+              label="Số điện thoại chủ shop *"
+              name="phone"
+              type="tel"
+              inputMode="tel"
+              placeholder="09xxxxxxxx"
+              value={form.phone}
+              onChange={handleChange}
+              error={errors.phone}
+            />
             <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
               <span className="inline-flex items-center gap-1">
                 <Mail className="h-3.5 w-3.5" />
-                Email đăng ký: {email}
+                Email đã xác thực từ bước OTP
               </span>
               <span className="inline-flex items-center gap-1">
                 <Phone className="h-3.5 w-3.5" />
-                SĐT dùng để liên hệ khi duyệt hồ sơ
+                SĐT chủ shop dùng để liên hệ khi duyệt hồ sơ
               </span>
             </p>
           </div>
@@ -501,7 +529,7 @@ export function SellerRegisterDetailsStep({ email, onNext, onBack }) {
             Quay lại OTP
           </Button>
           <Button type="submit" size="lg" className="sm:min-w-[180px]">
-            Gửi hồ sơ đăng ký
+            Đăng Ký
           </Button>
         </div>
       </form>
