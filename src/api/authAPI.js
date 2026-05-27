@@ -34,5 +34,19 @@ export const authApi = {
 
     updateProfile: (profileId, data) => {
         return axiosClient.put(`/api/auth/profiles/${profileId}`, data);
+    },
+
+    requestProfileUpdateOtp: (data) => {
+        return axiosClient.post('/api/auth/profile/update-otp', data);
+    },
+
+    updateCurrentProfile: (data) => {
+        return axiosClient.put('/api/auth/profile', data);
+    },
+
+    uploadAvatar: (file) => {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        return axiosClient.post('/api/auth/profile/avatar', formData);
     }
 };

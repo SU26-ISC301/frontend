@@ -4,23 +4,43 @@ import { Search, Store, UserCircle, LogOut } from 'lucide-react';
 import { BrandLogo } from '../layout/BrandLogo';
 import { Button } from '../ui/button';
 import { BuyerAuthModal } from '../Auth/BuyerAuthModal';
+import { authApi } from '../../api/authAPI';
+import { getAvatarSrc } from '../../utils/avatar';
 
 export function Header() {
   const [authOpen, setAuthOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
-    // Khi trang vừa load, check xem trong máy có token không
+    let mounted = true;
     const token = localStorage.getItem('accessToken');
     if (token) {
       setIsLoggedIn(true);
+      authApi.getMe()
+        .then((response) => {
+          if (!mounted) return;
+          setProfile(response.data?.data || response.data);
+        })
+        .catch(() => {
+          if (!mounted) return;
+          setIsLoggedIn(false);
+          setProfile(null);
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+        });
     }
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('vendorInfo');
     setIsLoggedIn(false);
+    setProfile(null);
     window.location.reload(); // Tải lại trang
   };
 
@@ -82,13 +102,17 @@ export function Header() {
               {isLoggedIn ? (
                 /* NẾU ĐÃ LOGIN -> Hiện Avatar + Nút Đăng xuất */
                 <div className="flex items-center gap-4 shrink-0">
-                  <div className="h-10 w-10 overflow-hidden rounded-full border border-gray-200 bg-gray-100 flex items-center justify-center shadow-sm">
+                  <Link
+                    to="/buyer"
+                    className="h-10 w-10 overflow-hidden rounded-full border border-gray-200 bg-gray-100 flex items-center justify-center shadow-sm transition-transform hover:scale-105"
+                    title="Tài khoản của tôi"
+                  >
                     <img
-                      src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
-                      alt="Avatar"
+                      src={getAvatarSrc(profile?.avatarUrl)}
+                      alt={profile?.fullName || 'Tài khoản'}
                       className="h-full w-full object-cover"
                     />
-                  </div>
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-red-600 transition-colors"
