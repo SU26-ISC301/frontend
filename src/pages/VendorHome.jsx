@@ -1,4 +1,4 @@
-import { NavLink, Navigate, useParams } from 'react-router-dom';
+import { NavLink, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
   BadgeCheck,
   Banknote,
@@ -14,6 +14,7 @@ import {
   Filter,
   ImagePlus,
   LayoutDashboard,
+  LogOut,
   Megaphone,
   MessageSquareText,
   PackageCheck,
@@ -174,38 +175,67 @@ function Toolbar({ placeholder = 'Tìm kiếm' }) {
 function VendorLayout({ activeSlug, children }) {
   const vendorInfo = getVendorInfo();
   const activeTitle = pageTitles[activeSlug] || pageTitles.trangchu;
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('vendorInfo');
+    navigate('/seller');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-950">
       <div className="flex">
         <aside className="hidden min-h-screen w-64 shrink-0 border-r border-gray-200 bg-white px-4 py-5 lg:block">
-          <div className="flex items-center gap-3 px-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-shopee text-white">
-              <Store className="h-5 w-5" />
+          <div className="flex min-h-[calc(100vh-2.5rem)] flex-col">
+            <div className="flex items-center gap-3 px-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-shopee text-white">
+                <Store className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold">Vendor Center</p>
+                <p className="text-xs text-gray-500">{vendorInfo.shopName || 'ShopVN Seller'}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-bold">Vendor Center</p>
-              <p className="text-xs text-gray-500">{vendorInfo.shopName || 'ShopVN Seller'}</p>
+
+            <nav className="mt-8 space-y-1">
+              {navItems.map(({ slug, label, icon: Icon }) => (
+                <NavLink
+                  key={slug}
+                  to={`/vendor/${slug}`}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors',
+                      isActive ? 'bg-shopee-light text-shopee' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-950'
+                    )
+                  }
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </NavLink>
+              ))}
+            </nav>
+
+            <div className="mt-auto space-y-2 border-t border-gray-100 pt-4">
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-950"
+              >
+                <ShoppingBag className="h-4 w-4" />
+                Về trang mua hàng
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
+              >
+                <LogOut className="h-4 w-4" />
+                Đăng xuất
+              </button>
             </div>
           </div>
-
-          <nav className="mt-8 space-y-1">
-            {navItems.map(({ slug, label, icon: Icon }) => (
-              <NavLink
-                key={slug}
-                to={`/vendor/${slug}`}
-                className={({ isActive }) =>
-                  cn(
-                    'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors',
-                    isActive ? 'bg-shopee-light text-shopee' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-950'
-                  )
-                }
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </NavLink>
-            ))}
-          </nav>
         </aside>
 
         <main className="min-w-0 flex-1">
@@ -230,6 +260,14 @@ function VendorLayout({ activeSlug, children }) {
                 <Button size="sm">
                   <Plus className="h-4 w-4" />
                   Thêm sản phẩm
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+                  <ShoppingBag className="h-4 w-4" />
+                  Mua hàng
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-red-600 hover:bg-red-50 hover:text-red-700">
+                  <LogOut className="h-4 w-4" />
+                  Đăng xuất
                 </Button>
               </div>
             </div>

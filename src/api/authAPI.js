@@ -15,6 +15,18 @@ export const authApi = {
         return axiosClient.post('/api/auth/login', data);
     },
 
+    forgotPassword: (email) => {
+        return axiosClient.post('/api/auth/password/forgot', { email });
+    },
+
+    verifyForgotPasswordOtp: (data) => {
+        return axiosClient.post('/api/auth/password/verify-otp', data);
+    },
+
+    resetPassword: (data) => {
+        return axiosClient.post('/api/auth/password/reset', data);
+    },
+
     // Tương ứng với GET /api/auth/me ở backend
     getMe: () => {
         return axiosClient.get('/api/auth/me');
