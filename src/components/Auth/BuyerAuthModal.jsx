@@ -4,33 +4,86 @@ import { cn } from '../../lib/utils';
 import { BuyerLoginForm } from './BuyerLoginForm';
 import { BuyerRegisterForm } from './BuyerRegisterForm';
 import { BuyerOtpForm } from './BuyerOtpForm';
+import { Button } from '../ui/button';
+import { CheckCircle2 } from 'lucide-react';
+import { authApi } from '../../api/authAPI';
 
 const VIEWS = {
   LOGIN: 'login',
   REGISTER: 'register',
   OTP: 'otp',
+  SUCCESS: 'success',
 };
 
 export function BuyerAuthModal({ open, onClose }) {
   const [view, setView] = useState(VIEWS.LOGIN);
   const [registerData, setRegisterData] = useState(null);
+  const [otpError, setOtpError] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
 
   const handleClose = () => {
     onClose();
     setView(VIEWS.LOGIN);
     setRegisterData(null);
+    setOtpError('');
+    setOtpLoading(false);
   };
 
   const titles = {
     [VIEWS.LOGIN]: 'Đăng nhập',
     [VIEWS.REGISTER]: 'Đăng ký tài khoản',
     [VIEWS.OTP]: 'Xác thực OTP',
+    [VIEWS.SUCCESS]: 'Đăng ký thành công',
+  };
+
+  const getApiMessage = (error) =>
+    error?.response?.data?.error ||
+    error?.response?.data?.message ||
+    error?.message ||
+    'Có lỗi xảy ra. Vui lòng thử lại.';
+
+  const handleRegisterRequested = (payload) => {
+    setRegisterData(payload);
+    setOtpError('');
+    setView(VIEWS.OTP);
+  };
+
+  const handleVerifyOtp = async (otp) => {
+    if (!registerData?.email) return;
+
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      await authApi.verifyRegister({
+        email: registerData.email,
+        otp,
+      });
+      setView(VIEWS.SUCCESS);
+    } catch (error) {
+      setOtpError(getApiMessage(error));
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!registerData) return;
+
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      await authApi.register(registerData);
+    } catch (error) {
+      setOtpError(getApiMessage(error));
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
   return (
     <Modal open={open} onClose={handleClose} title={titles[view]}>
       <div className="px-6 pb-6">
-        {view !== VIEWS.OTP && (
+        {view !== VIEWS.OTP && view !== VIEWS.SUCCESS && (
           <div className="mb-6 flex rounded-2xl bg-gray-100/80 p-1">
             <button
               type="button"
@@ -84,6 +137,7 @@ export function BuyerAuthModal({ open, onClose }) {
           <>
             {/* 2. TRUYỀN HÀM CHUYỂN TAB VÀO ĐÂY ĐỂ NÚT BẤM BÊN TRONG HOẠT ĐỘNG */}
             <BuyerRegisterForm
+              onSuccess={handleRegisterRequested}
               onSwitchToLogin={() => setView(VIEWS.LOGIN)}
             />
             <p className="mt-4 text-center text-sm text-gray-500">
@@ -102,12 +156,13 @@ export function BuyerAuthModal({ open, onClose }) {
         {view === VIEWS.OTP && (
           <>
             <BuyerOtpForm
+              target={registerData?.email}
               phone={registerData?.phone}
-              onVerify={(code) => {
-                console.log('Buyer OTP verify:', { ...registerData, otp: code });
-                handleClose();
-              }}
-              onResend={() => console.log('Resend OTP to', registerData?.phone)}
+              fallbackTarget="email của bạn"
+              onVerify={handleVerifyOtp}
+              onResend={handleResendOtp}
+              submitting={otpLoading}
+              externalError={otpError}
             />
             <button
               type="button"
@@ -117,6 +172,26 @@ export function BuyerAuthModal({ open, onClose }) {
               ← Quay lại đăng ký
             </button>
           </>
+        )}
+
+        {view === VIEWS.SUCCESS && (
+          <div className="flex flex-col items-center justify-center space-y-4 py-8 text-center">
+            <CheckCircle2 className="h-16 w-16 text-green-500" />
+            <h3 className="text-xl font-semibold text-gray-900">Đăng ký thành công!</h3>
+            <p className="mb-4 text-sm text-gray-500">
+              Tài khoản của bạn đã xác thực OTP thành công. Vui lòng quay lại đăng nhập.
+            </p>
+            <Button
+              className="w-full"
+              onClick={() => {
+                setRegisterData(null);
+                setOtpError('');
+                setView(VIEWS.LOGIN);
+              }}
+            >
+              Quay lại đăng nhập
+            </Button>
+          </div>
         )}
       </div>
     </Modal>

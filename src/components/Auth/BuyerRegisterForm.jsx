@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Send, Loader2, CheckCircle2 } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { DateInput } from '../ui/date-input';
@@ -19,7 +19,6 @@ export function BuyerRegisterForm({ onSuccess, onSwitchToLogin }) {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState('');
-  const [isSuccess, setIsSuccess] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -66,10 +65,8 @@ export function BuyerRegisterForm({ onSuccess, onSwitchToLogin }) {
       };
 
       await authApi.register(payload);
-
-      // KHI ĐĂNG KÝ THÀNH CÔNG: Xóa form và Bật cờ success
+      onSuccess?.(payload);
       setForm(initialForm);
-      setIsSuccess(true);
 
     } catch (error) {
       const errorMsg = error.response?.data?.error || 'Đăng ký thất bại. Vui lòng thử lại!';
@@ -78,27 +75,6 @@ export function BuyerRegisterForm({ onSuccess, onSwitchToLogin }) {
       setIsLoading(false);
     }
   };
-
-  if (isSuccess) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8 space-y-4 text-center">
-        <CheckCircle2 className="w-16 h-16 text-green-500" />
-        <h3 className="text-xl font-semibold text-gray-900">Đăng ký thành công!</h3>
-        <p className="text-sm text-gray-500 mb-4">
-          Tài khoản của bạn đã được tạo. Vui lòng đăng nhập để trải nghiệm.
-        </p>
-        <Button
-          className="w-full"
-          onClick={() => {
-            // Gọi hàm của Modal (truyền từ component cha) để chuyển sang tab đăng nhập
-            if (onSwitchToLogin) onSwitchToLogin();
-          }}
-        >
-          Đăng Nhập Ngay
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
