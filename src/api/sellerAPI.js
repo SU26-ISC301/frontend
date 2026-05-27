@@ -3,6 +3,11 @@ import axiosClient from './axiosClient';
 const unwrap = (response) => response.data?.data ?? response.data;
 
 export const sellerApi = {
+  login: async (payload) => {
+    const response = await axiosClient.post('/vendors/login', payload);
+    return unwrap(response);
+  },
+
   startRegister: async (email) => {
     const response = await axiosClient.post('/vendors/register/start', { email });
     return unwrap(response);
