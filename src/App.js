@@ -3,6 +3,7 @@ import Home from './pages/Home';
 import SellerCenter from './pages/SellerCenter';
 import AdminDashboard from './pages/AdminDashboard';
 import VendorHome from './pages/VendorHome';
+import BuyerHome from './pages/BuyerHome';
 
 function App() {
   return (
@@ -10,6 +11,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/seller" element={<SellerCenter />} />
+        <Route path="/buyer" element={<Navigate to="/buyer/tong-quan" replace />} />
+        <Route path="/buyer/:section" element={<BuyerHome />} />
         <Route path="/vendor" element={<Navigate to="/vendor/trangchu" replace />} />
         <Route path="/vendor/:section" element={<VendorHome />} />
         <Route path="/admin" element={<AdminDashboard />} />
