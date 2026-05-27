@@ -5,6 +5,8 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { sellerApi } from '../../api/sellerAPI';
+import { ForgotPasswordForm } from '../Auth/ForgotPasswordForm';
+import { getRememberedLogin, removeRememberedLogin, saveRememberedLogin } from '../../utils/rememberLogin';
 
 export function SellerLogin({ onSwitchToRegister }) {
   const navigate = useNavigate();
@@ -12,10 +14,24 @@ export function SellerLogin({ onSwitchToRegister }) {
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [rememberLogin, setRememberLogin] = useState(false);
+  const [rememberedIdentifier, setRememberedIdentifier] = useState('');
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    if (name === 'identifier') {
+      const remembered = getRememberedLogin('vendor', value);
+      setForm((prev) => ({
+        ...prev,
+        identifier: value,
+        password: remembered?.password || (rememberedIdentifier ? '' : prev.password),
+      }));
+      setRememberLogin(Boolean(remembered));
+      setRememberedIdentifier(remembered ? value : '');
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
     setErrors((prev) => ({ ...prev, [name]: '' }));
     setApiError('');
   };
@@ -49,6 +65,11 @@ export function SellerLogin({ onSwitchToRegister }) {
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
       localStorage.setItem('vendorInfo', JSON.stringify(data));
+      if (rememberLogin) {
+        saveRememberedLogin('vendor', form.identifier, form.password);
+      } else {
+        removeRememberedLogin('vendor', form.identifier);
+      }
       navigate('/vendor/trangchu');
     } catch (err) {
       setApiError(getApiMessage(err));
@@ -56,6 +77,20 @@ export function SellerLogin({ onSwitchToRegister }) {
       setIsLoading(false);
     }
   };
+
+  if (isForgotPassword) {
+    return (
+      <Card className="mx-auto max-w-md border-0 shadow-elevated">
+        <CardHeader className="text-center">
+          <CardTitle>Quên mật khẩu Vendor</CardTitle>
+          <p className="text-sm text-gray-500">Xác thực OTP email để đặt lại mật khẩu</p>
+        </CardHeader>
+        <CardContent>
+          <ForgotPasswordForm onBackToLogin={() => setIsForgotPassword(false)} />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="mx-auto max-w-md border-0 shadow-elevated">
@@ -98,12 +133,18 @@ export function SellerLogin({ onSwitchToRegister }) {
 
           <div className="flex items-center justify-between text-sm">
             <label className="flex items-center gap-2 text-gray-600">
-              <input type="checkbox" className="rounded border-gray-300" />
+              <input
+                type="checkbox"
+                className="rounded border-gray-300"
+                checked={rememberLogin}
+                onChange={(event) => setRememberLogin(event.target.checked)}
+              />
               Ghi nhớ đăng nhập
             </label>
             <button
               type="button"
               className="font-medium text-shopee hover:text-shopee-hover"
+              onClick={() => setIsForgotPassword(true)}
             >
               Quên mật khẩu?
             </button>

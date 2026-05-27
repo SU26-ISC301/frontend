@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils';
 import { BuyerLoginForm } from './BuyerLoginForm';
 import { BuyerRegisterForm } from './BuyerRegisterForm';
 import { BuyerOtpForm } from './BuyerOtpForm';
+import { ForgotPasswordForm } from './ForgotPasswordForm';
 import { Button } from '../ui/button';
 import { CheckCircle2 } from 'lucide-react';
 import { authApi } from '../../api/authAPI';
@@ -13,6 +14,7 @@ const VIEWS = {
   REGISTER: 'register',
   OTP: 'otp',
   SUCCESS: 'success',
+  FORGOT_PASSWORD: 'forgot-password',
 };
 
 export function BuyerAuthModal({ open, onClose }) {
@@ -34,6 +36,7 @@ export function BuyerAuthModal({ open, onClose }) {
     [VIEWS.REGISTER]: 'Đăng ký tài khoản',
     [VIEWS.OTP]: 'Xác thực OTP',
     [VIEWS.SUCCESS]: 'Đăng ký thành công',
+    [VIEWS.FORGOT_PASSWORD]: 'Quên mật khẩu',
   };
 
   const getApiMessage = (error) =>
@@ -83,7 +86,7 @@ export function BuyerAuthModal({ open, onClose }) {
   return (
     <Modal open={open} onClose={handleClose} title={titles[view]}>
       <div className="px-6 pb-6">
-        {view !== VIEWS.OTP && view !== VIEWS.SUCCESS && (
+        {view !== VIEWS.OTP && view !== VIEWS.SUCCESS && view !== VIEWS.FORGOT_PASSWORD && (
           <div className="mb-6 flex rounded-2xl bg-gray-100/80 p-1">
             <button
               type="button"
@@ -119,6 +122,7 @@ export function BuyerAuthModal({ open, onClose }) {
               onSuccess={() => {
                 handleClose();
               }}
+              onForgotPassword={() => setView(VIEWS.FORGOT_PASSWORD)}
             />
             <p className="mt-4 text-center text-sm text-gray-500">
               Chưa có tài khoản?{' '}
@@ -192,6 +196,10 @@ export function BuyerAuthModal({ open, onClose }) {
               Quay lại đăng nhập
             </Button>
           </div>
+        )}
+
+        {view === VIEWS.FORGOT_PASSWORD && (
+          <ForgotPasswordForm onBackToLogin={() => setView(VIEWS.LOGIN)} />
         )}
       </div>
     </Modal>
