@@ -4,56 +4,142 @@ import { CategoryStrip } from '../components/Home/CategoryStrip';
 import { ProductCard } from '../components/Home/ProductCard';
 import { Footer } from '../components/layout/Footer';
 import { Card, CardContent } from '../components/ui/card';
-import { Flame, Percent, Truck } from 'lucide-react';
+import { Clock3, Flame, Percent, ShieldCheck, Truck } from 'lucide-react';
 
 const highlights = [
   {
     icon: Percent,
-    title: 'Flash Sale',
-    desc: 'Giảm đến 50% mỗi ngày',
-    accent: 'from-brand-primary to-orange-400',
+    title: 'Deal thật mỗi giờ',
+    desc: 'Voucher tự động áp dụng khi thanh toán',
+    accent: 'from-[#ff4d2e] to-[#ff8a3d]',
   },
   {
     icon: Truck,
-    title: 'Freeship+',
-    desc: 'Giao nhanh 2h nội thành',
-    accent: 'from-brand-accent to-emerald-400',
+    title: 'Giao nhanh trong ngày',
+    desc: 'Theo dõi đơn mượt, cập nhật liên tục',
+    accent: 'from-[#0ea5a3] to-[#22c55e]',
   },
   {
-    icon: Flame,
-    title: 'Live Deal',
-    desc: 'Săn voucher mỗi giờ',
-    accent: 'from-brand-secondary to-pink-400',
+    icon: ShieldCheck,
+    title: 'Mua hàng an tâm',
+    desc: 'Đổi trả dễ dàng, shop đã xác minh',
+    accent: 'from-[#2563eb] to-[#7c3aed]',
   },
 ];
 
-const products = Array.from({ length: 10 }).map((_, i) => ({
-  title: `Sản phẩm trending #${i + 1} — Chất lượng cao, giá tốt`,
-  price: `${((99 + i) * 1000).toLocaleString('vi-VN')}`,
-  sold: `${(i + 1) * 1.2}k`,
-  rating: (4.5 + (i % 5) * 0.1).toFixed(1),
-}));
+const products = [
+  {
+    title: 'Tai nghe chống ồn Urban Pro, pin 42h',
+    price: '699.000',
+    oldPrice: '1.290.000',
+    sold: '12,8k',
+    rating: '4.9',
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=900&q=80',
+    badge: 'Mall',
+  },
+  {
+    title: 'Áo sơ mi linen thoáng mát form regular',
+    price: '239.000',
+    oldPrice: '399.000',
+    sold: '8,4k',
+    rating: '4.8',
+    image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80',
+    badge: 'Freeship',
+  },
+  {
+    title: 'Sneaker trắng đế êm đi học đi làm',
+    price: '489.000',
+    oldPrice: '780.000',
+    sold: '21k',
+    rating: '4.9',
+    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80',
+    badge: 'Hot',
+  },
+  {
+    title: 'Bình giữ nhiệt thép 750ml giữ lạnh 18h',
+    price: '179.000',
+    oldPrice: '299.000',
+    sold: '6,1k',
+    rating: '4.7',
+    image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=900&q=80',
+    badge: 'Xịn',
+  },
+  {
+    title: 'Serum phục hồi da sáng mịn 30ml',
+    price: '329.000',
+    oldPrice: '520.000',
+    sold: '15,2k',
+    rating: '4.9',
+    image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=900&q=80',
+    badge: 'Beauty',
+  },
+  {
+    title: 'Đồng hồ tối giản dây thép chống nước',
+    price: '549.000',
+    oldPrice: '890.000',
+    sold: '4,7k',
+    rating: '4.8',
+    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=900&q=80',
+    badge: 'Deal',
+  },
+  {
+    title: 'Bàn phím cơ low profile kết nối 3 thiết bị',
+    price: '859.000',
+    oldPrice: '1.190.000',
+    sold: '3,9k',
+    rating: '4.8',
+    image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=900&q=80',
+    badge: 'Tech',
+  },
+  {
+    title: 'Ghế thư giãn vải bouclé cho phòng khách',
+    price: '1.990.000',
+    oldPrice: '2.890.000',
+    sold: '1,6k',
+    rating: '4.7',
+    image: 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=900&q=80',
+    badge: 'Home',
+  },
+  {
+    title: 'Máy pha cà phê mini cho góc làm việc',
+    price: '1.249.000',
+    oldPrice: '1.890.000',
+    sold: '2,2k',
+    rating: '4.9',
+    image: 'https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?auto=format&fit=crop&w=900&q=80',
+    badge: 'Cafe',
+  },
+  {
+    title: 'Set nến thơm thư giãn hương gỗ sạch',
+    price: '199.000',
+    oldPrice: '330.000',
+    sold: '5,8k',
+    rating: '4.8',
+    image: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=900&q=80',
+    badge: 'Gift',
+  },
+];
 
 export default function Home() {
   return (
-    <div className="page-mesh min-h-screen">
+    <div className="shop-home min-h-screen bg-[#f6f4ef] text-[#16202a]">
       <Header />
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
         <HeroBanner />
 
         <section className="mb-8 grid gap-4 sm:grid-cols-3">
           {highlights.map(({ icon: Icon, title, desc, accent }) => (
-            <Card key={title} className="card-interactive overflow-hidden">
-              <CardContent className="relative flex items-center gap-4 p-5">
+            <Card key={title} className="card-interactive depth-card overflow-hidden rounded-[1rem] border-white/80 bg-white/90">
+              <CardContent className="relative flex items-center gap-4 p-4 sm:p-5">
                 <div
-                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${accent} text-white shadow-md`}
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${accent} text-white shadow-md shadow-black/10`}
                 >
                   <Icon className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-brand-dark">{title}</h3>
-                  <p className="text-sm text-brand-muted">{desc}</p>
+                  <h3 className="font-bold text-[#16202a]">{title}</h3>
+                  <p className="text-sm leading-relaxed text-slate-500">{desc}</p>
                 </div>
               </CardContent>
             </Card>
@@ -62,14 +148,19 @@ export default function Home() {
 
         <CategoryStrip />
 
-        <section>
-          <div className="mb-4 flex items-end justify-between gap-4">
+        <section className="pb-8">
+          <div className="mb-5 flex items-end justify-between gap-4">
             <div>
+              <span className="mb-2 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-[#f05a35]">
+                <Flame className="h-3.5 w-3.5" />
+                Đang được săn
+              </span>
               <h2 className="section-title">Gợi ý hôm nay</h2>
-              <p className="text-sm text-brand-muted">Được tuyển chọn riêng cho bạn</p>
+              <p className="text-sm text-slate-500">Sản phẩm đẹp, giá rõ ràng, hình ảnh thật hơn khi lướt mua.</p>
             </div>
-            <span className="pill hidden bg-shopee-light text-brand-primary sm:inline-flex">
-              Cập nhật liên tục
+            <span className="pill hidden bg-white text-[#0e9f6e] shadow-sm ring-1 ring-emerald-100 sm:inline-flex">
+              <Clock3 className="h-3.5 w-3.5" />
+              Cập nhật trực tiếp
             </span>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">

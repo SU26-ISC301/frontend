@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@100;200;300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@100;200;300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -17,6 +17,77 @@
 @layer components {
   .page-mesh {
     @apply bg-brand-surface bg-mesh-light;
+  }
+
+  .shop-home {
+    overflow-x: hidden;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(255, 77, 46, 0.13), transparent 24rem),
+      radial-gradient(circle at 92% 8%, rgba(45, 212, 191, 0.13), transparent 25rem),
+      linear-gradient(180deg, #fbfaf7 0%, #f6f4ef 46%, #f8fafc 100%);
+  }
+
+  .shop-home button,
+  .shop-home input {
+    font-family: inherit;
+  }
+
+  .hero-market,
+  .depth-card,
+  .product-card,
+  .category-card {
+    transform-style: preserve-3d;
+  }
+
+  .hero-market {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .hero-market > * {
+    min-width: 0;
+  }
+
+  .hero-perspective {
+    perspective: 1200px;
+  }
+
+  .hero-tilt {
+    transform-style: preserve-3d;
+    transition: transform 180ms ease-out;
+    will-change: transform;
+  }
+
+  .hero-tilt img,
+  .hero-tilt .absolute {
+    transform: translateZ(26px);
+  }
+
+  .depth-card {
+    box-shadow: 0 18px 45px -30px rgba(15, 23, 42, 0.6);
+  }
+
+  .depth-card:hover {
+    transform: translateY(-5px) rotateX(2deg);
+  }
+
+  .product-card {
+    box-shadow: 0 14px 38px -28px rgba(15, 23, 42, 0.65);
+    transition: transform 260ms ease, box-shadow 260ms ease;
+  }
+
+  .product-card:hover {
+    box-shadow: 0 28px 60px -32px rgba(15, 23, 42, 0.78);
+    transform: translateY(-7px) rotateX(2deg);
+  }
+
+  .category-card {
+    transition: transform 260ms ease, box-shadow 260ms ease;
+  }
+
+  .category-card:hover {
+    box-shadow: 0 28px 60px -34px rgba(15, 23, 42, 0.82);
+    transform: translateY(-5px) rotateX(3deg);
   }
 
   .glass {
@@ -40,7 +111,7 @@
   }
 
   .section-title {
-    @apply text-xl font-bold tracking-tight text-brand-dark sm:text-2xl;
+    @apply text-xl font-extrabold tracking-tight text-brand-dark sm:text-2xl;
   }
 
   .pill {
