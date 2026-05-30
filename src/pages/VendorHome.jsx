@@ -70,6 +70,16 @@ const stats = [
   { label: 'Đánh giá shop', value: '4,8/5', change: '2.431 đánh giá', icon: Star, tone: 'text-amber-600 bg-amber-50' },
 ];
 
+const revenueTrend = [
+  { label: 'T2', revenue: 12.4, orders: 118 },
+  { label: 'T3', revenue: 14.8, orders: 132 },
+  { label: 'T4', revenue: 13.6, orders: 126 },
+  { label: 'T5', revenue: 17.2, orders: 151 },
+  { label: 'T6', revenue: 16.5, orders: 144 },
+  { label: 'T7', revenue: 21.1, orders: 184 },
+  { label: 'CN', revenue: 18.4, orders: 169 },
+];
+
 const orders = [
   { id: 'SPV-10291', buyer: 'Minh Anh', item: 'Áo khoác chống nắng UV', total: '389.000đ', status: 'Cần xác nhận', tone: 'bg-orange-50 text-orange-700', channel: 'TikTok Live', time: '09:28' },
   { id: 'SPV-10290', buyer: 'Gia Hân', item: 'Set son tint 3 màu', total: '259.000đ', status: 'Đang đóng gói', tone: 'bg-blue-50 text-blue-700', channel: 'Shopee Mall', time: '09:12' },
@@ -112,7 +122,7 @@ function getVendorInfo() {
 
 function StatusBadge({ children, className }) {
   return (
-    <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold', className)}>
+    <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-white/10', className)}>
       {children}
     </span>
   );
@@ -121,9 +131,9 @@ function StatusBadge({ children, className }) {
 function SectionHeader({ title, action, children }) {
   return (
     <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <h2 className="text-base font-bold text-gray-950">{title}</h2>
+      <h2 className="text-base font-bold text-zinc-50">{title}</h2>
       {children || (action && (
-        <button className="inline-flex items-center gap-1 text-sm font-semibold text-shopee hover:text-shopee-hover">
+        <button className="vendor-focus inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-bold text-shopee hover:bg-shopee-light">
           {action}
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -135,13 +145,13 @@ function SectionHeader({ title, action, children }) {
 function StatCard({ stat }) {
   const Icon = stat.icon;
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="vendor-card rounded-lg p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-gray-500">{stat.label}</p>
-          <p className="mt-2 text-2xl font-bold text-gray-950">{stat.value}</p>
+          <p className="text-sm font-bold text-zinc-400">{stat.label}</p>
+          <p className="mt-2 text-2xl font-bold text-zinc-50">{stat.value}</p>
         </div>
-        <span className={cn('rounded-lg p-2', stat.tone)}>
+        <span className={cn('vendor-inset rounded-lg p-2', stat.tone)}>
           <Icon className="h-5 w-5" />
         </span>
       </div>
@@ -156,7 +166,7 @@ function Toolbar({ placeholder = 'Tìm kiếm' }) {
       <div className="relative min-w-0 sm:w-80">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
-          className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm outline-none focus:border-shopee focus:ring-2 focus:ring-shopee/15"
+          className="vendor-focus h-10 w-full rounded-lg vendor-inset pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500"
           placeholder={placeholder}
         />
       </div>
@@ -185,17 +195,17 @@ function VendorLayout({ activeSlug, children }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-950">
+    <div className="vendor-neu min-h-screen text-zinc-50">
       <div className="flex">
-        <aside className="hidden min-h-screen w-64 shrink-0 border-r border-gray-200 bg-white px-4 py-5 lg:block">
+        <aside className="hidden min-h-screen w-64 shrink-0 px-4 py-5 lg:block">
           <div className="flex min-h-[calc(100vh-2.5rem)] flex-col">
-            <div className="flex items-center gap-3 px-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-shopee text-white">
+            <div className="vendor-card flex items-center gap-3 rounded-lg px-3 py-3">
+              <div className="vendor-inset flex h-10 w-10 items-center justify-center rounded-lg text-shopee">
                 <Store className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm font-bold">Vendor Center</p>
-                <p className="text-xs text-gray-500">{vendorInfo.shopName || 'ShopVN Seller'}</p>
+                <p className="text-sm font-bold uppercase tracking-[0.08em] text-zinc-50">Vendor Center</p>
+                <p className="text-xs font-bold text-slate-500">{vendorInfo.shopName || 'ShopVN Seller'}</p>
               </div>
             </div>
 
@@ -206,8 +216,8 @@ function VendorLayout({ activeSlug, children }) {
                   to={`/vendor/${slug}`}
                   className={({ isActive }) =>
                     cn(
-                      'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors',
-                      isActive ? 'bg-shopee-light text-shopee' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-950'
+                      'vendor-focus flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold transition-colors',
+                      isActive ? 'vendor-inset text-shopee' : 'text-slate-600 hover:bg-shopee-light hover:text-zinc-50'
                     )
                   }
                 >
@@ -217,11 +227,11 @@ function VendorLayout({ activeSlug, children }) {
               ))}
             </nav>
 
-            <div className="mt-auto space-y-2 border-t border-gray-100 pt-4">
+            <div className="mt-auto space-y-2 border-t border-white/60 pt-4">
               <button
                 type="button"
                 onClick={() => navigate('/')}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-950"
+                className="vendor-focus flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-shopee-light hover:text-zinc-50"
               >
                 <ShoppingBag className="h-4 w-4" />
                 Về trang mua hàng
@@ -229,7 +239,7 @@ function VendorLayout({ activeSlug, children }) {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
+                className="vendor-focus flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-red-600 transition-colors hover:bg-red-50"
               >
                 <LogOut className="h-4 w-4" />
                 Đăng xuất
@@ -239,17 +249,17 @@ function VendorLayout({ activeSlug, children }) {
         </aside>
 
         <main className="min-w-0 flex-1">
-          <header className="sticky top-0 z-10 border-b border-gray-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
+          <header className="sticky top-0 z-10 border-b border-white/10 bg-[#09090b]/82 px-4 py-3 backdrop-blur-xl sm:px-6">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase text-gray-500">Kênh người bán</p>
-                <h1 className="text-xl font-bold text-gray-950">{activeTitle}</h1>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Kênh người bán</p>
+                <h1 className="text-xl font-bold text-zinc-50">{activeTitle}</h1>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <input
-                    className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm outline-none focus:border-shopee focus:ring-2 focus:ring-shopee/15 sm:w-72"
+                    className="vendor-focus h-10 w-full rounded-lg vendor-inset pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 sm:w-72"
                     placeholder="Tìm đơn hàng, SKU, khách hàng"
                   />
                 </div>
@@ -279,7 +289,7 @@ function VendorLayout({ activeSlug, children }) {
                   className={({ isActive }) =>
                     cn(
                       'shrink-0 rounded-lg px-3 py-2 text-xs font-semibold',
-                      isActive ? 'bg-shopee text-white' : 'bg-gray-100 text-gray-600'
+                      isActive ? 'vendor-inset text-shopee' : 'vendor-soft text-slate-600'
                     )
                   }
                 >
@@ -305,13 +315,15 @@ function OverviewPage() {
         ))}
       </section>
 
+      <RevenueTrendChart />
+
       <section className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="vendor-card rounded-lg p-4">
           <SectionHeader title="Đơn hàng cần xử lý" action="Xem tất cả" />
           <OrderTable rows={orders} />
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="vendor-card rounded-lg p-4">
           <SectionHeader title="Việc cần làm" />
           <div className="space-y-3">
             {[
@@ -322,7 +334,7 @@ function OverviewPage() {
             ].map((task) => {
               const Icon = task.icon;
               return (
-                <button key={task.label} className="flex w-full items-center justify-between rounded-lg border border-gray-100 px-3 py-3 text-left hover:border-shopee/40 hover:bg-shopee-light/40">
+                <button key={task.label} className="flex w-full items-center justify-between vendor-soft rounded-lg px-3 py-3 text-left hover:border-shopee/40 hover:bg-shopee-light/40">
                   <span className="flex items-center gap-3">
                     <Icon className="h-4 w-4 text-gray-500" />
                     <span className="text-sm font-semibold text-gray-700">{task.label}</span>
@@ -346,6 +358,103 @@ function OverviewPage() {
         <InsightCard title="Sức khỏe shop" icon={Star} value="Tốt" label="Không có vi phạm mới" text="Duy trì phản hồi chat dưới 5 phút để tăng điểm shop." tone="bg-amber-50 text-amber-600" />
       </section>
     </>
+  );
+}
+
+function RevenueTrendChart() {
+  const width = 720;
+  const height = 260;
+  const padding = { top: 22, right: 28, bottom: 38, left: 48 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const values = revenueTrend.map((item) => item.revenue);
+  const maxValue = Math.ceil(Math.max(...values) / 5) * 5;
+  const minValue = 0;
+  const points = revenueTrend.map((item, index) => {
+    const x = padding.left + (index / (revenueTrend.length - 1)) * chartWidth;
+    const y = padding.top + ((maxValue - item.revenue) / (maxValue - minValue)) * chartHeight;
+    return { ...item, x, y };
+  });
+  const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+  const areaPath = `${linePath} L ${points[points.length - 1].x} ${height - padding.bottom} L ${points[0].x} ${height - padding.bottom} Z`;
+  const gridTicks = [0, 0.25, 0.5, 0.75, 1];
+
+  return (
+    <section className="vendor-card overflow-hidden rounded-lg p-4">
+      <SectionHeader title="Xu hướng doanh thu 7 ngày">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-zinc-400">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+            <span className="h-2 w-2 rounded-full bg-[#10b981]" />
+            Doanh thu
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+            <span className="h-2 w-2 rounded-full bg-[#0C5CAB]" />
+            1 đơn = 100k+
+          </span>
+        </div>
+      </SectionHeader>
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
+        <div className="vendor-inset min-h-[260px] overflow-hidden rounded-lg p-3">
+          <svg className="h-full min-h-[240px] w-full" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Biểu đồ đường doanh thu 7 ngày gần nhất">
+            <defs>
+              <linearGradient id="vendorRevenueLine" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0%" stopColor="#10b981" />
+                <stop offset="100%" stopColor="#0C5CAB" />
+              </linearGradient>
+              <linearGradient id="vendorRevenueArea" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="#10b981" stopOpacity="0.28" />
+                <stop offset="100%" stopColor="#0C5CAB" stopOpacity="0.02" />
+              </linearGradient>
+            </defs>
+
+            {gridTicks.map((tick) => {
+              const y = padding.top + tick * chartHeight;
+              const value = Math.round(maxValue - tick * maxValue);
+              return (
+                <g key={tick}>
+                  <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="rgba(255,255,255,0.08)" />
+                  <text x={padding.left - 12} y={y + 4} textAnchor="end" className="fill-zinc-500 text-[11px] font-semibold">
+                    {value}tr
+                  </text>
+                </g>
+              );
+            })}
+
+            <path d={areaPath} fill="url(#vendorRevenueArea)" />
+            <path d={linePath} fill="none" stroke="url(#vendorRevenueLine)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
+
+            {points.map((point) => (
+              <g key={point.label}>
+                <line x1={point.x} x2={point.x} y1={padding.top} y2={height - padding.bottom} stroke="rgba(255,255,255,0.04)" />
+                <circle cx={point.x} cy={point.y} r="6" fill="#09090b" stroke="#10b981" strokeWidth="3" />
+                <text x={point.x} y={height - 12} textAnchor="middle" className="fill-zinc-400 text-[12px] font-bold">
+                  {point.label}
+                </text>
+              </g>
+            ))}
+          </svg>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+          <div className="vendor-soft rounded-lg p-3">
+            <p className="text-xs font-bold uppercase text-zinc-500">Doanh thu tuần</p>
+            <p className="mt-2 text-2xl font-bold text-zinc-50">114.000.000đ</p>
+            <p className="mt-1 text-sm font-semibold text-emerald-500">+18,6% so với tuần trước</p>
+          </div>
+          <div className="vendor-soft rounded-lg p-3">
+            <p className="text-xs font-bold uppercase text-zinc-500">Đỉnh doanh thu</p>
+            <p className="mt-2 text-2xl font-bold text-zinc-50">21,1tr</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-400">Thứ 7, 184 đơn</p>
+          </div>
+          <div className="vendor-soft rounded-lg p-3">
+            <p className="text-xs font-bold uppercase text-zinc-500">Giá trị trung bình</p>
+            <p className="mt-2 text-2xl font-bold text-zinc-50">675.000đ</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-400">Mỗi đơn hoàn tất</p>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -384,11 +493,11 @@ function OrderTable({ rows }) {
 
 function ProductsPanel() {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm xl:col-span-2">
+    <div className="vendor-card rounded-lg p-4 xl:col-span-2">
       <SectionHeader title="Hiệu suất sản phẩm" action="Quản lý sản phẩm" />
       <div className="grid gap-3 md:grid-cols-2">
         {products.map((product) => (
-          <div key={product.sku} className="rounded-lg border border-gray-100 p-3">
+          <div key={product.sku} className="vendor-soft rounded-lg p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-semibold text-gray-950">{product.name}</p>
@@ -399,15 +508,15 @@ function ProductsPanel() {
               )}
             </div>
             <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
-              <div className="rounded-lg bg-gray-50 p-3">
+              <div className="vendor-inset rounded-lg p-3">
                 <p className="text-gray-500">Giá</p>
                 <p className="mt-1 font-bold">{product.price}</p>
               </div>
-              <div className="rounded-lg bg-gray-50 p-3">
+              <div className="vendor-inset rounded-lg p-3">
                 <p className="text-gray-500">Tồn kho</p>
                 <p className="mt-1 font-bold">{product.stock}</p>
               </div>
-              <div className="rounded-lg bg-gray-50 p-3">
+              <div className="vendor-inset rounded-lg p-3">
                 <p className="text-gray-500">Đã bán</p>
                 <p className="mt-1 font-bold">{product.sold}</p>
               </div>
@@ -421,7 +530,7 @@ function ProductsPanel() {
 
 function CampaignPanel() {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="vendor-card rounded-lg p-4">
       <SectionHeader title="Marketing & lịch bán" />
       <div className="space-y-4">
         {campaigns.map((campaign) => (
@@ -452,7 +561,7 @@ function CampaignPanel() {
 
 function InsightCard({ title, icon: Icon, value, label, text, tone }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="vendor-card rounded-lg p-4">
       <SectionHeader title={title} />
       <div className="flex items-center gap-4">
         <span className={cn('flex h-12 w-12 items-center justify-center rounded-lg', tone)}>
@@ -483,7 +592,7 @@ function OrdersPage() {
         ))}
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <section className="vendor-card rounded-lg p-4">
         <SectionHeader title="Danh sách đơn hàng">
           <Toolbar placeholder="Tìm mã đơn, khách hàng, sản phẩm" />
         </SectionHeader>
@@ -504,7 +613,7 @@ function ProductsPage() {
   return (
     <>
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="vendor-card rounded-lg p-4">
           <SectionHeader title="Kho sản phẩm">
             <div className="flex gap-2">
               <Button variant="outline" size="sm">
@@ -522,7 +631,7 @@ function ProductsPage() {
             {products.map((product) => (
               <div key={product.sku} className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-400">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg vendor-inset text-gray-400">
                     <ImagePlus className="h-6 w-6" />
                   </div>
                   <div>
@@ -552,7 +661,7 @@ function ProductsPage() {
             ))}
           </div>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="vendor-card rounded-lg p-4">
           <SectionHeader title="Chất lượng danh mục" />
           {[
             ['Thiếu ảnh phụ', '8 sản phẩm'],
@@ -560,7 +669,7 @@ function ProductsPage() {
             ['Sắp hết hàng', '4 sản phẩm'],
             ['Chờ duyệt thay đổi', '3 sản phẩm'],
           ].map(([label, value]) => (
-            <button key={label} className="mb-3 flex w-full items-center justify-between rounded-lg border border-gray-100 px-3 py-3 text-left hover:bg-gray-50">
+            <button key={label} className="mb-3 flex w-full items-center justify-between vendor-soft rounded-lg px-3 py-3 text-left hover:bg-gray-50">
               <span className="text-sm font-semibold text-gray-700">{label}</span>
               <span className="text-sm text-gray-500">{value}</span>
             </button>
@@ -580,7 +689,7 @@ function ShippingPage() {
         <InsightCard title="Hoàn trả" icon={ReceiptText} value="7" label="Yêu cầu trong 7 ngày" text="2 yêu cầu cần phản hồi trước 18:00." tone="bg-orange-50 text-orange-600" />
       </section>
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="vendor-card rounded-lg p-4">
           <SectionHeader title="Lịch bàn giao hôm nay">
             <Button variant="outline" size="sm">
               <SlidersHorizontal className="h-4 w-4" />
@@ -589,7 +698,7 @@ function ShippingPage() {
           </SectionHeader>
           <div className="space-y-3">
             {shipments.map((shipment) => (
-              <div key={shipment.id} className="flex flex-col gap-3 rounded-lg border border-gray-100 p-3 md:flex-row md:items-center md:justify-between">
+              <div key={shipment.id} className="flex flex-col gap-3 vendor-soft rounded-lg p-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="font-semibold">{shipment.id}</p>
                   <p className="mt-1 text-sm text-gray-500">{shipment.order} · {shipment.carrier}</p>
@@ -602,10 +711,10 @@ function ShippingPage() {
             ))}
           </div>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="vendor-card rounded-lg p-4">
           <SectionHeader title="Đối tác vận chuyển" />
           {['GHN Express', 'SPX Express', 'GHTK', 'Viettel Post'].map((name, index) => (
-            <div key={name} className="mb-3 flex items-center justify-between rounded-lg bg-gray-50 px-3 py-3">
+            <div key={name} className="mb-3 flex items-center justify-between vendor-inset rounded-lg px-3 py-3">
               <span className="font-semibold">{name}</span>
               <StatusBadge className={index < 2 ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}>
                 {index < 2 ? 'Đang bật' : 'Dự phòng'}
@@ -621,11 +730,11 @@ function ShippingPage() {
 function MessagesPage() {
   return (
     <section className="grid min-h-[620px] gap-6 xl:grid-cols-[360px_1fr_320px]">
-      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="vendor-card rounded-lg p-4">
         <SectionHeader title="Hộp thư" />
         <div className="relative mb-3">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm outline-none focus:border-shopee" placeholder="Tìm khách hàng" />
+          <input className="h-10 w-full rounded-lg vendor-inset pl-9 pr-3 text-sm outline-none focus:border-shopee" placeholder="Tìm khách hàng" />
         </div>
         <div className="space-y-2">
           {conversations.map((chat, index) => (
@@ -641,15 +750,15 @@ function MessagesPage() {
         </div>
       </div>
 
-      <div className="flex min-h-[560px] flex-col rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="flex min-h-[560px] flex-col vendor-card rounded-lg">
         <div className="border-b border-gray-100 p-4">
           <p className="font-bold">Minh Anh</p>
           <p className="text-sm text-gray-500">Đang xem Áo khoác chống nắng UV</p>
         </div>
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
-          <div className="max-w-[75%] rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-700">Shop còn màu be size M không ạ?</div>
+          <div className="max-w-[75%] rounded-lg vendor-inset px-3 py-2 text-sm text-gray-700">Shop còn màu be size M không ạ?</div>
           <div className="ml-auto max-w-[75%] rounded-lg bg-shopee px-3 py-2 text-sm text-white">Dạ còn hàng ạ. Shop có thể gửi trong hôm nay nếu chị đặt trước 15:00.</div>
-          <div className="max-w-[75%] rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-700">Mình đặt 2 cái có được freeship không?</div>
+          <div className="max-w-[75%] rounded-lg vendor-inset px-3 py-2 text-sm text-gray-700">Mình đặt 2 cái có được freeship không?</div>
         </div>
         <div className="border-t border-gray-100 p-4">
           <div className="flex gap-2">
@@ -661,10 +770,10 @@ function MessagesPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="vendor-card rounded-lg p-4">
         <SectionHeader title="Công cụ trả lời nhanh" />
         {['Còn hàng', 'Hướng dẫn đổi trả', 'Mã giảm giá', 'Thời gian giao hàng'].map((item) => (
-          <button key={item} className="mb-3 flex w-full items-center gap-3 rounded-lg border border-gray-100 px-3 py-3 text-left text-sm font-semibold hover:bg-gray-50">
+          <button key={item} className="mb-3 flex w-full items-center gap-3 vendor-soft rounded-lg px-3 py-3 text-left text-sm font-semibold hover:bg-gray-50">
             <MessageSquareText className="h-4 w-4 text-gray-500" />
             {item}
           </button>
@@ -683,7 +792,7 @@ function MarketingPage() {
         <InsightCard title="Livestream" icon={Sparkles} value="18:30" label="Lịch hôm nay" text="Đã ghim 8 sản phẩm chủ lực." tone="bg-emerald-50 text-emerald-600" />
       </section>
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="vendor-card rounded-lg p-4">
           <SectionHeader title="Chiến dịch đang chạy">
             <Button size="sm">
               <Plus className="h-4 w-4" />
@@ -692,7 +801,7 @@ function MarketingPage() {
           </SectionHeader>
           <div className="space-y-4">
             {campaigns.map((campaign) => (
-              <div key={campaign.name} className="rounded-lg border border-gray-100 p-4">
+              <div key={campaign.name} className="vendor-soft rounded-lg p-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-bold">{campaign.name}</p>
@@ -707,10 +816,10 @@ function MarketingPage() {
             ))}
           </div>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="vendor-card rounded-lg p-4">
           <SectionHeader title="Gợi ý tăng trưởng" />
           {['Tạo combo mua 2 giảm 8%', 'Bật voucher cho khách mới', 'Đẩy sản phẩm tồn cao vào Flash Sale', 'Chuẩn bị kịch bản live 30 phút'].map((item) => (
-            <button key={item} className="mb-3 flex w-full items-center gap-3 rounded-lg bg-gray-50 px-3 py-3 text-left text-sm font-semibold hover:bg-shopee-light">
+            <button key={item} className="mb-3 flex w-full items-center gap-3 vendor-inset rounded-lg px-3 py-3 text-left text-sm font-semibold hover:bg-shopee-light">
               <Sparkles className="h-4 w-4 text-shopee" />
               {item}
             </button>
@@ -733,7 +842,7 @@ function FinancePage() {
         ].map((stat) => <StatCard key={stat.label} stat={stat} />)}
       </section>
       <section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="vendor-card rounded-lg p-4">
           <SectionHeader title="Giao dịch gần đây">
             <Button variant="outline" size="sm">
               <Download className="h-4 w-4" />
@@ -752,9 +861,9 @@ function FinancePage() {
             ))}
           </div>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="vendor-card rounded-lg p-4">
           <SectionHeader title="Tài khoản nhận tiền" />
-          <div className="rounded-lg border border-gray-100 p-4">
+          <div className="vendor-soft rounded-lg p-4">
             <p className="font-bold">Vietcombank</p>
             <p className="mt-1 text-sm text-gray-500">Nguyen Tai Phat · **** 8421</p>
             <StatusBadge className="mt-3 bg-emerald-50 text-emerald-700">Đã xác minh</StatusBadge>
@@ -772,7 +881,7 @@ function FinancePage() {
 function SettingsPage() {
   return (
     <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="vendor-card rounded-lg p-4">
         <SectionHeader title="Hồ sơ shop" />
         <div className="flex items-center gap-4">
           <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-shopee-light text-shopee">
@@ -804,7 +913,7 @@ function SettingsPage() {
       </div>
 
       <div className="space-y-6">
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="vendor-card rounded-lg p-4">
           <SectionHeader title="Xác minh & bảo mật" />
           {[
             { label: 'CCCD chủ shop', value: 'Đã xác minh', icon: ShieldCheck },
@@ -813,7 +922,7 @@ function SettingsPage() {
           ].map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.label} className="mb-3 flex items-center justify-between rounded-lg border border-gray-100 px-3 py-3">
+              <div key={item.label} className="mb-3 flex items-center justify-between vendor-soft rounded-lg px-3 py-3">
                 <span className="flex items-center gap-3 font-semibold">
                   <Icon className="h-4 w-4 text-gray-500" />
                   {item.label}
@@ -823,10 +932,10 @@ function SettingsPage() {
             );
           })}
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="vendor-card rounded-lg p-4">
           <SectionHeader title="Cấu hình vận hành" />
           {['Tự động xác nhận đơn COD', 'Nhận thông báo tồn kho thấp', 'Ẩn sản phẩm khi hết hàng', 'Bật trả lời nhanh trong chat'].map((label, index) => (
-            <label key={label} className="mb-3 flex items-center justify-between rounded-lg bg-gray-50 px-3 py-3">
+            <label key={label} className="mb-3 flex items-center justify-between vendor-inset rounded-lg px-3 py-3">
               <span className="text-sm font-semibold">{label}</span>
               <input type="checkbox" defaultChecked={index !== 0} className="h-4 w-4 accent-shopee" />
             </label>
