@@ -226,4 +226,107 @@
     background-color: rgba(39, 39, 42, 0.6);
     color: var(--vendor-text);
   }
+
+  .admin-neu {
+    --admin-primary: #006666;
+    --admin-secondary: #f1f2f5;
+    --admin-success: #00a63d;
+    --admin-warning: #fe9900;
+    --admin-danger: #ff2157;
+    --admin-surface: #e7e5e4;
+    --admin-text: #1e2938;
+    --admin-shadow-dark: #c8c6c5;
+    --admin-shadow-light: #ffffff;
+    min-height: 100vh;
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.28), rgba(231, 229, 228, 0.3)),
+      var(--admin-surface);
+    color: var(--admin-text);
+    font-family: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  .admin-neu input,
+  .admin-neu textarea,
+  .admin-neu select,
+  .admin-neu button {
+    font-family: inherit;
+  }
+
+  .admin-card {
+    border: 1px solid rgba(255, 255, 255, 0.62);
+    background: var(--admin-surface);
+    box-shadow: 8px 8px 18px var(--admin-shadow-dark), -8px -8px 18px var(--admin-shadow-light);
+  }
+
+  .admin-raised {
+    border: 1px solid rgba(255, 255, 255, 0.58);
+    background: var(--admin-surface);
+    box-shadow: 5px 5px 12px var(--admin-shadow-dark), -5px -5px 12px var(--admin-shadow-light);
+  }
+
+  .admin-inset {
+    border: 1px solid rgba(255, 255, 255, 0.48);
+    background: var(--admin-surface);
+    box-shadow: inset 5px 5px 10px var(--admin-shadow-dark), inset -5px -5px 10px var(--admin-shadow-light);
+  }
+
+  .admin-focus {
+    outline: none;
+  }
+
+  .admin-focus:focus-visible {
+    outline: 2px solid var(--admin-primary);
+    outline-offset: 3px;
+  }
+
+  .admin-neu .rounded-xl,
+  .admin-neu .rounded-lg,
+  .admin-neu .rounded-2xl {
+    border-radius: 8px;
+  }
+
+  .admin-neu .text-admin-primary {
+    color: var(--admin-primary);
+  }
+
+  .admin-neu .text-admin-success {
+    color: var(--admin-success);
+  }
+
+  .admin-neu .text-admin-warning {
+    color: var(--admin-warning);
+  }
+
+  .admin-neu .text-admin-danger {
+    color: var(--admin-danger);
+  }
+
+  .admin-neu .text-admin-text {
+    color: var(--admin-text);
+  }
+
+  .admin-neu .bg-admin-primary {
+    background-color: var(--admin-primary);
+  }
+
+  .admin-neu .bg-admin-danger {
+    background-color: var(--admin-danger);
+  }
+
+  .admin-neu .accent-admin-primary {
+    accent-color: var(--admin-primary);
+  }
+
+  .admin-neu .border-white\/60,
+  .admin-neu .divide-white\/60 > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgba(255, 255, 255, 0.62);
+  }
+
+  .admin-neu input {
+    color: var(--admin-text);
+  }
+
+  .admin-neu input::placeholder {
+    color: #64748b;
+  }
 }

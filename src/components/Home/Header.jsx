@@ -59,10 +59,6 @@ export function Header() {
             </Link>
             <div className="hidden items-center gap-4 text-white/60 sm:flex">
               <span className="transition-colors hover:text-white">Tải app</span>
-              <span className="text-white/30">|</span>
-              <Link to="/admin" className="transition-colors hover:text-white">
-                Quản trị
-              </Link>
             </div>
           </div>
         </div>

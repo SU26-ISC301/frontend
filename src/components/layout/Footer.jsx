@@ -4,7 +4,6 @@ import { BrandLogo } from './BrandLogo';
 const links = [
   { label: 'Trang chủ', to: '/' },
   { label: 'Kênh Người Bán', to: '/seller' },
-  { label: 'Admin', to: '/admin' },
 ];
 
 export function Footer() {
