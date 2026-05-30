@@ -15,7 +15,7 @@ function App() {
         <Route path="/buyer/:section" element={<BuyerHome />} />
         <Route path="/vendor" element={<Navigate to="/vendor/trangchu" replace />} />
         <Route path="/vendor/:section" element={<VendorHome />} />
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/quantri" element={<AdminDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
