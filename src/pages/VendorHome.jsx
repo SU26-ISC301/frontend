@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowUpRight,
@@ -44,13 +44,14 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { vendorMessageApi } from '../api/vendorMessageAPI';
 
 const navItems = [
   { slug: 'trangchu', label: 'Tổng quan', icon: LayoutDashboard },
   { slug: 'don-hang', label: 'Đơn hàng', icon: ShoppingBag, badge: '12' },
   { slug: 'san-pham', label: 'Sản phẩm', icon: PackageSearch },
   { slug: 'van-chuyen', label: 'Vận chuyển', icon: Truck },
-  { slug: 'tin-nhan', label: 'Tin nhắn', icon: MessageSquareText, badge: '3' },
+  { slug: 'tin-nhan', label: 'Tin nhắn', icon: MessageSquareText },
   { slug: 'marketing', label: 'Marketing', icon: TicketPercent },
   { slug: 'tai-chinh', label: 'Tài chính', icon: WalletCards },
   { slug: 'cai-dat-shop', label: 'Cài đặt shop', icon: Settings },
@@ -96,12 +97,6 @@ const shipments = [
   { id: 'VTP-55608', order: 'SPV-10280', carrier: 'Viettel Post', deadline: '16:30 hôm nay', status: 'Đã lên lịch' },
 ];
 
-const initialConversations = [
-  { name: 'Minh Anh', product: 'Áo khoác chống nắng UV', message: 'Shop còn màu be size M không ạ?', time: '2 phút', unread: 2 },
-  { name: 'Hoàng Nam', product: 'Tai nghe bluetooth mini', message: 'Mình muốn đổi địa chỉ nhận hàng.', time: '12 phút', unread: 1 },
-  { name: 'Gia Hân', product: 'Set son tint 3 màu', message: 'Cảm ơn shop, hàng đóng gói rất đẹp.', time: '41 phút', unread: 0 },
-];
-
 const campaigns = [
   { name: 'Flash Sale 20H', metric: '26 sản phẩm', progress: 72, budget: '2.500.000đ', revenue: '18.420.000đ' },
   { name: 'Voucher theo dõi shop', metric: '1.248 lượt dùng', progress: 58, budget: '1.200.000đ', revenue: '9.680.000đ' },
@@ -142,6 +137,25 @@ function formatCurrency(value) {
 
 function getTodayLabel() {
   return new Intl.DateTimeFormat('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+}
+
+function getApiMessage(error) {
+  return error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Không thể tải dữ liệu';
+}
+
+function getInitials(name = 'Khách hàng') {
+  return name.split(' ').filter(Boolean).slice(-2).map((part) => part[0]).join('').toUpperCase();
+}
+
+function formatChatTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const today = new Date();
+  const sameDay = date.toDateString() === today.toDateString();
+  return new Intl.DateTimeFormat('vi-VN', sameDay
+    ? { hour: '2-digit', minute: '2-digit' }
+    : { day: '2-digit', month: '2-digit' }).format(date);
 }
 
 function downloadCsv(filename, columns, rows) {
@@ -519,16 +533,126 @@ function ShippingPage({ onToast }) {
 }
 
 function MessagesPage({ onToast }) {
-  const [activeChat, setActiveChat] = useState(initialConversations[0]);
+  const [conversations, setConversations] = useState([]);
+  const [activeConversationId, setActiveConversationId] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
-  const [sentMessages, setSentMessages] = useState([]);
-  const sendMessage = () => {
-    if (!message.trim()) return;
-    setSentMessages((current) => [...current, message.trim()]);
-    setMessage('');
-    onToast({ title: 'Đã gửi tin nhắn', message: `Phản hồi của bạn đã được gửi tới ${activeChat.name}.` });
+  const [loadingConversations, setLoadingConversations] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const activeChat = conversations.find((conversation) => conversation.id === activeConversationId);
+
+  const loadConversations = useCallback(async () => {
+    try {
+      const data = await vendorMessageApi.getConversations();
+      const nextConversations = Array.isArray(data) ? data : [];
+      setConversations(nextConversations);
+      setActiveConversationId((current) => (
+        current && nextConversations.some((conversation) => conversation.id === current)
+          ? current
+          : nextConversations[0]?.id ?? null
+      ));
+      setError('');
+    } catch (requestError) {
+      setError(getApiMessage(requestError));
+    } finally {
+      setLoadingConversations(false);
+    }
+  }, []);
+
+  const loadMessages = useCallback(async (conversationId, silent = false) => {
+    if (!conversationId) {
+      setMessages([]);
+      return;
+    }
+    if (!silent) setLoadingMessages(true);
+    try {
+      const data = await vendorMessageApi.getMessages(conversationId);
+      setMessages(Array.isArray(data) ? data : []);
+      setConversations((current) => current.map((conversation) => (
+        conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation
+      )));
+      setError('');
+    } catch (requestError) {
+      setError(getApiMessage(requestError));
+    } finally {
+      if (!silent) setLoadingMessages(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadConversations();
+    const intervalId = setInterval(loadConversations, 15000);
+    return () => clearInterval(intervalId);
+  }, [loadConversations]);
+
+  useEffect(() => {
+    if (!activeConversationId) {
+      setMessages([]);
+      return undefined;
+    }
+    loadMessages(activeConversationId);
+    const intervalId = setInterval(() => loadMessages(activeConversationId, true), 10000);
+    return () => clearInterval(intervalId);
+  }, [activeConversationId, loadMessages]);
+
+  const selectConversation = (conversationId) => {
+    setActiveConversationId(conversationId);
+    setConversations((current) => current.map((conversation) => (
+      conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation
+    )));
   };
-  return <section className="grid min-h-[620px] gap-5 xl:grid-cols-[320px_1fr_280px]"><Panel className="p-4"><PanelHeader title="Hộp thư" subtitle="3 hội thoại gần nhất" /><div className="mt-4 space-y-2">{initialConversations.map((chat) => <button key={chat.name} type="button" className={cn('vendor-chat-item', activeChat.name === chat.name && 'is-active')} onClick={() => { setActiveChat(chat); setSentMessages([]); }}><div className="flex items-center justify-between gap-2"><p className="font-extrabold text-stone-700">{chat.name}</p><span className="text-[11px] font-semibold text-stone-400">{chat.time}</span></div><p className="mt-1 truncate text-xs font-semibold text-stone-500">{chat.message}</p>{chat.unread > 0 && <span className="mt-2 inline-flex rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-extrabold text-white">{chat.unread}</span>}</button>)}</div></Panel><Panel className="flex min-h-[560px] flex-col overflow-hidden"><div className="border-b border-stone-100 p-4"><p className="font-extrabold text-stone-800">{activeChat.name}</p><p className="mt-1 text-xs font-semibold text-stone-400">Đang xem {activeChat.product}</p></div><div className="flex-1 space-y-3 overflow-y-auto bg-stone-50/60 p-4"><div className="max-w-[75%] rounded-xl bg-white px-3 py-2 text-sm font-semibold text-stone-600 shadow-sm">{activeChat.message}</div><div className="ml-auto max-w-[75%] rounded-xl bg-teal-700 px-3 py-2 text-sm font-semibold text-white">Dạ shop đã nhận được tin nhắn. Shop kiểm tra ngay ạ.</div>{sentMessages.map((sent, index) => <div key={`${sent}-${index}`} className="ml-auto max-w-[75%] rounded-xl bg-teal-700 px-3 py-2 text-sm font-semibold text-white">{sent}</div>)}</div><div className="border-t border-stone-100 p-4"><div className="flex gap-2"><input value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && sendMessage()} className="vendor-input h-11 flex-1 px-3 text-sm" placeholder="Nhập tin nhắn..." /><button type="button" aria-label="Gửi tin nhắn" className="vendor-primary-button px-3" onClick={sendMessage}><Send className="h-4 w-4" /></button></div></div></Panel><Panel className="p-4"><PanelHeader title="Trả lời nhanh" subtitle="Chọn để điền nội dung" /><div className="mt-4 space-y-2">{['Dạ sản phẩm vẫn còn hàng ạ.', 'Shop hỗ trợ đổi trả trong 7 ngày.', 'Shop gửi bạn mã giảm 10% nhé.', 'Đơn sẽ được gửi trong hôm nay ạ.'].map((reply) => <button key={reply} type="button" className="vendor-quick-reply" onClick={() => setMessage(reply)}><MessageSquareText className="h-4 w-4 shrink-0 text-orange-500" />{reply}</button>)}</div></Panel></section>;
+
+  const sendMessage = async () => {
+    const content = message.trim();
+    if (!content || !activeChat || sending) return;
+    setSending(true);
+    try {
+      const sentMessage = await vendorMessageApi.sendMessage(activeChat.id, content);
+      setMessages((current) => current.some((item) => item.id === sentMessage.id)
+        ? current
+        : [...current, sentMessage]);
+      setMessage('');
+      await loadConversations();
+      onToast({ title: 'Đã gửi tin nhắn', message: `Phản hồi của bạn đã được gửi tới ${activeChat.customerName}.` });
+    } catch (requestError) {
+      setError(getApiMessage(requestError));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return <section className="grid min-h-[620px] gap-5 xl:grid-cols-[320px_1fr_280px]">
+    <Panel className="p-4">
+      <PanelHeader title="Hộp thư" subtitle={`${conversations.length} hội thoại`}>
+        <button type="button" aria-label="Tải lại hội thoại" className="vendor-icon-button" onClick={loadConversations}><RefreshCw className="h-4 w-4" /></button>
+      </PanelHeader>
+      {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600">{error}</p>}
+      <div className="mt-4 space-y-2">
+        {loadingConversations && !conversations.length && <p className="py-8 text-center text-xs font-semibold text-stone-400">Đang tải hộp thư...</p>}
+        {!loadingConversations && !conversations.length && <div className="py-10 text-center"><MessageSquareText className="mx-auto h-8 w-8 text-stone-300" /><p className="mt-3 text-sm font-extrabold text-stone-700">Chưa có hội thoại</p><p className="mt-1 text-xs font-semibold leading-5 text-stone-400">Tin nhắn mới từ khách hàng sẽ xuất hiện tại đây.</p></div>}
+        {conversations.map((chat) => <button key={chat.id} type="button" className={cn('vendor-chat-item', activeConversationId === chat.id && 'is-active')} onClick={() => selectConversation(chat.id)}><div className="flex items-center gap-2"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-xs font-extrabold text-orange-700">{getInitials(chat.customerName)}</span><span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2"><span className="truncate text-sm font-extrabold text-stone-700">{chat.customerName}</span><span className="shrink-0 text-[11px] font-semibold text-stone-400">{formatChatTime(chat.lastMessageAt)}</span></span><span className="mt-1 block truncate text-xs font-semibold text-stone-500">{chat.lastMessage || 'Chưa có tin nhắn'}</span></span></div>{chat.unreadCount > 0 && <span className="mt-2 inline-flex rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-extrabold text-white">{chat.unreadCount}</span>}</button>)}
+      </div>
+    </Panel>
+
+    <Panel className="flex min-h-[560px] flex-col overflow-hidden">
+      {activeChat ? <>
+        <div className="border-b border-stone-100 p-4"><p className="font-extrabold text-stone-800">{activeChat.customerName}</p><p className="mt-1 text-xs font-semibold text-stone-400">Trao đổi với khách hàng</p></div>
+        <div className="flex-1 space-y-3 overflow-y-auto bg-stone-50/60 p-4">
+          {loadingMessages && <p className="py-8 text-center text-xs font-semibold text-stone-400">Đang tải tin nhắn...</p>}
+          {!loadingMessages && !messages.length && <p className="py-8 text-center text-xs font-semibold text-stone-400">Hội thoại chưa có tin nhắn.</p>}
+          {messages.map((item) => <div key={item.id} className={cn('max-w-[75%] rounded-xl px-3 py-2 text-sm font-semibold shadow-sm', item.sentByVendor ? 'ml-auto bg-teal-700 text-white' : 'bg-white text-stone-600')}><p>{item.content}</p><p className={cn('mt-1 text-[10px]', item.sentByVendor ? 'text-teal-100' : 'text-stone-400')}>{formatChatTime(item.createdAt)}</p></div>)}
+        </div>
+        <div className="border-t border-stone-100 p-4"><div className="flex gap-2"><input value={message} maxLength={2000} disabled={sending} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && sendMessage()} className="vendor-input h-11 flex-1 px-3 text-sm" placeholder="Nhập tin nhắn..." /><button type="button" aria-label="Gửi tin nhắn" disabled={sending || !message.trim()} className="vendor-primary-button px-3 disabled:cursor-not-allowed disabled:opacity-50" onClick={sendMessage}><Send className="h-4 w-4" /></button></div></div>
+      </> : <div className="flex flex-1 items-center justify-center p-8 text-center"><div><MessageSquareText className="mx-auto h-10 w-10 text-stone-300" /><p className="mt-3 text-sm font-extrabold text-stone-700">Chọn một hội thoại</p><p className="mt-1 text-xs font-semibold text-stone-400">Nội dung trao đổi với khách hàng sẽ hiển thị tại đây.</p></div></div>}
+    </Panel>
+
+    <Panel className="p-4">
+      <PanelHeader title="Trả lời nhanh" subtitle="Chọn để điền nội dung" />
+      <div className="mt-4 space-y-2">{['Dạ sản phẩm vẫn còn hàng ạ.', 'Shop hỗ trợ đổi trả trong 7 ngày.', 'Shop gửi bạn mã giảm 10% nhé.', 'Đơn sẽ được gửi trong hôm nay ạ.'].map((reply) => <button key={reply} type="button" disabled={!activeChat} className="vendor-quick-reply disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setMessage(reply)}><MessageSquareText className="h-4 w-4 shrink-0 text-orange-500" />{reply}</button>)}</div>
+    </Panel>
+  </section>;
 }
 
 function MarketingPage({ onToast }) {
