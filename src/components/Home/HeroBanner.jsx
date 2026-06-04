@@ -78,13 +78,13 @@ export function HeroBanner() {
               <p className="text-xs font-bold text-slate-500">Đang giảm</p>
               <p className="text-2xl font-black text-[#ff4d2e]">-48%</p>
             </div>
-            <div className="absolute bottom-6 right-3 z-20 rounded-2xl border border-white/20 bg-[#111827]/92 px-3 py-2.5 text-white shadow-2xl backdrop-blur sm:bottom-8 sm:right-4 sm:px-3.5 sm:py-3">
+            <div className="absolute -bottom-7 right-3 z-20 rounded-2xl border border-orange-100 bg-white/95 px-3 py-2.5 text-[#16202a] shadow-2xl backdrop-blur sm:-bottom-8 sm:right-4 sm:px-3.5 sm:py-3">
               <div className="flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#5eead4] text-[#0f172a]">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#ff4d2e] to-[#ffb020] text-white shadow-md shadow-orange-500/25">
                   <Zap className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-xs text-white/60">Flash live</p>
+                  <p className="text-xs font-bold text-[#f05a35]">Flash live</p>
                   <p className="text-sm font-extrabold">12:00 - 14:00</p>
                 </div>
               </div>
