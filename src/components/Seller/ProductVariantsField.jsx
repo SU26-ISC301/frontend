@@ -408,6 +408,89 @@ export function ProductVariantsField({
     );
   };
 
+  const renderSingleProductTable = () => {
+    return (
+      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="py-3 px-4 font-bold text-slate-500 w-[25%]">
+                  <span className="text-red-500">*</span> Hàng có sẵn
+                </th>
+                <th className="py-3 px-4 font-bold text-slate-500 w-[25%]">
+                  <span className="text-red-500">*</span> Giá bán lẻ
+                </th>
+                <th className="py-3 px-4 font-bold text-slate-500 w-[25%]">
+                  Giảm giá
+                </th>
+                <th className="py-3 px-4 font-bold text-slate-500 w-[25%]">
+                  SKU người bán
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="hover:bg-slate-50/50 transition-colors duration-200">
+                <td className="py-4 px-4">
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={singleStock}
+                    onChange={(e) => onChange({ singleStock: e.target.value })}
+                    className={cn(
+                      "vendor-input w-full px-3 py-2 text-sm bg-white",
+                      errors.stock && "border-red-500 focus:border-red-500"
+                    )}
+                  />
+                  {errors.stock && (
+                    <p className="text-[11px] text-red-500 mt-1.5 flex items-center gap-0.5">⚠️ {errors.stock}</p>
+                  )}
+                </td>
+                <td className="py-4 px-4 relative">
+                  <input
+                    type="number"
+                    placeholder="Nhập giá"
+                    value={singlePrice}
+                    onChange={(e) => onChange({ singlePrice: e.target.value })}
+                    className={cn(
+                      "vendor-input w-full px-3 py-2 pr-8 text-sm bg-white",
+                      errors.price && "border-red-500 focus:border-red-500"
+                    )}
+                  />
+                  <span className="absolute right-7 top-5.5 text-xs font-bold text-slate-400">đ</span>
+                  {errors.price && (
+                    <p className="text-[11px] text-red-500 mt-1.5 flex items-center gap-0.5">⚠️ {errors.price}</p>
+                  )}
+                </td>
+                <td className="py-4 px-4 relative">
+                  <input
+                    type="number"
+                    placeholder="0"
+                    min="0"
+                    max="100"
+                    value={singleDiscount}
+                    onChange={(e) => onChange({ singleDiscount: e.target.value })}
+                    className="vendor-input w-full px-3 py-2 pr-8 text-sm bg-white"
+                  />
+                  <span className="absolute right-7 top-5.5 text-xs font-bold text-slate-400">%</span>
+                </td>
+                <td className="py-4 px-4">
+                  <input
+                    type="text"
+                    placeholder="Nhập mã SKU"
+                    value={singleSku}
+                    onChange={(e) => onChange({ singleSku: e.target.value })}
+                    className="vendor-input w-full px-3 py-2 text-sm bg-white"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   const renderBatchUpdateBar = (forceExpanded = false) => {
     if (isExpanded || forceExpanded) {
       return (
@@ -538,13 +621,7 @@ export function ProductVariantsField({
 
         <button
           type="button"
-          onClick={() => {
-            if (hasVariant) {
-              setIsFullscreen(true);
-            } else {
-              setIsExpanded(true);
-            }
-          }}
+          onClick={() => setIsFullscreen(true)}
           className="ml-auto p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
         >
           <Maximize2 className="h-4 w-4" />
@@ -854,15 +931,17 @@ export function ProductVariantsField({
             className="w-[90vw] max-w-5xl h-[75vh] bg-white rounded-2xl border border-slate-200 shadow-2xl p-6 flex flex-col gap-6 overflow-hidden animate-in fade-in-50 zoom-in-95 duration-200"
           >
             <div className="flex items-center justify-between pb-4 border-b border-slate-200">
-              <h2 className="text-base font-bold text-slate-800">Danh sách biến thể</h2>
+              <h2 className="text-base font-bold text-slate-800">
+                {hasVariant ? "Danh sách biến thể" : "Giá và hàng có sẵn"}
+              </h2>
             </div>
 
             {/* Batch update bar for SKUs */}
             {renderBatchUpdateBar(true)}
 
-            {/* Cartesian SKU Table */}
+            {/* Cartesian SKU Table or Single Product Table */}
             <div className="flex-1 overflow-auto">
-              {renderSkuTable()}
+              {hasVariant ? renderSkuTable() : renderSingleProductTable()}
             </div>
 
             {errors.skus && (
