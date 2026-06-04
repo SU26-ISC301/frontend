@@ -43,4 +43,67 @@ export const sellerApi = {
     });
     return unwrap(response);
   },
+
+  // Product management API methods
+  createProduct: async (payload) => {
+    const formData = new FormData();
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        if (Array.isArray(value)) {
+          value.forEach((item, index) => {
+            formData.append(`${key}[${index}]`, item);
+          });
+        } else {
+          formData.append(key, value);
+        }
+      }
+    });
+
+    const response = await axiosClient.post('/products/create', formData, {
+      timeout: 90000,
+    });
+    return unwrap(response);
+  },
+
+  getProductCategories: async () => {
+    const response = await axiosClient.get('/products/categories');
+    return unwrap(response);
+  },
+
+  uploadProductImages: async (files) => {
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('images', file);
+    });
+
+    const response = await axiosClient.post('/products/upload-images', formData, {
+      timeout: 60000,
+    });
+    return unwrap(response);
+  },
+
+  getProductById: async (productId) => {
+    const response = await axiosClient.get(`/products/${productId}`);
+    return unwrap(response);
+  },
+
+  updateProduct: async (productId, payload) => {
+    const formData = new FormData();
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        if (Array.isArray(value)) {
+          value.forEach((item, index) => {
+            formData.append(`${key}[${index}]`, item);
+          });
+        } else {
+          formData.append(key, value);
+        }
+      }
+    });
+
+    const response = await axiosClient.post(`/products/${productId}`, formData, {
+      timeout: 90000,
+    });
+    return unwrap(response);
+  },
 };

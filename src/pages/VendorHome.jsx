@@ -768,6 +768,21 @@ function VendorLayout({ activeSlug, children, onToast }) {
             <button
               type="button"
               className="vendor-primary-button hidden sm:inline-flex"
+              onClick={() => navigate("/vendor/products/add")}
+            >
+              <Plus className="h-4 w-4" />
+              Thêm sản phẩm
+            </button>
+            <button
+              type="button"
+              aria-label="Trợ giúp"
+              className="vendor-icon-button hidden sm:inline-flex"
+            >
+              <CircleHelp className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              className="vendor-primary-button hidden sm:inline-flex"
               onClick={() =>
                 onToast({
                   title: "Thêm sản phẩm",
@@ -1502,442 +1517,637 @@ function OrdersPage({ onToast }) {
   );
 }
 
-function ProductsPage({ onToast }) {
+function ProductsPage({ onToast, navigate }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
-  const pageSize = 4;
-  const filtered = products.filter(
-    (product) =>
-      `${product.name} ${product.sku}`
-        .toLowerCase()
-        .includes(query.toLowerCase()) &&
-      (!status || product.status === status),
-  );
-  const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
-  return (
-    <div className="space-y-5">
-      <Panel className="overflow-hidden">
-        <div className="p-5">
-          <PanelHeader
-            title="Danh sách sản phẩm"
-            subtitle="8 sản phẩm đang được quản lý"
-          >
-            <div>
-              <button
-                type="button"
-                className="vendor-secondary-button mr-2"
-                onClick={() =>
-                  onToast({
-                    title: "Nhập hàng loạt",
-                    message: "Đã mở trình tải file danh sách sản phẩm.",
-                  })
-                }
+  function ProductsPage({ onToast }) {
+    const [query, setQuery] = useState("");
+    const [status, setStatus] = useState("");
+    const [page, setPage] = useState(1);
+    const pageSize = 4;
+    const filtered = products.filter(
+      (product) =>
+        `${product.name} ${product.sku}`
+          .toLowerCase()
+          .includes(query.toLowerCase()) &&
+        (!status || product.status === status),
+    );
+    const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
+    return (
+      <div className="space-y-5">
+        <Panel className="overflow-hidden">
+          <div className="p-5">
+            <PanelHeader
+              title="Danh sách sản phẩm"
+              subtitle="8 sản phẩm đang được quản lý"
+            >
+              <div>
+                <button
+                  type="button"
+                  className="vendor-secondary-button mr-2"
+                  onClick={() =>
+                    onToast({
+                      title: "Nhập hàng loạt",
+                      message: "Đã mở trình tải file danh sách sản phẩm.",
+                    })
+                  }
+                >
+                  <Upload className="h-4 w-4" />
+                  Nhập file
+                </button>
+                <button
+                  type="button"
+                  className="vendor-primary-button"
+                  onClick={() => navigate("/vendor/products/add")}
+                >
+                  <Plus className="h-4 w-4" />
+                  Thêm sản phẩm
+                </button>
+              </div>
+            </PanelHeader>
+            <div className="mt-4">
+              <Toolbar
+                query={query}
+                onQueryChange={(value) => {
+                  setQuery(value);
+                  setPage(1);
+                }}
+                onReset={() => {
+                  setQuery("");
+                  setStatus("");
+                  setPage(1);
+                }}
+                placeholder="Tìm tên sản phẩm hoặc SKU"
               >
-                <Upload className="h-4 w-4" />
-                Nhập file
-              </button>
+                <SelectFilter
+                  value={status}
+                  onChange={(value) => {
+                    setStatus(value);
+                    setPage(1);
+                  }}
+                  placeholder="Tất cả trạng thái"
+                  options={["Đang bán", "Tồn thấp", "Tạm ẩn"]}
+                />
+              </Toolbar>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-left text-sm">
+              <thead className="vendor-table-head">
+                <tr>
+                  {[
+                    "Sản phẩm",
+                    "SKU",
+                    "Giá",
+                    "Tồn kho",
+                    "Đã bán",
+                    "Chất lượng",
+                    "Trạng thái",
+                    "",
+                  ].map((column) => (
+                    <th key={column} className="px-5 py-3.5">
+                      {column}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {visible.map((product) => (
+                  <tr key={product.sku} className="vendor-table-row">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+                          <ImagePlus className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <p className="font-extrabold text-stone-800">
+                            {product.name}
+                          </p>
+                          <p className="mt-1 text-xs font-semibold text-stone-400">
+                            {product.category}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-stone-500">
+                      {product.sku}
+                    </td>
+                    <td className="px-5 py-4 font-extrabold text-stone-700">
+                      {formatCurrency(product.price)}
+                    </td>
+                    <td
+                      className={cn(
+                        "px-5 py-4 font-extrabold",
+                        product.stock <= 12 ? "text-red-600" : "text-stone-700",
+                      )}
+                    >
+                      {product.stock}
+                    </td>
+                    <td className="px-5 py-4 font-bold text-stone-600">
+                      {product.sold}
+                    </td>
+                    <td className="px-5 py-4 font-bold text-teal-700">
+                      {product.quality}/100
+                    </td>
+                    <td className="px-5 py-4">
+                      <StatusBadge status={product.status} />
+                    </td>
+                    <td className="px-5 py-4">
+                      <button
+                        type="button"
+                        aria-label={`Thao tác ${product.name}`}
+                        className="vendor-icon-button"
+                        onClick={() =>
+                          onToast({
+                            title: product.name,
+                            message: "Đã mở menu thao tác nhanh sản phẩm.",
+                          })
+                        }
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!visible.length && <EmptyState />}
+          <Pagination
+            count={filtered.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+          />
+        </Panel>
+      </div>
+    );
+    return (
+      <div className="space-y-5">
+        <Panel className="overflow-hidden">
+          <div className="p-5">
+            <PanelHeader
+              title="Danh sách sản phẩm"
+              subtitle="8 sản phẩm đang được quản lý"
+            >
+              <div>
+                <button
+                  type="button"
+                  className="vendor-secondary-button mr-2"
+                  onClick={() =>
+                    onToast({
+                      title: "Nhập hàng loạt",
+                      message: "Đã mở trình tải file danh sách sản phẩm.",
+                    })
+                  }
+                >
+                  <Upload className="h-4 w-4" />
+                  Nhập file
+                </button>
+                <button
+                  type="button"
+                  className="vendor-primary-button"
+                  onClick={() =>
+                    onToast({
+                      title: "Thêm sản phẩm",
+                      message: "Đã mở flow tạo sản phẩm mới.",
+                    })
+                  }
+                >
+                  <Plus className="h-4 w-4" />
+                  Thêm sản phẩm
+                </button>
+              </div>
+            </PanelHeader>
+            <div className="mt-4">
+              <Toolbar
+                query={query}
+                onQueryChange={(value) => {
+                  setQuery(value);
+                  setPage(1);
+                }}
+                onReset={() => {
+                  setQuery("");
+                  setStatus("");
+                  setPage(1);
+                }}
+                placeholder="Tìm tên sản phẩm hoặc SKU"
+              >
+                <SelectFilter
+                  value={status}
+                  onChange={(value) => {
+                    setStatus(value);
+                    setPage(1);
+                  }}
+                  placeholder="Tất cả trạng thái"
+                  options={["Đang bán", "Tồn thấp", "Tạm ẩn"]}
+                />
+              </Toolbar>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-left text-sm">
+              <thead className="vendor-table-head">
+                <tr>
+                  {[
+                    "Sản phẩm",
+                    "SKU",
+                    "Giá",
+                    "Tồn kho",
+                    "Đã bán",
+                    "Chất lượng",
+                    "Trạng thái",
+                    "",
+                  ].map((column) => (
+                    <th key={column} className="px-5 py-3.5">
+                      {column}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {visible.map((product) => (
+                  <tr key={product.sku} className="vendor-table-row">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+                          <ImagePlus className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <p className="font-extrabold text-stone-800">
+                            {product.name}
+                          </p>
+                          <p className="mt-1 text-xs font-semibold text-stone-400">
+                            {product.category}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-stone-500">
+                      {product.sku}
+                    </td>
+                    <td className="px-5 py-4 font-extrabold text-stone-700">
+                      {formatCurrency(product.price)}
+                    </td>
+                    <td
+                      className={cn(
+                        "px-5 py-4 font-extrabold",
+                        product.stock <= 12 ? "text-red-600" : "text-stone-700",
+                      )}
+                    >
+                      {product.stock}
+                    </td>
+                    <td className="px-5 py-4 font-bold text-stone-600">
+                      {product.sold}
+                    </td>
+                    <td className="px-5 py-4 font-bold text-teal-700">
+                      {product.quality}/100
+                    </td>
+                    <td className="px-5 py-4">
+                      <StatusBadge status={product.status} />
+                    </td>
+                    <td className="px-5 py-4">
+                      <button
+                        type="button"
+                        aria-label={`Thao tác ${product.name}`}
+                        className="vendor-icon-button"
+                        onClick={() =>
+                          onToast({
+                            title: product.name,
+                            message: "Đã mở menu thao tác nhanh sản phẩm.",
+                          })
+                        }
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!visible.length && <EmptyState />}
+          <Pagination
+            count={filtered.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+          />
+        </Panel>
+      </div>
+    );
+  }
+
+  // ĐÃ THÊM COMPONENT KHO VẬN (Sử dụng chung UI có sẵn của dự án)
+  function WarehousePage({ onToast }) {
+    const [activeTab, setActiveTab] = useState("PICKUP");
+    const currentWarehouses = mockWarehouses.filter(
+      (w) => w.type === activeTab,
+    );
+
+    return (
+      <div className="space-y-5">
+        <Panel className="overflow-hidden">
+          <div className="p-5">
+            <PanelHeader
+              title={
+                activeTab === "PICKUP" ? "Tất cả kho lấy hàng" : "Kho trả hàng"
+              }
+              subtitle={`Bạn có ${currentWarehouses.length} kho ${activeTab === "PICKUP" ? "lấy" : "trả"} hàng`}
+            >
               <button
                 type="button"
                 className="vendor-primary-button"
                 onClick={() =>
                   onToast({
-                    title: "Thêm sản phẩm",
-                    message: "Đã mở flow tạo sản phẩm mới.",
+                    title: "Thêm kho hàng",
+                    message: "Đã mở form thiết lập kho hàng mới.",
                   })
                 }
               >
-                <Plus className="h-4 w-4" />
-                Thêm sản phẩm
+                <Plus className="h-4 w-4" /> Thêm kho hàng
               </button>
+            </PanelHeader>
+            <div className="mt-4 border-b border-stone-200">
+              <div className="flex gap-6">
+                <button
+                  type="button"
+                  className={cn(
+                    "pb-3 text-sm font-bold border-b-2 transition-colors",
+                    activeTab === "PICKUP"
+                      ? "border-orange-500 text-orange-600"
+                      : "border-transparent text-stone-500 hover:text-stone-700",
+                  )}
+                  onClick={() => setActiveTab("PICKUP")}
+                >
+                  Kho lấy hàng
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "pb-3 text-sm font-bold border-b-2 transition-colors",
+                    activeTab === "RETURN"
+                      ? "border-orange-500 text-orange-600"
+                      : "border-transparent text-stone-500 hover:text-stone-700",
+                  )}
+                  onClick={() => setActiveTab("RETURN")}
+                >
+                  Kho trả hàng
+                </button>
+              </div>
             </div>
-          </PanelHeader>
-          <div className="mt-4">
-            <Toolbar
-              query={query}
-              onQueryChange={(value) => {
-                setQuery(value);
-                setPage(1);
-              }}
-              onReset={() => {
-                setQuery("");
-                setStatus("");
-                setPage(1);
-              }}
-              placeholder="Tìm tên sản phẩm hoặc SKU"
-            >
-              <SelectFilter
-                value={status}
-                onChange={(value) => {
-                  setStatus(value);
-                  setPage(1);
-                }}
-                placeholder="Tất cả trạng thái"
-                options={["Đang bán", "Tồn thấp", "Tạm ẩn"]}
-              />
-            </Toolbar>
           </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] text-left text-sm">
-            <thead className="vendor-table-head">
-              <tr>
-                {[
-                  "Sản phẩm",
-                  "SKU",
-                  "Giá",
-                  "Tồn kho",
-                  "Đã bán",
-                  "Chất lượng",
-                  "Trạng thái",
-                  "",
-                ].map((column) => (
-                  <th key={column} className="px-5 py-3.5">
-                    {column}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {visible.map((product) => (
-                <tr key={product.sku} className="vendor-table-row">
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
-                        <ImagePlus className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <p className="font-extrabold text-stone-800">
-                          {product.name}
-                        </p>
-                        <p className="mt-1 text-xs font-semibold text-stone-400">
-                          {product.category}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 font-semibold text-stone-500">
-                    {product.sku}
-                  </td>
-                  <td className="px-5 py-4 font-extrabold text-stone-700">
-                    {formatCurrency(product.price)}
-                  </td>
-                  <td
-                    className={cn(
-                      "px-5 py-4 font-extrabold",
-                      product.stock <= 12 ? "text-red-600" : "text-stone-700",
-                    )}
-                  >
-                    {product.stock}
-                  </td>
-                  <td className="px-5 py-4 font-bold text-stone-600">
-                    {product.sold}
-                  </td>
-                  <td className="px-5 py-4 font-bold text-teal-700">
-                    {product.quality}/100
-                  </td>
-                  <td className="px-5 py-4">
-                    <StatusBadge status={product.status} />
-                  </td>
-                  <td className="px-5 py-4">
-                    <button
-                      type="button"
-                      aria-label={`Thao tác ${product.name}`}
-                      className="vendor-icon-button"
-                      onClick={() =>
-                        onToast({
-                          title: product.name,
-                          message: "Đã mở menu thao tác nhanh sản phẩm.",
-                        })
-                      }
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
-                  </td>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="vendor-table-head">
+                <tr>
+                  <th className="px-5 py-3.5">Thông tin kho</th>
+                  <th className="px-5 py-3.5">Địa chỉ & Liên hệ</th>
+                  <th className="px-5 py-3.5">Trạng thái</th>
+                  <th className="px-5 py-3.5 text-right">Thao tác</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {!visible.length && <EmptyState />}
-        <Pagination
-          count={filtered.length}
-          page={page}
-          pageSize={pageSize}
-          onPageChange={setPage}
-        />
-      </Panel>
-    </div>
-  );
-}
-
-// ĐÃ THÊM COMPONENT KHO VẬN (Sử dụng chung UI có sẵn của dự án)
-function WarehousePage({ onToast }) {
-  const [activeTab, setActiveTab] = useState("PICKUP");
-  const currentWarehouses = mockWarehouses.filter((w) => w.type === activeTab);
-
-  return (
-    <div className="space-y-5">
-      <Panel className="overflow-hidden">
-        <div className="p-5">
-          <PanelHeader
-            title={
-              activeTab === "PICKUP" ? "Tất cả kho lấy hàng" : "Kho trả hàng"
-            }
-            subtitle={`Bạn có ${currentWarehouses.length} kho ${activeTab === "PICKUP" ? "lấy" : "trả"} hàng`}
-          >
-            <button
-              type="button"
-              className="vendor-primary-button"
-              onClick={() =>
-                onToast({
-                  title: "Thêm kho hàng",
-                  message: "Đã mở form thiết lập kho hàng mới.",
-                })
-              }
-            >
-              <Plus className="h-4 w-4" /> Thêm kho hàng
-            </button>
-          </PanelHeader>
-          <div className="mt-4 border-b border-stone-200">
-            <div className="flex gap-6">
-              <button
-                type="button"
-                className={cn(
-                  "pb-3 text-sm font-bold border-b-2 transition-colors",
-                  activeTab === "PICKUP"
-                    ? "border-orange-500 text-orange-600"
-                    : "border-transparent text-stone-500 hover:text-stone-700",
-                )}
-                onClick={() => setActiveTab("PICKUP")}
-              >
-                Kho lấy hàng
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  "pb-3 text-sm font-bold border-b-2 transition-colors",
-                  activeTab === "RETURN"
-                    ? "border-orange-500 text-orange-600"
-                    : "border-transparent text-stone-500 hover:text-stone-700",
-                )}
-                onClick={() => setActiveTab("RETURN")}
-              >
-                Kho trả hàng
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="vendor-table-head">
-              <tr>
-                <th className="px-5 py-3.5">Thông tin kho</th>
-                <th className="px-5 py-3.5">Địa chỉ & Liên hệ</th>
-                <th className="px-5 py-3.5">Trạng thái</th>
-                <th className="px-5 py-3.5 text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {currentWarehouses.length > 0 ? (
-                currentWarehouses.map((wh) => (
-                  <tr key={wh.id} className="vendor-table-row">
-                    <td className="px-5 py-4">
-                      <p className="font-extrabold text-stone-800">{wh.name}</p>
-                      {wh.isDefault && (
-                        <span className="mt-2 inline-flex rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-extrabold text-teal-700">
-                          Mặc định
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4">
-                      <p className="font-bold text-stone-600">
-                        {wh.contact} · {wh.phone}
-                      </p>
-                      <p className="mt-1 text-xs font-semibold text-stone-500">
-                        {wh.address}
-                      </p>
-                    </td>
-                    <td className="px-5 py-4">
-                      <StatusBadge status={wh.status} />
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <button
-                        type="button"
-                        aria-label="Sửa kho"
-                        className="vendor-icon-button inline-flex"
-                        onClick={() =>
-                          onToast({
-                            title: "Chỉnh sửa kho",
-                            message: "Đã mở form cập nhật thông tin kho.",
-                          })
-                        }
-                      >
-                        <PenLine className="h-4 w-4" />
-                      </button>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {currentWarehouses.length > 0 ? (
+                  currentWarehouses.map((wh) => (
+                    <tr key={wh.id} className="vendor-table-row">
+                      <td className="px-5 py-4">
+                        <p className="font-extrabold text-stone-800">
+                          {wh.name}
+                        </p>
+                        {wh.isDefault && (
+                          <span className="mt-2 inline-flex rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-extrabold text-teal-700">
+                            Mặc định
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4">
+                        <p className="font-bold text-stone-600">
+                          {wh.contact} · {wh.phone}
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-stone-500">
+                          {wh.address}
+                        </p>
+                      </td>
+                      <td className="px-5 py-4">
+                        <StatusBadge status={wh.status} />
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <button
+                          type="button"
+                          aria-label="Sửa kho"
+                          className="vendor-icon-button inline-flex"
+                          onClick={() =>
+                            onToast({
+                              title: "Chỉnh sửa kho",
+                              message: "Đã mở form cập nhật thông tin kho.",
+                            })
+                          }
+                        >
+                          <PenLine className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="4">
+                      <EmptyState />
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="4">
-                    <EmptyState />
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
-    </div>
-  );
-}
-
-function ShippingPage({ onToast }) {
-  return (
-    <div className="space-y-5">
-      <section className="grid gap-4 md:grid-cols-3">
-        <InsightCard
-          title="Bàn giao đúng hạn"
-          icon={BadgeCheck}
-          value="96,2%"
-          label="+1,8% trong tuần"
-          text="3 đơn còn dưới 2 giờ để bàn giao."
-          tone="is-green"
-        />
-        <InsightCard
-          title="Đang vận chuyển"
-          icon={Truck}
-          value="128"
-          label="12 đơn giao trong hôm nay"
-          text="Theo dõi các đơn có rủi ro giao trễ."
-          tone="is-teal"
-        />
-        <InsightCard
-          title="Hoàn trả"
-          icon={Clock3}
-          value="7"
-          label="2 yêu cầu cần phản hồi"
-          text="Xử lý trước 18:00 để giữ điểm vận hành."
-          tone="is-orange"
-        />
-      </section>
-      <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-        <Panel className="p-5">
-          <PanelHeader
-            title="Lịch bàn giao hôm nay"
-            subtitle="4 chuyến đã được lên lịch"
-          >
-            <button
-              type="button"
-              className="vendor-secondary-button"
-              onClick={() =>
-                onToast({
-                  title: "Đã tối ưu tuyến",
-                  message: "Lịch bàn giao được sắp xếp lại theo hạn gần nhất.",
-                })
-              }
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Tối ưu tuyến
-            </button>
-          </PanelHeader>
-          <div className="mt-4 space-y-3">
-            {shipments.map((shipment) => (
-              <div key={shipment.id} className="vendor-list-item">
-                <div>
-                  <p className="font-extrabold text-stone-800">{shipment.id}</p>
-                  <p className="mt-1 text-xs font-semibold text-stone-400">
-                    {shipment.order} · {shipment.carrier}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusBadge status={shipment.status} />
-                  <span className="text-xs font-bold text-stone-500">
-                    {shipment.deadline}
-                  </span>
-                </div>
-              </div>
-            ))}
+                )}
+              </tbody>
+            </table>
           </div>
         </Panel>
-        <Panel className="p-5">
-          <PanelHeader
-            title="Đối tác vận chuyển"
-            subtitle="Hiệu suất 30 ngày gần nhất"
+      </div>
+    );
+  }
+
+  function ShippingPage({ onToast }) {
+    return (
+      <div className="space-y-5">
+        <section className="grid gap-4 md:grid-cols-3">
+          <InsightCard
+            title="Bàn giao đúng hạn"
+            icon={BadgeCheck}
+            value="96,2%"
+            label="+1,8% trong tuần"
+            text="3 đơn còn dưới 2 giờ để bàn giao."
+            tone="is-green"
           />
-          <div className="mt-4 space-y-3">
-            {[
-              ["GHN Express", "97,8%", "Đang bật"],
-              ["SPX Express", "96,9%", "Đang bật"],
-              ["GHTK", "94,2%", "Dự phòng"],
-              ["Viettel Post", "93,8%", "Dự phòng"],
-            ].map(([name, rate, state]) => (
-              <div key={name} className="vendor-list-item">
-                <div>
-                  <p className="text-sm font-extrabold text-stone-700">
-                    {name}
-                  </p>
-                  <p className="mt-1 text-xs font-bold text-teal-700">
-                    {rate} đúng hạn
-                  </p>
+          <InsightCard
+            title="Đang vận chuyển"
+            icon={Truck}
+            value="128"
+            label="12 đơn giao trong hôm nay"
+            text="Theo dõi các đơn có rủi ro giao trễ."
+            tone="is-teal"
+          />
+          <InsightCard
+            title="Hoàn trả"
+            icon={Clock3}
+            value="7"
+            label="2 yêu cầu cần phản hồi"
+            text="Xử lý trước 18:00 để giữ điểm vận hành."
+            tone="is-orange"
+          />
+        </section>
+        <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+          <Panel className="p-5">
+            <PanelHeader
+              title="Lịch bàn giao hôm nay"
+              subtitle="4 chuyến đã được lên lịch"
+            >
+              <button
+                type="button"
+                className="vendor-secondary-button"
+                onClick={() =>
+                  onToast({
+                    title: "Đã tối ưu tuyến",
+                    message:
+                      "Lịch bàn giao được sắp xếp lại theo hạn gần nhất.",
+                  })
+                }
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                Tối ưu tuyến
+              </button>
+            </PanelHeader>
+            <div className="mt-4 space-y-3">
+              {shipments.map((shipment) => (
+                <div key={shipment.id} className="vendor-list-item">
+                  <div>
+                    <p className="font-extrabold text-stone-800">
+                      {shipment.id}
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-stone-400">
+                      {shipment.order} · {shipment.carrier}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge status={shipment.status} />
+                    <span className="text-xs font-bold text-stone-500">
+                      {shipment.deadline}
+                    </span>
+                  </div>
                 </div>
-                <StatusBadge
-                  status={state === "Đang bật" ? "Đang hoạt động" : state}
-                >
-                  {state}
-                </StatusBadge>
-              </div>
-            ))}
-          </div>
-        </Panel>
-      </section>
-    </div>
-  );
-}
+              ))}
+            </div>
+          </Panel>
+          <Panel className="p-5">
+            <PanelHeader
+              title="Đối tác vận chuyển"
+              subtitle="Hiệu suất 30 ngày gần nhất"
+            />
+            <div className="mt-4 space-y-3">
+              {[
+                ["GHN Express", "97,8%", "Đang bật"],
+                ["SPX Express", "96,9%", "Đang bật"],
+                ["GHTK", "94,2%", "Dự phòng"],
+                ["Viettel Post", "93,8%", "Dự phòng"],
+              ].map(([name, rate, state]) => (
+                <div key={name} className="vendor-list-item">
+                  <div>
+                    <p className="text-sm font-extrabold text-stone-700">
+                      {name}
+                    </p>
+                    <p className="mt-1 text-xs font-bold text-teal-700">
+                      {rate} đúng hạn
+                    </p>
+                  </div>
+                  <StatusBadge
+                    status={state === "Đang bật" ? "Đang hoạt động" : state}
+                  >
+                    {state}
+                  </StatusBadge>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </section>
+      </div>
+    );
+  }
 
-function MessagesPage({ onToast }) {
-  const [conversations, setConversations] = useState([]);
-  const [activeConversationId, setActiveConversationId] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [message, setMessage] = useState("");
-  const [loadingConversations, setLoadingConversations] = useState(true);
-  const [loadingMessages, setLoadingMessages] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState("");
-  const activeChat = conversations.find(
-    (conversation) => conversation.id === activeConversationId,
-  );
+  function MessagesPage({ onToast }) {
+    const [conversations, setConversations] = useState([]);
+    const [activeConversationId, setActiveConversationId] = useState(null);
+    const [messages, setMessages] = useState([]);
+    const [message, setMessage] = useState("");
+    const [loadingConversations, setLoadingConversations] = useState(true);
+    const [loadingMessages, setLoadingMessages] = useState(false);
+    const [sending, setSending] = useState(false);
+    const [error, setError] = useState("");
+    const activeChat = conversations.find(
+      (conversation) => conversation.id === activeConversationId,
+    );
 
-  const loadConversations = useCallback(async () => {
-    try {
-      const data = await vendorMessageApi.getConversations();
-      const nextConversations = Array.isArray(data) ? data : [];
-      setConversations(nextConversations);
-      setActiveConversationId((current) =>
-        current &&
-        nextConversations.some((conversation) => conversation.id === current)
-          ? current
-          : (nextConversations[0]?.id ?? null),
+    const loadConversations = useCallback(async () => {
+      try {
+        const data = await vendorMessageApi.getConversations();
+        const nextConversations = Array.isArray(data) ? data : [];
+        setConversations(nextConversations);
+        setActiveConversationId((current) =>
+          current &&
+          nextConversations.some((conversation) => conversation.id === current)
+            ? current
+            : (nextConversations[0]?.id ?? null),
+        );
+        setError("");
+      } catch (requestError) {
+        setError(getApiMessage(requestError));
+      } finally {
+        setLoadingConversations(false);
+      }
+    }, []);
+
+    const loadMessages = useCallback(async (conversationId, silent = false) => {
+      if (!conversationId) {
+        setMessages([]);
+        return;
+      }
+      if (!silent) setLoadingMessages(true);
+      try {
+        const data = await vendorMessageApi.getMessages(conversationId);
+        setMessages(Array.isArray(data) ? data : []);
+        setConversations((current) =>
+          current.map((conversation) =>
+            conversation.id === conversationId
+              ? { ...conversation, unreadCount: 0 }
+              : conversation,
+          ),
+        );
+        setError("");
+      } catch (requestError) {
+        setError(getApiMessage(requestError));
+      } finally {
+        if (!silent) setLoadingMessages(false);
+      }
+    }, []);
+
+    useEffect(() => {
+      loadConversations();
+      const intervalId = setInterval(loadConversations, 15000);
+      return () => clearInterval(intervalId);
+    }, [loadConversations]);
+
+    useEffect(() => {
+      if (!activeConversationId) {
+        setMessages([]);
+        return undefined;
+      }
+      loadMessages(activeConversationId);
+      const intervalId = setInterval(
+        () => loadMessages(activeConversationId, true),
+        10000,
       );
-      setError("");
-    } catch (requestError) {
-      setError(getApiMessage(requestError));
-    } finally {
-      setLoadingConversations(false);
-    }
-  }, []);
+      return () => clearInterval(intervalId);
+    }, [activeConversationId, loadMessages]);
 
-  const loadMessages = useCallback(async (conversationId, silent = false) => {
-    if (!conversationId) {
-      setMessages([]);
-      return;
-    }
-    if (!silent) setLoadingMessages(true);
-    try {
-      const data = await vendorMessageApi.getMessages(conversationId);
-      setMessages(Array.isArray(data) ? data : []);
+    const selectConversation = (conversationId) => {
+      setActiveConversationId(conversationId);
       setConversations((current) =>
         current.map((conversation) =>
           conversation.id === conversationId
@@ -1945,605 +2155,588 @@ function MessagesPage({ onToast }) {
             : conversation,
         ),
       );
-      setError("");
-    } catch (requestError) {
-      setError(getApiMessage(requestError));
-    } finally {
-      if (!silent) setLoadingMessages(false);
-    }
-  }, []);
+    };
 
-  useEffect(() => {
-    loadConversations();
-    const intervalId = setInterval(loadConversations, 15000);
-    return () => clearInterval(intervalId);
-  }, [loadConversations]);
+    const sendMessage = async () => {
+      const content = message.trim();
+      if (!content || !activeChat || sending) return;
+      setSending(true);
+      try {
+        const sentMessage = await vendorMessageApi.sendMessage(
+          activeChat.id,
+          content,
+        );
+        setMessages((current) =>
+          current.some((item) => item.id === sentMessage.id)
+            ? current
+            : [...current, sentMessage],
+        );
+        setMessage("");
+        await loadConversations();
+        onToast({
+          title: "Đã gửi tin nhắn",
+          message: `Phản hồi của bạn đã được gửi tới ${activeChat.customerName}.`,
+        });
+      } catch (requestError) {
+        setError(getApiMessage(requestError));
+      } finally {
+        setSending(false);
+      }
+    };
 
-  useEffect(() => {
-    if (!activeConversationId) {
-      setMessages([]);
-      return undefined;
-    }
-    loadMessages(activeConversationId);
-    const intervalId = setInterval(
-      () => loadMessages(activeConversationId, true),
-      10000,
-    );
-    return () => clearInterval(intervalId);
-  }, [activeConversationId, loadMessages]);
-
-  const selectConversation = (conversationId) => {
-    setActiveConversationId(conversationId);
-    setConversations((current) =>
-      current.map((conversation) =>
-        conversation.id === conversationId
-          ? { ...conversation, unreadCount: 0 }
-          : conversation,
-      ),
-    );
-  };
-
-  const sendMessage = async () => {
-    const content = message.trim();
-    if (!content || !activeChat || sending) return;
-    setSending(true);
-    try {
-      const sentMessage = await vendorMessageApi.sendMessage(
-        activeChat.id,
-        content,
-      );
-      setMessages((current) =>
-        current.some((item) => item.id === sentMessage.id)
-          ? current
-          : [...current, sentMessage],
-      );
-      setMessage("");
-      await loadConversations();
-      onToast({
-        title: "Đã gửi tin nhắn",
-        message: `Phản hồi của bạn đã được gửi tới ${activeChat.customerName}.`,
-      });
-    } catch (requestError) {
-      setError(getApiMessage(requestError));
-    } finally {
-      setSending(false);
-    }
-  };
-
-  return (
-    <section className="grid min-h-[620px] gap-5 xl:grid-cols-[320px_1fr_280px]">
-      <Panel className="p-4">
-        <PanelHeader
-          title="Hộp thư"
-          subtitle={`${conversations.length} hội thoại`}
-        >
-          <button
-            type="button"
-            aria-label="Tải lại hội thoại"
-            className="vendor-icon-button"
-            onClick={loadConversations}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
-        </PanelHeader>
-        {error && (
-          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
-            {error}
-          </p>
-        )}
-        <div className="mt-4 space-y-2">
-          {loadingConversations && !conversations.length && (
-            <p className="py-8 text-center text-xs font-semibold text-stone-400">
-              Đang tải hộp thư...
-            </p>
-          )}
-          {!loadingConversations && !conversations.length && (
-            <div className="py-10 text-center">
-              <MessageSquareText className="mx-auto h-8 w-8 text-stone-300" />
-              <p className="mt-3 text-sm font-extrabold text-stone-700">
-                Chưa có hội thoại
-              </p>
-              <p className="mt-1 text-xs font-semibold leading-5 text-stone-400">
-                Tin nhắn mới từ khách hàng sẽ xuất hiện tại đây.
-              </p>
-            </div>
-          )}
-          {conversations.map((chat) => (
-            <button
-              key={chat.id}
-              type="button"
-              className={cn(
-                "vendor-chat-item",
-                activeConversationId === chat.id && "is-active",
-              )}
-              onClick={() => selectConversation(chat.id)}
-            >
-              <div className="flex items-center gap-2">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-xs font-extrabold text-orange-700">
-                  {getInitials(chat.customerName)}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="truncate text-sm font-extrabold text-stone-700">
-                      {chat.customerName}
-                    </span>
-                    <span className="shrink-0 text-[11px] font-semibold text-stone-400">
-                      {formatChatTime(chat.lastMessageAt)}
-                    </span>
-                  </span>
-                  <span className="mt-1 block truncate text-xs font-semibold text-stone-500">
-                    {chat.lastMessage || "Chưa có tin nhắn"}
-                  </span>
-                </span>
-              </div>
-              {chat.unreadCount > 0 && (
-                <span className="mt-2 inline-flex rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-extrabold text-white">
-                  {chat.unreadCount}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </Panel>
-
-      <Panel className="flex min-h-[560px] flex-col overflow-hidden">
-        {activeChat ? (
-          <>
-            <div className="border-b border-stone-100 p-4">
-              <p className="font-extrabold text-stone-800">
-                {activeChat.customerName}
-              </p>
-              <p className="mt-1 text-xs font-semibold text-stone-400">
-                Trao đổi với khách hàng
-              </p>
-            </div>
-            <div className="flex-1 space-y-3 overflow-y-auto bg-stone-50/60 p-4">
-              {loadingMessages && (
-                <p className="py-8 text-center text-xs font-semibold text-stone-400">
-                  Đang tải tin nhắn...
-                </p>
-              )}
-              {!loadingMessages && !messages.length && (
-                <p className="py-8 text-center text-xs font-semibold text-stone-400">
-                  Hội thoại chưa có tin nhắn.
-                </p>
-              )}
-              {messages.map((item) => (
-                <div
-                  key={item.id}
-                  className={cn(
-                    "max-w-[75%] rounded-xl px-3 py-2 text-sm font-semibold shadow-sm",
-                    item.sentByVendor
-                      ? "ml-auto bg-teal-700 text-white"
-                      : "bg-white text-stone-600",
-                  )}
-                >
-                  <p>{item.content}</p>
-                  <p
-                    className={cn(
-                      "mt-1 text-[10px]",
-                      item.sentByVendor ? "text-teal-100" : "text-stone-400",
-                    )}
-                  >
-                    {formatChatTime(item.createdAt)}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <div className="border-t border-stone-100 p-4">
-              <div className="flex gap-2">
-                <input
-                  value={message}
-                  maxLength={2000}
-                  disabled={sending}
-                  onChange={(event) => setMessage(event.target.value)}
-                  onKeyDown={(event) => event.key === "Enter" && sendMessage()}
-                  className="vendor-input h-11 flex-1 px-3 text-sm"
-                  placeholder="Nhập tin nhắn..."
-                />
-                <button
-                  type="button"
-                  aria-label="Gửi tin nhắn"
-                  disabled={sending || !message.trim()}
-                  className="vendor-primary-button px-3 disabled:cursor-not-allowed disabled:opacity-50"
-                  onClick={sendMessage}
-                >
-                  <Send className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex flex-1 items-center justify-center p-8 text-center">
-            <div>
-              <MessageSquareText className="mx-auto h-10 w-10 text-stone-300" />
-              <p className="mt-3 text-sm font-extrabold text-stone-700">
-                Chọn một hội thoại
-              </p>
-              <p className="mt-1 text-xs font-semibold text-stone-400">
-                Nội dung trao đổi với khách hàng sẽ hiển thị tại đây.
-              </p>
-            </div>
-          </div>
-        )}
-      </Panel>
-
-      <Panel className="p-4">
-        <PanelHeader title="Trả lời nhanh" subtitle="Chọn để điền nội dung" />
-        <div className="mt-4 space-y-2">
-          {[
-            "Dạ sản phẩm vẫn còn hàng ạ.",
-            "Shop hỗ trợ đổi trả trong 7 ngày.",
-            "Shop gửi bạn mã giảm 10% nhé.",
-            "Đơn sẽ được gửi trong hôm nay ạ.",
-          ].map((reply) => (
-            <button
-              key={reply}
-              type="button"
-              disabled={!activeChat}
-              className="vendor-quick-reply disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => setMessage(reply)}
-            >
-              <MessageSquareText className="h-4 w-4 shrink-0 text-orange-500" />
-              {reply}
-            </button>
-          ))}
-        </div>
-      </Panel>
-    </section>
-  );
-}
-
-function MarketingPage({ onToast }) {
-  return (
-    <div className="space-y-5">
-      <section className="grid gap-4 md:grid-cols-3">
-        <InsightCard
-          title="Doanh thu từ ads"
-          icon={BarChart3}
-          value="42,8 triệu"
-          label="ROAS trung bình 5,8x"
-          text="Tăng 12,4% so với 7 ngày trước."
-          tone="is-orange"
-        />
-        <InsightCard
-          title="Voucher đang chạy"
-          icon={TicketPercent}
-          value="12"
-          label="3 voucher sắp hết ngân sách"
-          text="Voucher theo dõi shop có hiệu suất tốt nhất."
-          tone="is-yellow"
-        />
-        <InsightCard
-          title="Lịch livestream"
-          icon={Sparkles}
-          value="18:30"
-          label="8 sản phẩm đã ghim"
-          text="Kịch bản bán hàng đã sẵn sàng."
-          tone="is-teal"
-        />
-      </section>
-      <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-        <Panel className="p-5">
+    return (
+      <section className="grid min-h-[620px] gap-5 xl:grid-cols-[320px_1fr_280px]">
+        <Panel className="p-4">
           <PanelHeader
-            title="Chiến dịch đang chạy"
-            subtitle="Theo dõi tiến độ ngân sách"
+            title="Hộp thư"
+            subtitle={`${conversations.length} hội thoại`}
           >
             <button
               type="button"
-              className="vendor-primary-button"
-              onClick={() =>
-                onToast({
-                  title: "Tạo chiến dịch",
-                  message: "Đã mở flow thiết lập chiến dịch mới.",
-                })
-              }
+              aria-label="Tải lại hội thoại"
+              className="vendor-icon-button"
+              onClick={loadConversations}
             >
-              <Plus className="h-4 w-4" />
-              Tạo chiến dịch
+              <RefreshCw className="h-4 w-4" />
             </button>
           </PanelHeader>
-          <div className="mt-4 space-y-3">
-            {campaigns.map((campaign) => (
-              <div key={campaign.name} className="vendor-list-item block">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-extrabold text-stone-800">
-                      {campaign.name}
-                    </p>
-                    <p className="mt-1 text-xs font-semibold text-stone-400">
-                      {campaign.metric} · Ngân sách {campaign.budget}
-                    </p>
-                  </div>
-                  <StatusBadge status="Đang chạy" />
-                </div>
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-stone-100">
-                  <div
-                    className="vendor-progress h-full rounded-full bg-orange-500"
-                    style={{ width: `${campaign.progress}%` }}
-                  />
-                </div>
-                <div className="mt-2 flex justify-between text-xs font-bold text-stone-400">
-                  <span>Đã dùng {campaign.progress}%</span>
-                  <span className="text-teal-700">{campaign.revenue}</span>
-                </div>
+          {error && (
+            <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
+              {error}
+            </p>
+          )}
+          <div className="mt-4 space-y-2">
+            {loadingConversations && !conversations.length && (
+              <p className="py-8 text-center text-xs font-semibold text-stone-400">
+                Đang tải hộp thư...
+              </p>
+            )}
+            {!loadingConversations && !conversations.length && (
+              <div className="py-10 text-center">
+                <MessageSquareText className="mx-auto h-8 w-8 text-stone-300" />
+                <p className="mt-3 text-sm font-extrabold text-stone-700">
+                  Chưa có hội thoại
+                </p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-stone-400">
+                  Tin nhắn mới từ khách hàng sẽ xuất hiện tại đây.
+                </p>
               </div>
+            )}
+            {conversations.map((chat) => (
+              <button
+                key={chat.id}
+                type="button"
+                className={cn(
+                  "vendor-chat-item",
+                  activeConversationId === chat.id && "is-active",
+                )}
+                onClick={() => selectConversation(chat.id)}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-xs font-extrabold text-orange-700">
+                    {getInitials(chat.customerName)}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm font-extrabold text-stone-700">
+                        {chat.customerName}
+                      </span>
+                      <span className="shrink-0 text-[11px] font-semibold text-stone-400">
+                        {formatChatTime(chat.lastMessageAt)}
+                      </span>
+                    </span>
+                    <span className="mt-1 block truncate text-xs font-semibold text-stone-500">
+                      {chat.lastMessage || "Chưa có tin nhắn"}
+                    </span>
+                  </span>
+                </div>
+                {chat.unreadCount > 0 && (
+                  <span className="mt-2 inline-flex rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-extrabold text-white">
+                    {chat.unreadCount}
+                  </span>
+                )}
+              </button>
             ))}
           </div>
         </Panel>
-        <Panel className="p-5">
-          <PanelHeader
-            title="Gợi ý tăng trưởng"
-            subtitle="Dựa trên hiệu suất shop"
-          />
+
+        <Panel className="flex min-h-[560px] flex-col overflow-hidden">
+          {activeChat ? (
+            <>
+              <div className="border-b border-stone-100 p-4">
+                <p className="font-extrabold text-stone-800">
+                  {activeChat.customerName}
+                </p>
+                <p className="mt-1 text-xs font-semibold text-stone-400">
+                  Trao đổi với khách hàng
+                </p>
+              </div>
+              <div className="flex-1 space-y-3 overflow-y-auto bg-stone-50/60 p-4">
+                {loadingMessages && (
+                  <p className="py-8 text-center text-xs font-semibold text-stone-400">
+                    Đang tải tin nhắn...
+                  </p>
+                )}
+                {!loadingMessages && !messages.length && (
+                  <p className="py-8 text-center text-xs font-semibold text-stone-400">
+                    Hội thoại chưa có tin nhắn.
+                  </p>
+                )}
+                {messages.map((item) => (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "max-w-[75%] rounded-xl px-3 py-2 text-sm font-semibold shadow-sm",
+                      item.sentByVendor
+                        ? "ml-auto bg-teal-700 text-white"
+                        : "bg-white text-stone-600",
+                    )}
+                  >
+                    <p>{item.content}</p>
+                    <p
+                      className={cn(
+                        "mt-1 text-[10px]",
+                        item.sentByVendor ? "text-teal-100" : "text-stone-400",
+                      )}
+                    >
+                      {formatChatTime(item.createdAt)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-stone-100 p-4">
+                <div className="flex gap-2">
+                  <input
+                    value={message}
+                    maxLength={2000}
+                    disabled={sending}
+                    onChange={(event) => setMessage(event.target.value)}
+                    onKeyDown={(event) =>
+                      event.key === "Enter" && sendMessage()
+                    }
+                    className="vendor-input h-11 flex-1 px-3 text-sm"
+                    placeholder="Nhập tin nhắn..."
+                  />
+                  <button
+                    type="button"
+                    aria-label="Gửi tin nhắn"
+                    disabled={sending || !message.trim()}
+                    className="vendor-primary-button px-3 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={sendMessage}
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-1 items-center justify-center p-8 text-center">
+              <div>
+                <MessageSquareText className="mx-auto h-10 w-10 text-stone-300" />
+                <p className="mt-3 text-sm font-extrabold text-stone-700">
+                  Chọn một hội thoại
+                </p>
+                <p className="mt-1 text-xs font-semibold text-stone-400">
+                  Nội dung trao đổi với khách hàng sẽ hiển thị tại đây.
+                </p>
+              </div>
+            </div>
+          )}
+        </Panel>
+
+        <Panel className="p-4">
+          <PanelHeader title="Trả lời nhanh" subtitle="Chọn để điền nội dung" />
           <div className="mt-4 space-y-2">
             {[
-              "Tạo combo mua 2 giảm 8%",
-              "Bật voucher cho khách mới",
-              "Đẩy tồn cao vào Flash Sale",
-              "Chuẩn bị kịch bản live 30 phút",
-            ].map((item) => (
+              "Dạ sản phẩm vẫn còn hàng ạ.",
+              "Shop hỗ trợ đổi trả trong 7 ngày.",
+              "Shop gửi bạn mã giảm 10% nhé.",
+              "Đơn sẽ được gửi trong hôm nay ạ.",
+            ].map((reply) => (
               <button
-                key={item}
+                key={reply}
                 type="button"
-                className="vendor-task"
-                onClick={() =>
-                  onToast({ title: "Đã chọn gợi ý", message: item })
-                }
+                disabled={!activeChat}
+                className="vendor-quick-reply disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => setMessage(reply)}
               >
-                <Sparkles className="h-4 w-4 text-orange-500" />
-                <span className="text-sm font-bold text-stone-600">{item}</span>
+                <MessageSquareText className="h-4 w-4 shrink-0 text-orange-500" />
+                {reply}
               </button>
             ))}
           </div>
         </Panel>
       </section>
-    </div>
-  );
-}
-
-function FinancePage({ onToast }) {
-  const exportStatement = () => {
-    downloadCsv(
-      "seller-statement.csv",
-      ["Mã đơn", "Khách hàng", "Giá trị", "Thời gian"],
-      orders.map((order) => [
-        order.id,
-        order.buyer,
-        formatCurrency(order.total),
-        order.time,
-      ]),
     );
-    onToast({
-      title: "Đã xuất sao kê",
-      message: "Sao kê giao dịch đã được tải xuống.",
-    });
-  };
-  return (
-    <div className="space-y-5">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          [
-            "Số dư khả dụng",
-            "86,2 triệu",
-            "Có thể rút hôm nay",
-            WalletCards,
-            "is-green",
-          ],
-          ["Chờ đối soát", "24,9 triệu", "128 đơn hàng", Clock3, "is-orange"],
-          [
-            "Phí nền tảng",
-            "3,12 triệu",
-            "7 ngày gần nhất",
-            CreditCard,
-            "is-teal",
-          ],
-          ["Hoàn tiền", "1,48 triệu", "5 yêu cầu", Banknote, "is-red"],
-        ].map(([label, value, change, icon, tone]) => (
-          <StatCard
-            key={label}
-            stat={{ label, value, change, note: "", icon, tone }}
+  }
+
+  function MarketingPage({ onToast }) {
+    return (
+      <div className="space-y-5">
+        <section className="grid gap-4 md:grid-cols-3">
+          <InsightCard
+            title="Doanh thu từ ads"
+            icon={BarChart3}
+            value="42,8 triệu"
+            label="ROAS trung bình 5,8x"
+            text="Tăng 12,4% so với 7 ngày trước."
+            tone="is-orange"
           />
-        ))}
-      </section>
-      <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-        <Panel className="p-5">
-          <PanelHeader
-            title="Giao dịch gần đây"
-            subtitle="Các khoản thu từ đơn hàng"
-          >
-            <button
-              type="button"
-              className="vendor-secondary-button"
-              onClick={exportStatement}
+          <InsightCard
+            title="Voucher đang chạy"
+            icon={TicketPercent}
+            value="12"
+            label="3 voucher sắp hết ngân sách"
+            text="Voucher theo dõi shop có hiệu suất tốt nhất."
+            tone="is-yellow"
+          />
+          <InsightCard
+            title="Lịch livestream"
+            icon={Sparkles}
+            value="18:30"
+            label="8 sản phẩm đã ghim"
+            text="Kịch bản bán hàng đã sẵn sàng."
+            tone="is-teal"
+          />
+        </section>
+        <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+          <Panel className="p-5">
+            <PanelHeader
+              title="Chiến dịch đang chạy"
+              subtitle="Theo dõi tiến độ ngân sách"
             >
-              <Download className="h-4 w-4" />
-              Sao kê
-            </button>
-          </PanelHeader>
-          <div className="mt-3 divide-y divide-stone-100">
-            {orders.slice(0, 6).map((order) => (
-              <div
-                key={order.id}
-                className="flex items-center justify-between py-3"
+              <button
+                type="button"
+                className="vendor-primary-button"
+                onClick={() =>
+                  onToast({
+                    title: "Tạo chiến dịch",
+                    message: "Đã mở flow thiết lập chiến dịch mới.",
+                  })
+                }
               >
-                <div>
-                  <p className="text-sm font-extrabold text-stone-700">
-                    {order.id}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-stone-400">
-                    {order.buyer} · {order.time}
+                <Plus className="h-4 w-4" />
+                Tạo chiến dịch
+              </button>
+            </PanelHeader>
+            <div className="mt-4 space-y-3">
+              {campaigns.map((campaign) => (
+                <div key={campaign.name} className="vendor-list-item block">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-extrabold text-stone-800">
+                        {campaign.name}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-stone-400">
+                        {campaign.metric} · Ngân sách {campaign.budget}
+                      </p>
+                    </div>
+                    <StatusBadge status="Đang chạy" />
+                  </div>
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-stone-100">
+                    <div
+                      className="vendor-progress h-full rounded-full bg-orange-500"
+                      style={{ width: `${campaign.progress}%` }}
+                    />
+                  </div>
+                  <div className="mt-2 flex justify-between text-xs font-bold text-stone-400">
+                    <span>Đã dùng {campaign.progress}%</span>
+                    <span className="text-teal-700">{campaign.revenue}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+          <Panel className="p-5">
+            <PanelHeader
+              title="Gợi ý tăng trưởng"
+              subtitle="Dựa trên hiệu suất shop"
+            />
+            <div className="mt-4 space-y-2">
+              {[
+                "Tạo combo mua 2 giảm 8%",
+                "Bật voucher cho khách mới",
+                "Đẩy tồn cao vào Flash Sale",
+                "Chuẩn bị kịch bản live 30 phút",
+              ].map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className="vendor-task"
+                  onClick={() =>
+                    onToast({ title: "Đã chọn gợi ý", message: item })
+                  }
+                >
+                  <Sparkles className="h-4 w-4 text-orange-500" />
+                  <span className="text-sm font-bold text-stone-600">
+                    {item}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </Panel>
+        </section>
+      </div>
+    );
+  }
+
+  function FinancePage({ onToast }) {
+    const exportStatement = () => {
+      downloadCsv(
+        "seller-statement.csv",
+        ["Mã đơn", "Khách hàng", "Giá trị", "Thời gian"],
+        orders.map((order) => [
+          order.id,
+          order.buyer,
+          formatCurrency(order.total),
+          order.time,
+        ]),
+      );
+      onToast({
+        title: "Đã xuất sao kê",
+        message: "Sao kê giao dịch đã được tải xuống.",
+      });
+    };
+    return (
+      <div className="space-y-5">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            [
+              "Số dư khả dụng",
+              "86,2 triệu",
+              "Có thể rút hôm nay",
+              WalletCards,
+              "is-green",
+            ],
+            ["Chờ đối soát", "24,9 triệu", "128 đơn hàng", Clock3, "is-orange"],
+            [
+              "Phí nền tảng",
+              "3,12 triệu",
+              "7 ngày gần nhất",
+              CreditCard,
+              "is-teal",
+            ],
+            ["Hoàn tiền", "1,48 triệu", "5 yêu cầu", Banknote, "is-red"],
+          ].map(([label, value, change, icon, tone]) => (
+            <StatCard
+              key={label}
+              stat={{ label, value, change, note: "", icon, tone }}
+            />
+          ))}
+        </section>
+        <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+          <Panel className="p-5">
+            <PanelHeader
+              title="Giao dịch gần đây"
+              subtitle="Các khoản thu từ đơn hàng"
+            >
+              <button
+                type="button"
+                className="vendor-secondary-button"
+                onClick={exportStatement}
+              >
+                <Download className="h-4 w-4" />
+                Sao kê
+              </button>
+            </PanelHeader>
+            <div className="mt-3 divide-y divide-stone-100">
+              {orders.slice(0, 6).map((order) => (
+                <div
+                  key={order.id}
+                  className="flex items-center justify-between py-3"
+                >
+                  <div>
+                    <p className="text-sm font-extrabold text-stone-700">
+                      {order.id}
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-stone-400">
+                      {order.buyer} · {order.time}
+                    </p>
+                  </div>
+                  <p className="text-sm font-extrabold text-teal-700">
+                    +{formatCurrency(order.total)}
                   </p>
                 </div>
-                <p className="text-sm font-extrabold text-teal-700">
-                  +{formatCurrency(order.total)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Panel>
-        <Panel className="p-5">
-          <PanelHeader
-            title="Tài khoản nhận tiền"
-            subtitle="Đã xác minh bởi ShopVN"
-          />
-          <div className="mt-4 rounded-xl border border-stone-100 bg-stone-50 p-4">
-            <p className="font-extrabold text-stone-800">Vietcombank</p>
-            <p className="mt-1 text-sm font-semibold text-stone-500">
-              Nguyen Tai Phat · **** 8421
-            </p>
-            <StatusBadge className="mt-3" status="Đã xác minh" />
-          </div>
-          <button
-            type="button"
-            className="vendor-secondary-button mt-4 w-full justify-center"
-            onClick={() =>
-              onToast({
-                title: "Cập nhật tài khoản",
-                message:
-                  "Thông ngân hàng sẽ cần xác minh lại sau khi thay đổi.",
-              })
-            }
-          >
-            <PenLine className="h-4 w-4" />
-            Cập nhật tài khoản
-          </button>
-        </Panel>
-      </section>
-    </div>
-  );
-}
+              ))}
+            </div>
+          </Panel>
+          <Panel className="p-5">
+            <PanelHeader
+              title="Tài khoản nhận tiền"
+              subtitle="Đã xác minh bởi ShopVN"
+            />
+            <div className="mt-4 rounded-xl border border-stone-100 bg-stone-50 p-4">
+              <p className="font-extrabold text-stone-800">Vietcombank</p>
+              <p className="mt-1 text-sm font-semibold text-stone-500">
+                Nguyen Tai Phat · **** 8421
+              </p>
+              <StatusBadge className="mt-3" status="Đã xác minh" />
+            </div>
+            <button
+              type="button"
+              className="vendor-secondary-button mt-4 w-full justify-center"
+              onClick={() =>
+                onToast({
+                  title: "Cập nhật tài khoản",
+                  message:
+                    "Thông ngân hàng sẽ cần xác minh lại sau khi thay đổi.",
+                })
+              }
+            >
+              <PenLine className="h-4 w-4" />
+              Cập nhật tài khoản
+            </button>
+          </Panel>
+        </section>
+      </div>
+    );
+  }
 
-function SettingsPage({ onToast }) {
-  return (
-    <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-      <Panel className="p-5">
-        <PanelHeader
-          title="Hồ sơ cửa hàng"
-          subtitle="Thông tin hiển thị với khách hàng"
-        />
-        <div className="mt-5 flex items-center gap-4">
-          <span className="flex h-16 w-16 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-            <Store className="h-7 w-7" />
-          </span>
-          <div>
-            <p className="font-extrabold text-stone-800">ShopVN Seller</p>
-            <p className="mt-1 text-xs font-semibold text-stone-400">
-              Mã shop VND-2026-0412
-            </p>
-            <StatusBadge className="mt-2" status="Đang hoạt động" />
-          </div>
-        </div>
-        <div className="mt-5 grid gap-3">
-          {[
-            ["Tên shop", "ShopVN Seller"],
-            ["Ngành hàng chính", "Thời trang & phụ kiện"],
-            ["Email hỗ trợ", "support@shopvn.local"],
-            ["Số điện thoại", "0922393339"],
-          ].map(([label, value]) => (
-            <label key={label}>
-              <span className="text-xs font-bold text-stone-500">{label}</span>
-              <input
-                className="vendor-input mt-1 h-11 w-full px-3 text-sm"
-                defaultValue={value}
-              />
-            </label>
-          ))}
-        </div>
-        <button
-          type="button"
-          className="vendor-primary-button mt-4"
-          onClick={() =>
-            onToast({
-              title: "Đã lưu thay đổi",
-              message: "Hồ sơ cửa hàng đã được cập nhật thành công.",
-            })
-          }
-        >
-          <CheckCircle2 className="h-4 w-4" />
-          Lưu thay đổi
-        </button>
-      </Panel>
-      <div className="space-y-5">
+  function SettingsPage({ onToast }) {
+    return (
+      <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
         <Panel className="p-5">
           <PanelHeader
-            title="Xác minh & bảo mật"
-            subtitle="Trạng thái bảo vệ tài khoản"
+            title="Hồ sơ cửa hàng"
+            subtitle="Thông tin hiển thị với khách hàng"
           />
-          <div className="mt-4 space-y-2">
+          <div className="mt-5 flex items-center gap-4">
+            <span className="flex h-16 w-16 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+              <Store className="h-7 w-7" />
+            </span>
+            <div>
+              <p className="font-extrabold text-stone-800">ShopVN Seller</p>
+              <p className="mt-1 text-xs font-semibold text-stone-400">
+                Mã shop VND-2026-0412
+              </p>
+              <StatusBadge className="mt-2" status="Đang hoạt động" />
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3">
             {[
-              ["CCCD chủ shop", "Đã xác minh", ShieldCheck],
-              ["Tài khoản ngân hàng", "Đã xác minh", Banknote],
-              ["Xác thực 2 lớp", "Khuyến nghị bật", BadgeCheck],
-            ].map(([label, value, Icon]) => (
-              <div key={label} className="vendor-list-item">
-                <span className="flex items-center gap-3 text-sm font-bold text-stone-600">
-                  <Icon className="h-4 w-4 text-teal-700" />
+              ["Tên shop", "ShopVN Seller"],
+              ["Ngành hàng chính", "Thời trang & phụ kiện"],
+              ["Email hỗ trợ", "support@shopvn.local"],
+              ["Số điện thoại", "0922393339"],
+            ].map(([label, value]) => (
+              <label key={label}>
+                <span className="text-xs font-bold text-stone-500">
                   {label}
                 </span>
-                <span className="text-xs font-bold text-stone-400">
-                  {value}
-                </span>
-              </div>
-            ))}
-          </div>
-        </Panel>
-        <Panel className="p-5">
-          <PanelHeader
-            title="Cấu hình vận hành"
-            subtitle="Tự động hóa công việc hằng ngày"
-          />
-          <div className="mt-4 divide-y divide-stone-100">
-            {[
-              "Tự động xác nhận đơn COD",
-              "Nhận thông báo tồn kho thấp",
-              "Ẩn sản phẩm khi hết hàng",
-              "Bật trả lời nhanh trong chat",
-            ].map((label, index) => (
-              <label
-                key={label}
-                className="flex items-center justify-between gap-3 py-3 text-sm font-bold text-stone-600"
-              >
-                {label}
                 <input
-                  type="checkbox"
-                  defaultChecked={index !== 0}
-                  className="h-4 w-4 accent-teal-700"
+                  className="vendor-input mt-1 h-11 w-full px-3 text-sm"
+                  defaultValue={value}
                 />
               </label>
             ))}
           </div>
+          <button
+            type="button"
+            className="vendor-primary-button mt-4"
+            onClick={() =>
+              onToast({
+                title: "Đã lưu thay đổi",
+                message: "Hồ sơ cửa hàng đã được cập nhật thành công.",
+              })
+            }
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Lưu thay đổi
+          </button>
         </Panel>
-      </div>
-    </section>
-  );
-}
+        <div className="space-y-5">
+          <Panel className="p-5">
+            <PanelHeader
+              title="Xác minh & bảo mật"
+              subtitle="Trạng thái bảo vệ tài khoản"
+            />
+            <div className="mt-4 space-y-2">
+              {[
+                ["CCCD chủ shop", "Đã xác minh", ShieldCheck],
+                ["Tài khoản ngân hàng", "Đã xác minh", Banknote],
+                ["Xác thực 2 lớp", "Khuyến nghị bật", BadgeCheck],
+              ].map(([label, value, Icon]) => (
+                <div key={label} className="vendor-list-item">
+                  <span className="flex items-center gap-3 text-sm font-bold text-stone-600">
+                    <Icon className="h-4 w-4 text-teal-700" />
+                    {label}
+                  </span>
+                  <span className="text-xs font-bold text-stone-400">
+                    {value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+          <Panel className="p-5">
+            <PanelHeader
+              title="Cấu hình vận hành"
+              subtitle="Tự động hóa công việc hằng ngày"
+            />
+            <div className="mt-4 divide-y divide-stone-100">
+              {[
+                "Tự động xác nhận đơn COD",
+                "Nhận thông báo tồn kho thấp",
+                "Ẩn sản phẩm khi hết hàng",
+                "Bật trả lời nhanh trong chat",
+              ].map((label, index) => (
+                <label
+                  key={label}
+                  className="flex items-center justify-between gap-3 py-3 text-sm font-bold text-stone-600"
+                >
+                  {label}
+                  <input
+                    type="checkbox"
+                    defaultChecked={index !== 0}
+                    className="h-4 w-4 accent-teal-700"
+                  />
+                </label>
+              ))}
+            </div>
+          </Panel>
+        </div>
+      </section>
+    );
+  }
 
-const pageComponents = {
-  trangchu: OverviewPage,
-  "don-hang": OrdersPage,
-  "san-pham": ProductsPage,
-  "van-chuyen": ShippingPage,
-  "kho-hang": WarehousePage, // ĐÃ MAPPING COMPONENT KHO HÀNG VÀO URL
-  "tin-nhan": MessagesPage,
-  marketing: MarketingPage,
-  "tai-chinh": FinancePage,
-  "cai-dat-shop": SettingsPage,
-};
+  const pageComponents = {
+    trangchu: OverviewPage,
+    "don-hang": OrdersPage,
+    "san-pham": ProductsPage,
+    "van-chuyen": ShippingPage,
+    "kho-hang": WarehousePage, // ĐÃ MAPPING COMPONENT KHO HÀNG VÀO URL
+    "tin-nhan": MessagesPage,
+    marketing: MarketingPage,
+    "tai-chinh": FinancePage,
+    "cai-dat-shop": SettingsPage,
+  };
 
-export default function VendorHome() {
-  const { section = "trangchu" } = useParams();
-  const navigate = useNavigate();
-  const [toast, setToast] = useState(null);
-  const Page = pageComponents[section];
-  if (!Page) return <Navigate to="/vendor/trangchu" replace />;
-  const navigateTo = (slug) => navigate(`/vendor/${slug}`);
-  return (
-    <>
-      <VendorLayout activeSlug={section} onToast={setToast}>
-        <Page navigateTo={navigateTo} onToast={setToast} />
-      </VendorLayout>
-      {toast && <VendorToast toast={toast} onClose={() => setToast(null)} />}
-    </>
-  );
+  export default function VendorHome() {
+    const { section = "trangchu" } = useParams();
+    const navigate = useNavigate();
+    const [toast, setToast] = useState(null);
+    const Page = pageComponents[section];
+    if (!Page) return <Navigate to="/vendor/trangchu" replace />;
+    const navigateTo = (slug) => navigate(`/vendor/${slug}`);
+    return (
+      <>
+        <VendorLayout activeSlug={section} onToast={setToast}>
+          <Page
+            navigate={navigate}
+            navigateTo={navigateTo}
+            onToast={setToast}
+          />
+        </VendorLayout>
+        {toast && <VendorToast toast={toast} onClose={() => setToast(null)} />}
+      </>
+    );
+    return (
+      <>
+        <VendorLayout activeSlug={section} onToast={setToast}>
+          <Page navigateTo={navigateTo} onToast={setToast} />
+        </VendorLayout>
+        {toast && <VendorToast toast={toast} onClose={() => setToast(null)} />}
+      </>
+    );
+  }
 }
