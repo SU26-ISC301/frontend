@@ -129,6 +129,26 @@ export function ProductAddFormComplete() {
       }
     }
     setActiveSection(currentSection);
+
+    // Sub-section spy when in basic section
+    if (currentSection === 'basic') {
+      const subSections = [
+        { id: 'images', ref: imagesRef },
+        { id: 'name', ref: nameRef },
+        { id: 'category', ref: categoryRef },
+      ];
+      let currentSubSection = 'images';
+      for (const sub of subSections) {
+        if (sub.ref?.current) {
+          const rect = sub.ref.current.getBoundingClientRect();
+          const relativeTop = rect.top - containerRect.top;
+          if (relativeTop <= 150) {
+            currentSubSection = sub.id;
+          }
+        }
+      }
+      setActiveSubSection(currentSubSection);
+    }
   };
 
   const handleSectionClick = (sectionId) => {
@@ -139,9 +159,9 @@ export function ProductAddFormComplete() {
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
-      
+
       ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      
+
       scrollTimeoutRef.current = setTimeout(() => {
         isScrollingProgrammatically.current = false;
       }, 800);
@@ -151,15 +171,15 @@ export function ProductAddFormComplete() {
   const handleSubSectionClick = (subSectionId, elementRef) => {
     setActiveSection('basic');
     setActiveSubSection(subSectionId);
-    
+
     if (elementRef?.current && mainRef.current) {
       isScrollingProgrammatically.current = true;
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
-      
+
       elementRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      
+
       scrollTimeoutRef.current = setTimeout(() => {
         isScrollingProgrammatically.current = false;
       }, 800);
@@ -763,7 +783,7 @@ export function ProductAddFormComplete() {
                     const file = e.dataTransfer.files?.[0];
                     if (file && file.type.startsWith('video/')) {
                       if (file.size > 100 * 1024 * 1024) {
-                         setErrors((prev) => ({ ...prev, video: 'File vượt quá 100MB' }));
+                        setErrors((prev) => ({ ...prev, video: 'File vượt quá 100MB' }));
                       } else {
                         handleFieldChange('video', file);
                         setErrors((prev) => ({ ...prev, video: '' }));
@@ -904,7 +924,7 @@ export function ProductAddFormComplete() {
                 <option value="explosive">Linh kiện có tụ áp suất cao</option>
               </select>
               <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
-                TikTok Shop yêu cầu khai báo trung thực các thiết bị có pin Lithium để đảm bảo an toàn vận chuyển bay.
+                Shop yêu cầu khai báo trung thực các thiết bị có pin Lithium để đảm bảo an toàn vận chuyển bay.
               </p>
             </div>
           </section>
@@ -922,7 +942,7 @@ export function ProductAddFormComplete() {
               <label className="block text-xs font-bold text-slate-700">
                 <span className="text-red-500">*</span> Trọng lượng kiện hàng <HelpCircle className="h-3.5 w-3.5 text-slate-300 inline ml-1 cursor-pointer" />
               </label>
-              
+
               <div className="relative flex items-center border border-slate-200 rounded-xl bg-white focus-within:border-orange-500 focus-within:ring-4 focus-within:ring-orange-500/10 h-11 overflow-visible transition-all">
                 {/* Custom unit selector button on the left */}
                 <button
@@ -980,7 +1000,7 @@ export function ProductAddFormComplete() {
               <label className="block text-xs font-bold text-slate-700">
                 Kích thước kiện hàng <HelpCircle className="h-3.5 w-3.5 text-slate-300 inline ml-1 cursor-pointer" />
               </label>
-              
+
               <div className="grid gap-4 sm:grid-cols-3">
                 {/* Height */}
                 <div className="relative flex items-center border border-slate-200 rounded-xl bg-white focus-within:border-orange-500 focus-within:ring-4 focus-within:ring-orange-500/10 h-11 px-4 transition-all">
@@ -1031,7 +1051,7 @@ export function ProductAddFormComplete() {
               <label className="block text-xs font-bold text-slate-700">
                 <span className="text-red-500">*</span> Cách giao hàng <HelpCircle className="h-3.5 w-3.5 text-slate-300 inline ml-1 cursor-pointer" />
               </label>
-              
+
               <div className="flex items-center gap-6">
                 {[
                   { value: 'default', label: 'Mặc định' },
