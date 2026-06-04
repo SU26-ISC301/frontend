@@ -29,7 +29,8 @@ const WarehouseManagement = () => {
   const [warehouses, setWarehouses] = useState(initialWarehouses);
   const [activeTab, setActiveTab] = useState("PICKUP"); // 'PICKUP' hoặc 'RETURN'
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isMultiWarehouseApproved] = useState(false); // Mock status Đa kho
+  const [isMultiWarehouseApproved] = useState(false);
+  // Mock status Đa kho
 
   // Lọc kho theo tab hiện tại
   const currentWarehouses = warehouses.filter(
