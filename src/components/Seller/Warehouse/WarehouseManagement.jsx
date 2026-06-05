@@ -31,15 +31,20 @@ const WarehouseManagement = () => {
       const saved = localStorage.getItem("sellerWarehouses");
       if (saved) {
         const parsed = JSON.parse(saved);
-        return parsed.map(w => ({
+        return parsed.map((w) => ({
           id: w.id || Date.now(),
           warehouse_type: w.warehouse_type || w.type || "PICKUP",
           warehouse_name: w.warehouse_name || w.name || "",
           contact_name: w.contact_name || w.contact || "",
           phone_number: w.phone_number || w.phone || "",
           address: w.address || "",
-          is_default: !!(w.is_default !== undefined ? w.is_default : w.isDefault),
-          status: w.status === "ACTIVE" || w.status === "Đang hoạt động" ? "ACTIVE" : "INACTIVE"
+          is_default: !!(w.is_default !== undefined
+            ? w.is_default
+            : w.isDefault),
+          status:
+            w.status === "ACTIVE" || w.status === "Đang hoạt động"
+              ? "ACTIVE"
+              : "INACTIVE",
         }));
       }
       return initialWarehouses;
@@ -69,10 +74,12 @@ const WarehouseManagement = () => {
   };
 
   const handleSaveWarehouse = (newWarehouse) => {
-    const isFirst = warehouses.filter(w => w.warehouse_type === newWarehouse.warehouse_type).length === 0;
+    const isFirst =
+      warehouses.filter((w) => w.warehouse_type === newWarehouse.warehouse_type)
+        .length === 0;
     const updatedWarehouse = {
       ...newWarehouse,
-      is_default: isFirst || newWarehouse.is_default
+      is_default: isFirst || newWarehouse.is_default,
     };
     const updatedList = [updatedWarehouse, ...warehouses];
     setWarehouses(updatedList);

@@ -1,13 +1,13 @@
-import { useState } from 'react';
-import { Sparkles } from 'lucide-react';
-import { cn } from '../lib/utils';
-import { SellerLayout } from '../components/Seller/SellerLayout';
-import { SellerLogin } from '../components/Seller/SellerLogin';
-import { SellerRegister } from '../components/Seller/SellerRegister';
+import { useState } from "react";
+import { Sparkles } from "lucide-react";
+import { cn } from "../lib/utils";
+import { SellerLayout } from "../components/Seller/SellerLayout";
+import { SellerLogin } from "../components/Seller/SellerLogin";
+import { SellerRegister } from "../components/Seller/SellerRegister";
 
 const TABS = {
-  LOGIN: 'login',
-  REGISTER: 'register',
+  LOGIN: "login",
+  REGISTER: "register",
 };
 
 export default function SellerCenter() {
@@ -33,10 +33,10 @@ export default function SellerCenter() {
           type="button"
           onClick={() => setTab(TABS.LOGIN)}
           className={cn(
-            'flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all',
+            "flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all",
             tab === TABS.LOGIN
-              ? 'bg-white text-brand-dark shadow-md'
-              : 'text-white/70 hover:text-white'
+              ? "bg-white text-brand-dark shadow-md"
+              : "text-white/70 hover:text-white",
           )}
         >
           Đăng nhập
@@ -45,10 +45,10 @@ export default function SellerCenter() {
           type="button"
           onClick={() => setTab(TABS.REGISTER)}
           className={cn(
-            'flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all',
+            "flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all",
             tab === TABS.REGISTER
-              ? 'bg-gradient-brand text-white shadow-glow'
-              : 'text-white/70 hover:text-white'
+              ? "bg-gradient-brand text-white shadow-glow"
+              : "text-white/70 hover:text-white",
           )}
         >
           Đăng ký Seller
