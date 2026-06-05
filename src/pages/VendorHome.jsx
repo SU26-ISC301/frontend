@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { vendorMessageApi } from "../api/vendorMessageAPI";
+import AddWarehouseModal from "../components/Seller/Warehouse/AddWarehouseModal";
 
 const navItems = [
   { slug: "trangchu", label: "Tổng quan", icon: LayoutDashboard },
@@ -1789,18 +1790,20 @@ function WarehousePage({ onToast }) {
 
   // Form State
   const [formData, setFormData] = useState({
-    hdbizUser: "",
-    hdbizPass: "",
     type: "PICKUP",
     name: "",
     contact: "",
     phone: "",
+    country: "Việt Nam",
     province: "",
     district: "",
     ward: "",
     addressDetail: "",
     lat: 10.7626,
     lng: 106.6602,
+    isPinned: false,
+    shippingRegions: [],
+    isDefault: true,
   });
 
   // Geo selection options
@@ -1812,9 +1815,9 @@ function WarehousePage({ onToast }) {
   );
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => {
-      const updated = { ...prev, [name]: value };
+      const updated = { ...prev, [name]: type === "checkbox" ? checked : value };
       // Reset dependent geo fields
       if (name === "province") {
         updated.district = "";
@@ -1823,6 +1826,17 @@ function WarehousePage({ onToast }) {
         updated.ward = "";
       }
       return updated;
+    });
+  };
+
+  const handleRegionToggle = (region) => {
+    setFormData((prev) => {
+      const current = prev.shippingRegions || [];
+      if (current.includes(region)) {
+        return { ...prev, shippingRegions: current.filter((r) => r !== region) };
+      } else {
+        return { ...prev, shippingRegions: [...current, region] };
+      }
     });
   };
 
@@ -1839,6 +1853,7 @@ function WarehousePage({ onToast }) {
       ...prev,
       lat: parseFloat(mockLat.toFixed(6)),
       lng: parseFloat(mockLng.toFixed(6)),
+      isPinned: true,
     }));
   };
 
@@ -1857,10 +1872,6 @@ function WarehousePage({ onToast }) {
     e.preventDefault();
 
     // Validation
-    if (!formData.hdbizUser || !formData.hdbizPass) {
-      setBpmnError("Vui lòng nhập tài khoản HDBiz để thực hiện liên kết!");
-      return;
-    }
     if (
       !formData.name ||
       !formData.contact ||
@@ -1875,10 +1886,29 @@ function WarehousePage({ onToast }) {
       );
       return;
     }
-    if (!formData.phone.match(/^[0-9]{9,10}$/)) {
-      setBpmnError(
-        "Số điện thoại liên hệ không hợp lệ! Vui lòng nhập số từ 9-10 chữ số.",
-      );
+
+    if (formData.name.trim().length < 1 || formData.name.trim().length > 50) {
+      setBpmnError("Tên kho hàng chỉ giới hạn từ 1 đến 50 ký tự!");
+      return;
+    }
+
+    // Check duplicate name with old warehouses
+    const nameExists = warehouses.some(
+      (w) => w.name.toLowerCase() === formData.name.trim().toLowerCase()
+    );
+    if (nameExists) {
+      setBpmnError("Tên kho hàng đã tồn tại trong danh sách kho của bạn. Vui lòng nhập tên khác!");
+      return;
+    }
+
+    const phoneRegex = /(0[3|5|7|8|9])+([0-9]{8})\b/;
+    if (!phoneRegex.test(formData.phone.trim())) {
+      setBpmnError("Số điện thoại không hợp lệ (phải gồm 10 chữ số bắt đầu bằng 0)!");
+      return;
+    }
+
+    if (!formData.isPinned) {
+      setBpmnError("Bắt buộc phải ghim vị trí chính xác trên bản đồ để hệ thống tính toán khoảng cách và phân bổ shipper!");
       return;
     }
 
@@ -1896,19 +1926,19 @@ function WarehousePage({ onToast }) {
       });
     };
 
-    // Simulate step-by-step BPMN check
+    // Simulate step-by-step warehouse initialization check
     Promise.resolve()
       .then(() =>
         addLog(
-          "🔍 [BPMN 5] Mở phiên làm việc và kiểm tra thông tin HDBiz...",
+          "🔍 Kiểm tra tính hợp lệ của địa chỉ kho...",
           600,
         ),
       )
       .then(() =>
-        addLog("🔄 Đang gửi truy vấn trạng thái đăng ký dịch vụ...", 1000),
+        addLog("🔄 Khởi tạo và thiết lập kho hàng trên hệ thống...", 1000),
       )
       .then(() =>
-        addLog("⚙️ Đang phân tích phản hồi hệ thống ngân hàng HDBank...", 800),
+        addLog("⚙️ Hoàn tất liên kết kho mặc định...", 800),
       )
       .then(() => {
         setTimeout(() => {
@@ -1917,7 +1947,7 @@ function WarehousePage({ onToast }) {
           if (selectedOutcome === "FAILURE") {
             // Step 6.1: Registration failure, back to editing with error message
             setBpmnError(
-              "❌ [BPMN 6.1] Đăng ký dịch vụ thất bại hoặc thông tin tài khoản HDBiz bị từ chối. Vui lòng kiểm tra lại thông tin và thử lại.",
+              "❌ Đăng ký dịch vụ thất bại hoặc thông tin bị từ chối. Vui lòng kiểm tra lại thông tin và thử lại.",
             );
             setCurrentStep(2);
           } else if (selectedOutcome === "UNLINKED") {
@@ -1929,12 +1959,14 @@ function WarehousePage({ onToast }) {
             const newWarehouse = {
               id: Date.now(),
               type: formData.type,
-              name: formData.name,
-              contact: formData.contact,
-              phone: formData.phone,
-              address: `${formData.addressDetail}, ${formData.ward}, ${formData.district}, ${formData.province}`,
-              isDefault: true, // Auto-marked as default
+              name: formData.name.trim(),
+              contact: formData.contact.trim(),
+              phone: formData.phone.trim(),
+              address: `${formData.addressDetail.trim()}, ${formData.ward}, ${formData.district}, ${formData.province}, Việt Nam`,
+              isDefault: formData.isDefault,
               status: "Đang hoạt động",
+              shippingRegions: formData.shippingRegions || [],
+              isPinned: formData.isPinned,
             };
 
             const updatedList = [...warehouses, newWarehouse];
@@ -1945,8 +1977,8 @@ function WarehousePage({ onToast }) {
             );
 
             onToast({
-              title: "[BPMN 7.2] Kích hoạt thành công",
-              message: `Đã kết nối tài khoản HDBiz và khởi tạo kho ${formData.type === "PICKUP" ? "lấy" : "trả"} hàng mặc định!`,
+              title: "Kích hoạt thành công",
+              message: `Đã khởi tạo kho ${formData.type === "PICKUP" ? "lấy" : "trả"} hàng mặc định!`,
             });
 
             setIsOnboarding(false);
@@ -1997,37 +2029,39 @@ function WarehousePage({ onToast }) {
     setShowNormalAddModal(true);
   };
 
-  const handleSaveNormalWarehouse = (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const wName = form.w_name.value;
-    const wContact = form.w_contact.value;
-    const wPhone = form.w_phone.value;
-    const wAddr = form.w_addr.value;
-
-    if (!wName || !wContact || !wPhone || !wAddr) {
-      alert("Vui lòng điền đủ thông tin!");
-      return;
-    }
-
-    const newW = {
-      id: Date.now(),
-      type: activeTab,
-      name: wName,
-      contact: wContact,
-      phone: wPhone,
-      address: wAddr,
-      isDefault: warehouses.filter((w) => w.type === activeTab).length === 0, // default if first of its type
+  const handleSaveNormalWarehouse = (newW) => {
+    const normalized = {
+      id: newW.id || Date.now(),
+      type: newW.warehouse_type || newW.type || activeTab,
+      name: newW.warehouse_name || newW.name || "",
+      contact: newW.contact_name || newW.contact || "",
+      phone: newW.phone_number || newW.phone || "",
+      address: newW.address || "",
+      isDefault: !!(newW.is_default !== undefined ? newW.is_default : newW.isDefault),
       status: "Đang hoạt động",
+      shippingRegions: newW.shipping_regions || newW.shippingRegions || [],
+      isPinned: !!(newW.is_pinned !== undefined ? newW.is_pinned : newW.isPinned),
     };
 
-    const updated = [...warehouses, newW];
-    setWarehouses(updated);
-    localStorage.setItem("sellerWarehouses", JSON.stringify(updated));
+    let updatedList;
+    if (normalized.isDefault) {
+      // Set all other warehouses of the same type to non-default
+      const mapped = warehouses.map((w) =>
+        w.type === normalized.type
+          ? { ...w, isDefault: false }
+          : w,
+      );
+      updatedList = [...mapped, normalized];
+    } else {
+      updatedList = [...warehouses, normalized];
+    }
+
+    setWarehouses(updatedList);
+    localStorage.setItem("sellerWarehouses", JSON.stringify(updatedList));
     setShowNormalAddModal(false);
     onToast({
       title: "Thêm kho thành công",
-      message: `Đã thêm mới kho ${activeTab === "PICKUP" ? "lấy" : "trả"} hàng.`,
+      message: `Đã thêm mới kho ${normalized.type === "PICKUP" ? "lấy" : "trả"} hàng.`,
     });
   };
 
@@ -2036,57 +2070,6 @@ function WarehousePage({ onToast }) {
   if (isOnboarding) {
     return (
       <div className="space-y-6">
-        {/* Scenario Test Controller */}
-        <div className="rounded-xl border-2 border-orange-200 bg-orange-50/50 p-4 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-extrabold text-orange-900 flex items-center gap-1.5">
-                <SlidersHorizontal className="h-4 w-4" />
-                BPMN Simulation Controls (Bảng Điều Khiển Kịch Bản)
-              </h3>
-              <p className="text-xs font-semibold text-orange-700 mt-0.5">
-                Thay đổi kết quả kiểm tra kết nối để kiểm thử toàn bộ các nhánh
-                trong luồng BPMN.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedOutcome("LINKED")}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
-                  selectedOutcome === "LINKED"
-                    ? "bg-teal-600 border-teal-600 text-white shadow-sm"
-                    : "bg-white border-stone-200 text-stone-600 hover:bg-stone-50",
-                )}
-              >
-                🟢 Đã liên kết (Success)
-              </button>
-              <button
-                onClick={() => setSelectedOutcome("UNLINKED")}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
-                  selectedOutcome === "UNLINKED"
-                    ? "bg-amber-600 border-amber-600 text-white shadow-sm"
-                    : "bg-white border-stone-200 text-stone-600 hover:bg-stone-50",
-                )}
-              >
-                🟡 Chưa liên kết (BPMN 7.1 Popup)
-              </button>
-              <button
-                onClick={() => setSelectedOutcome("FAILURE")}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
-                  selectedOutcome === "FAILURE"
-                    ? "bg-red-600 border-red-600 text-white shadow-sm"
-                    : "bg-white border-stone-200 text-stone-600 hover:bg-stone-50",
-                )}
-              >
-                🔴 Thất bại (BPMN 6.1 Nhập lại)
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* Onboarding welcome screen */}
         {currentStep === 1 && (
           <Panel className="p-8 text-center max-w-4xl mx-auto flex flex-col items-center">
@@ -2099,8 +2082,7 @@ function WarehousePage({ onToast }) {
             </h2>
             <p className="mt-2 text-sm text-stone-500 max-w-xl font-semibold leading-relaxed">
               Theo quy trình vận hành và quy định <b>Quản lý kho - MTTDL</b>,
-              bạn cần đăng ký liên kết tài khoản HDBiz và tạo kho lấy/trả hàng
-              mặc định để bắt đầu xử lý vận chuyển.
+              bạn cần tạo kho lấy/trả hàng mặc định để bắt đầu xử lý vận chuyển.
             </p>
 
             {/* Visual BPMN flow path */}
@@ -2130,7 +2112,7 @@ function WarehousePage({ onToast }) {
                     Bước 2
                   </div>
                   <div className="text-xs font-extrabold text-stone-700 mt-1">
-                    Mở form HDBiz
+                    Nhập thông tin
                   </div>
                   <div className="text-[10px] font-medium text-stone-400 mt-0.5">
                     Nhập & Ghim vị trí
@@ -2162,7 +2144,7 @@ function WarehousePage({ onToast }) {
                     Bước 4
                   </div>
                   <div className="text-xs font-extrabold text-stone-700 mt-1">
-                    Đã kết nối
+                    Hoàn tất
                   </div>
                   <div className="text-[10px] font-medium text-stone-400 mt-0.5">
                     Kích hoạt kho
@@ -2186,11 +2168,10 @@ function WarehousePage({ onToast }) {
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 mb-6">
               <div>
                 <h2 className="text-lg font-extrabold text-stone-900">
-                  Thiết lập Kho mặc định & Liên kết tài khoản
+                  Form Thêm Mới Kho Hàng
                 </h2>
                 <p className="text-xs text-stone-400 font-semibold mt-1">
-                  Bước 2 trong luồng BPMN: Nhập thông tin tài khoản HDBiz và
-                  thông tin vật lý của kho.
+                  Khởi tạo thông tin kho lấy hàng / trả hàng mặc định theo tài liệu Quản lý kho - MTTDL.
                 </p>
               </div>
               <button
@@ -2211,49 +2192,26 @@ function WarehousePage({ onToast }) {
             )}
 
             <form onSubmit={handleVerifyAndLink} className="space-y-6">
-              {/* Account linkage section */}
-              <div className="p-4 rounded-xl bg-stone-50 border border-stone-100 space-y-4">
-                <h3 className="text-xs font-extrabold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4 text-teal-700" />
-                  1. Tài khoản HDBiz (Webview Login)
-                </h3>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="text-xs font-bold text-stone-500">
-                      Tên đăng nhập HDBiz *
-                    </span>
-                    <input
-                      name="hdbizUser"
-                      type="text"
-                      value={formData.hdbizUser}
-                      onChange={handleInputChange}
-                      placeholder="Nhập tài khoản doanh nghiệp"
-                      className="vendor-input mt-1.5 h-10 w-full px-3 text-sm"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="text-xs font-bold text-stone-500">
-                      Mật khẩu HDBiz *
-                    </span>
-                    <input
-                      name="hdbizPass"
-                      type="password"
-                      value={formData.hdbizPass}
-                      onChange={handleInputChange}
-                      placeholder="••••••••"
-                      className="vendor-input mt-1.5 h-10 w-full px-3 text-sm"
-                    />
-                  </label>
-                </div>
-              </div>
-
               {/* Warehouse info section */}
               <div className="space-y-4">
                 <h3 className="text-xs font-extrabold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
                   <Boxes className="h-4 w-4 text-orange-600" />
-                  2. Thông tin kho hàng mặc định
+                  1. Thông tin kho hàng mặc định
                 </h3>
+
                 <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="text-xs font-bold text-stone-500">
+                      Quốc gia / Khu vực
+                    </span>
+                    <input
+                      type="text"
+                      value={formData.country || "Việt Nam"}
+                      readOnly
+                      className="vendor-input mt-1.5 h-10 w-full px-3 text-sm bg-stone-50 text-stone-400 cursor-not-allowed border-stone-200"
+                    />
+                  </label>
+
                   <label className="block">
                     <span className="text-xs font-bold text-stone-500">
                       Loại kho mặc định *
@@ -2268,7 +2226,9 @@ function WarehousePage({ onToast }) {
                       <option value="RETURN">Kho trả hàng (RETURN)</option>
                     </select>
                   </label>
+                </div>
 
+                <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block">
                     <span className="text-xs font-bold text-stone-500">
                       Tên kho hàng *
@@ -2286,9 +2246,7 @@ function WarehousePage({ onToast }) {
                       {formData.name.length}/50 ký tự
                     </span>
                   </label>
-                </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block">
                     <span className="text-xs font-bold text-stone-500">
                       Người liên hệ *
@@ -2302,7 +2260,9 @@ function WarehousePage({ onToast }) {
                       className="vendor-input mt-1.5 h-10 w-full px-3 text-sm"
                     />
                   </label>
+                </div>
 
+                <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block">
                     <span className="text-xs font-bold text-stone-500">
                       Số điện thoại *
@@ -2403,14 +2363,19 @@ function WarehousePage({ onToast }) {
               {/* Map mockup pinning */}
               <div className="space-y-3">
                 <span className="text-xs font-bold text-stone-500 block">
-                  3. Ghim tọa độ trên bản đồ (Click vào bản đồ để chọn tọa độ)
+                  2. Ghim tọa độ trên bản đồ (Click vào bản đồ để chọn tọa độ) *
                 </span>
 
                 <div className="grid gap-4 md:grid-cols-[1.6fr_0.4fr] items-stretch">
                   {/* Interactive Map Visual Grid */}
                   <div
                     onClick={handleMapClick}
-                    className="h-48 rounded-xl border border-stone-200 bg-stone-100 relative overflow-hidden cursor-crosshair select-none flex flex-col justify-end p-3"
+                    className={cn(
+                      "h-48 rounded-xl border-2 border-dashed flex flex-col justify-end p-3 relative overflow-hidden cursor-crosshair select-none transition-all duration-200",
+                      formData.isPinned
+                        ? "bg-emerald-50/70 border-emerald-500 text-emerald-800 shadow-sm"
+                        : "bg-stone-100 border-stone-200 text-stone-500 hover:bg-stone-50"
+                    )}
                     style={{
                       backgroundImage:
                         "radial-gradient(#ddd 1.5px, transparent 1.5px)",
@@ -2429,22 +2394,23 @@ function WarehousePage({ onToast }) {
                     </div>
 
                     {/* Glowing Pin Marker */}
-                    <div
-                      className="absolute h-8 w-8 -mt-8 -ml-4 transition-all duration-300 ease-out flex flex-col items-center pointer-events-none"
-                      style={{
-                        left: `${((formData.lng - 106.6602) / 0.08 + 0.5) * 100}%`,
-                        top: `${(0.5 - (formData.lat - 10.7626) / 0.08) * 100}%`,
-                      }}
-                    >
-                      <span className="text-orange-500 text-2xl filter drop-shadow">
-                        📍
-                      </span>
-                      <span className="animate-ping absolute top-0 h-4.5 w-4.5 rounded-full bg-orange-400 opacity-75"></span>
-                    </div>
+                    {formData.isPinned && (
+                      <div
+                        className="absolute h-8 w-8 -mt-8 -ml-4 transition-all duration-300 ease-out flex flex-col items-center pointer-events-none"
+                        style={{
+                          left: `${((formData.lng - 106.6602) / 0.08 + 0.5) * 100}%`,
+                          top: `${(0.5 - (formData.lat - 10.7626) / 0.08) * 100}%`,
+                        }}
+                      >
+                        <span className="text-orange-500 text-2xl filter drop-shadow">
+                          📍
+                        </span>
+                        <span className="animate-ping absolute top-0 h-4.5 w-4.5 rounded-full bg-orange-400 opacity-75"></span>
+                      </div>
+                    )}
 
-                    <div className="bg-stone-900/70 backdrop-blur-sm rounded-lg py-1 px-2.5 text-[10px] font-extrabold text-white self-start pointer-events-none flex items-center gap-1">
-                      <span className="text-teal-400">🗺️</span> Bản đồ mô phỏng
-                      vệ tinh (HCM/HN Center)
+                    <div className="bg-stone-900/70 backdrop-blur-sm rounded-lg py-1 px-2.5 text-[10px] font-extrabold text-white self-start pointer-events-none flex items-center gap-1 z-10">
+                      <span className="text-teal-400">🗺️</span> {formData.isPinned ? `Đã ghim vị trí (${formData.lat}, ${formData.lng})` : "Ghim vị trí chính xác trên bản đồ"}
                     </div>
                   </div>
 
@@ -2476,6 +2442,73 @@ function WarehousePage({ onToast }) {
                 </div>
               </div>
 
+              {/* Shipping Region (Khu vực vận chuyển) - Only shown from 2nd warehouse */}
+              {warehouses.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-extrabold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <Truck className="h-4 w-4 text-orange-600" />
+                    3. Khu vực vận chuyển *
+                  </h3>
+                  <p className="text-xs text-stone-400 font-semibold">
+                    Cho phép thiết lập kho này sẽ phục vụ giao hàng cho những vùng tỉnh/thành cụ thể nào.
+                  </p>
+                  <div className="flex flex-wrap gap-2.5 mt-2">
+                    {["Miền Bắc", "Miền Trung", "Miền Nam"].map((region) => {
+                      const isSelected = formData.shippingRegions?.includes(region);
+                      return (
+                        <button
+                          key={region}
+                          type="button"
+                          onClick={() => handleRegionToggle(region)}
+                          className={cn(
+                            "px-4 py-2 text-xs font-semibold rounded-full border transition-all duration-200 flex items-center gap-1.5",
+                            isSelected
+                              ? "bg-orange-50 border-orange-500 text-orange-700 shadow-sm font-bold scale-102"
+                              : "bg-white border-stone-200 text-stone-600 hover:bg-stone-50"
+                          )}
+                        >
+                          {isSelected && <span className="text-orange-500">✓</span>}
+                          {region}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Set Default (Cài đặt mặc định) Checkbox */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-extrabold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <BadgeCheck className="h-4 w-4 text-orange-600" />
+                  {warehouses.length === 0 ? "3. Cài đặt mặc định" : "4. Cài đặt mặc định"}
+                </h3>
+                <label
+                  className={cn(
+                    "flex items-center space-x-3.5 p-3.5 border border-stone-200 rounded-xl transition-all",
+                    warehouses.length === 0
+                      ? "bg-stone-50 opacity-80 cursor-not-allowed"
+                      : "cursor-pointer hover:bg-stone-50"
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    name="isDefault"
+                    checked={formData.isDefault}
+                    onChange={handleInputChange}
+                    disabled={warehouses.length === 0}
+                    className="w-5 h-5 text-orange-600 border-stone-300 rounded focus:ring-orange-500"
+                  />
+                  <div>
+                    <p className="font-extrabold text-stone-800 text-xs">
+                      Cài đặt làm Kho mặc định
+                    </p>
+                    <p className="text-[10px] text-stone-400 mt-0.5 leading-4 font-semibold">
+                      Tự động nhận tồn kho của sản phẩm mới được đăng bán khi có đơn.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
               {/* Form buttons */}
               <div className="pt-4 border-t border-stone-100 flex justify-end gap-3">
                 <button
@@ -2489,7 +2522,7 @@ function WarehousePage({ onToast }) {
                   type="submit"
                   className="vendor-primary-button px-6 font-extrabold"
                 >
-                  Xác nhận & Liên kết HDBiz
+                  Xác nhận & Khởi tạo kho
                 </button>
               </div>
             </form>
@@ -2702,87 +2735,22 @@ function WarehousePage({ onToast }) {
       </Panel>
 
       {/* Add warehouse modal (after onboarding) */}
-      {showNormalAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md border border-stone-100 overflow-hidden">
-            <div className="flex justify-between items-center p-4 border-b border-stone-100">
-              <h3 className="font-extrabold text-stone-900 text-sm">
-                Thêm kho hàng mới
-              </h3>
-              <button
-                onClick={() => setShowNormalAddModal(false)}
-                className="text-stone-400 hover:text-stone-600 font-bold"
-              >
-                &times;
-              </button>
-            </div>
-            <form
-              onSubmit={handleSaveNormalWarehouse}
-              className="p-4 space-y-4"
-            >
-              <label className="block">
-                <span className="text-xs font-bold text-stone-500">
-                  Tên kho *
-                </span>
-                <input
-                  name="w_name"
-                  type="text"
-                  className="vendor-input mt-1.5 h-9 w-full px-3 text-xs"
-                  required
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs font-bold text-stone-500">
-                  Người liên hệ *
-                </span>
-                <input
-                  name="w_contact"
-                  type="text"
-                  className="vendor-input mt-1.5 h-9 w-full px-3 text-xs"
-                  required
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs font-bold text-stone-500">
-                  Số điện thoại *
-                </span>
-                <input
-                  name="w_phone"
-                  type="text"
-                  className="vendor-input mt-1.5 h-9 w-full px-3 text-xs"
-                  required
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs font-bold text-stone-500">
-                  Địa chỉ *
-                </span>
-                <input
-                  name="w_addr"
-                  type="text"
-                  className="vendor-input mt-1.5 h-9 w-full px-3 text-xs"
-                  required
-                />
-              </label>
-              <div className="pt-3 border-t border-stone-100 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowNormalAddModal(false)}
-                  className="vendor-secondary-button text-xs py-1.5 px-3"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="vendor-primary-button text-xs py-1.5 px-3"
-                >
-                  Lưu lại
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddWarehouseModal
+        isOpen={showNormalAddModal}
+        onClose={() => setShowNormalAddModal(false)}
+        onSave={handleSaveNormalWarehouse}
+        currentTab={activeTab}
+        existingWarehouses={warehouses.map((w) => ({
+          id: w.id,
+          warehouse_type: w.type,
+          warehouse_name: w.name,
+          contact_name: w.contact,
+          phone_number: w.phone,
+          address: w.address,
+          is_default: w.isDefault,
+          status: w.status === "Đang hoạt động" ? "ACTIVE" : "INACTIVE",
+        }))}
+      />
     </div>
   );
 }
