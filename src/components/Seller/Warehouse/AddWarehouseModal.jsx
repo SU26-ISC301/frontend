@@ -1,185 +1,256 @@
 import React, { useState } from "react";
+import { X, Map } from "lucide-react";
 
-const AddWarehouseModal = ({ isOpen, onClose, onSave, currentTab }) => {
+const AddWarehouseModal = ({ isOpen, onClose, onSave, isFirstWarehouse }) => {
+  // Dựa trên MTTDL Document
   const [formData, setFormData] = useState({
-    warehouse_type: currentTab,
-    warehouse_name: "",
-    contact_name: "",
-    phone_number: "",
-    address_detail: "",
+    warehouseName: "",
+    contactName: "",
+    phone: "",
+    province: "",
+    district: "",
+    ward: "",
+    addressDetail: "",
+    // Nếu là kho đầu tiên, mặc định luôn là cả kho lấy và kho trả
+    isPickup: isFirstWarehouse ? true : false,
+    isReturn: isFirstWarehouse ? true : false,
   });
 
   if (!isOpen) return null;
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    const { name, value, type, checked } = e.target;
+    setFormData({
+      ...formData,
+      [name]: type === "checkbox" ? checked : value,
+    });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Validate cơ bản
-    if (!formData.warehouse_name || !formData.phone_number) {
-      alert("Vui lòng điền các trường bắt buộc!");
+    // Validate cơ bản (Thực tế cần dùng form validation library như Yup/React Hook Form)
+    if (
+      !formData.warehouseName ||
+      !formData.contactName ||
+      !formData.phone ||
+      !formData.addressDetail
+    ) {
+      alert("Vui lòng điền đầy đủ các trường bắt buộc!");
       return;
     }
-    // Gửi data lên component cha
-    onSave({
-      ...formData,
-      id: Date.now(),
-      is_default: false,
-      status: "ACTIVE",
-      address: `${formData.address_detail}, Phường X, Quận Y, TP. Hồ Chí Minh`,
-    });
-    setFormData({
-      warehouse_type: currentTab,
-      warehouse_name: "",
-      contact_name: "",
-      phone_number: "",
-      address_detail: "",
-    });
+    onSave(formData);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-bold">Thêm kho hàng mới</h2>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+          <h2 className="text-xl font-bold text-gray-800">
+            {isFirstWarehouse ? "Tạo kho hàng mặc định" : "Thêm kho hàng mới"}
+          </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-red-500 font-bold text-xl"
+            className="p-1 hover:bg-gray-100 rounded-full"
           >
-            &times;
+            <X className="w-6 h-6 text-gray-500" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-4 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Loại kho *
-              </label>
-              <select
-                name="warehouse_type"
-                value={formData.warehouse_type}
-                onChange={handleChange}
-                className="mt-1 w-full border border-gray-300 rounded-md p-2"
-              >
-                <option value="PICKUP">Kho lấy hàng</option>
-                <option value="RETURN">Kho trả hàng</option>
-              </select>
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {isFirstWarehouse && (
+            <div className="p-3 bg-blue-50 text-blue-700 text-sm rounded-md border border-blue-200">
+              Vì đây là kho hàng đầu tiên của bạn, kho này sẽ được tự động thiết
+              lập làm <strong>Kho lấy hàng</strong> và{" "}
+              <strong>Kho trả hàng mặc định</strong>.
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Tên kho hàng *
-              </label>
-              <input
-                type="text"
-                name="warehouse_name"
-                maxLength={50}
-                value={formData.warehouse_name}
-                onChange={handleChange}
-                placeholder="Ví dụ: Kho Tổng HN"
-                className="mt-1 w-full border border-gray-300 rounded-md p-2"
-              />
-              <span className="text-xs text-gray-400">
-                {formData.warehouse_name.length}/50
-              </span>
-            </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Thông tin cơ bản */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-gray-900 border-b pb-2">
+              Thông tin liên hệ
+            </h3>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Người liên hệ *
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tên kho hàng <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                name="contact_name"
-                maxLength={100}
-                value={formData.contact_name}
+                name="warehouseName"
+                value={formData.warehouseName}
                 onChange={handleChange}
-                className="mt-1 w-full border border-gray-300 rounded-md p-2"
+                placeholder="VD: Kho Tổng Hà Nội, Kho Q7..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                maxLength={50}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Số điện thoại *
-              </label>
-              <div className="flex mt-1">
-                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500">
-                  +84
-                </span>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Người liên hệ <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
-                  name="phone_number"
-                  value={formData.phone_number}
+                  name="contactName"
+                  value={formData.contactName}
                   onChange={handleChange}
-                  placeholder="9xxxxxxxxx"
-                  className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md border border-gray-300"
+                  placeholder="Họ và tên"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Số điện thoại <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="09xx xxx xxx"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Địa chỉ chi tiết *
-            </label>
-            <input
-              type="text"
-              name="address_detail"
-              value={formData.address_detail}
-              onChange={handleChange}
-              placeholder="Số nhà, tên đường..."
-              className="mt-1 w-full border border-gray-300 rounded-md p-2"
-            />
-          </div>
+          {/* Địa chỉ */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-gray-900 border-b pb-2">
+              Địa chỉ hành chính
+            </h3>
 
-          {/* Map Mockup */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Ghim vị trí trên bản đồ
-            </label>
-            <div className="w-full h-48 bg-gray-200 rounded-md border-2 border-dashed border-gray-400 flex flex-col items-center justify-center text-gray-500">
-              <svg
-                className="w-8 h-8 mb-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-              <span>[Khu vực tích hợp API Bản đồ]</span>
-              <span className="text-xs">Tọa độ: (Chưa chọn)</span>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tỉnh/Thành
+                </label>
+                <select
+                  name="province"
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Chọn Tỉnh/Thành</option>
+                  <option value="Hồ Chí Minh">Hồ Chí Minh</option>
+                  <option value="Hà Nội">Hà Nội</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Quận/Huyện
+                </label>
+                <select
+                  name="district"
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Chọn Quận/Huyện</option>
+                  <option value="Quận 1">Quận 1</option>
+                  <option value="Quận 7">Quận 7</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Phường/Xã
+                </label>
+                <select
+                  name="ward"
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Chọn Phường/Xã</option>
+                  <option value="Phường Tân Quy">Phường Tân Quy</option>
+                  <option value="Phường Bến Nghé">Phường Bến Nghé</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Địa chỉ chi tiết (Số nhà, đường){" "}
+                <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="addressDetail"
+                value={formData.addressDetail}
+                onChange={handleChange}
+                placeholder="VD: 123 Đường ABC..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Map Widget (Mock UI) */}
+            <div className="w-full h-32 bg-gray-100 rounded border border-gray-300 flex flex-col items-center justify-center text-gray-500 cursor-pointer hover:bg-gray-200 transition">
+              <Map className="w-6 h-6 mb-1" />
+              <span className="text-sm">
+                Ghim vị trí trên bản đồ (Bắt buộc)
+              </span>
             </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t flex justify-end space-x-3 bg-gray-50">
+          {/* Cài đặt thuộc tính kho */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-gray-900 border-b pb-2">
+              Cài đặt mặc định
+            </h3>
+
+            <label
+              className={`flex items-center space-x-3 p-3 border rounded-md ${isFirstWarehouse ? "bg-gray-50 opacity-80 cursor-not-allowed" : "cursor-pointer hover:bg-gray-50"}`}
+            >
+              <input
+                type="checkbox"
+                name="isPickup"
+                checked={formData.isPickup}
+                onChange={handleChange}
+                disabled={isFirstWarehouse}
+                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <div>
+                <p className="font-medium text-gray-800">
+                  Đặt làm Kho Lấy Hàng mặc định
+                </p>
+                <p className="text-sm text-gray-500">
+                  Shipper sẽ đến địa chỉ này để lấy hàng khi có đơn mới.
+                </p>
+              </div>
+            </label>
+
+            <label
+              className={`flex items-center space-x-3 p-3 border rounded-md ${isFirstWarehouse ? "bg-gray-50 opacity-80 cursor-not-allowed" : "cursor-pointer hover:bg-gray-50"}`}
+            >
+              <input
+                type="checkbox"
+                name="isReturn"
+                checked={formData.isReturn}
+                onChange={handleChange}
+                disabled={isFirstWarehouse}
+                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <div>
+                <p className="font-medium text-gray-800">
+                  Đặt làm Kho Trả Hàng mặc định
+                </p>
+                <p className="text-sm text-gray-500">
+                  Hàng hoàn/trả về sẽ được gửi về địa chỉ này.
+                </p>
+              </div>
+            </label>
+          </div>
+        </form>
+
+        <div className="sticky bottom-0 bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100"
           >
             Hủy
           </button>
           <button
             onClick={handleSubmit}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Lưu kho hàng
           </button>

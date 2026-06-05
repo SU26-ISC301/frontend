@@ -26,7 +26,27 @@ const initialWarehouses = [
 ];
 
 const WarehouseManagement = () => {
-  const [warehouses, setWarehouses] = useState(initialWarehouses);
+  const [warehouses, setWarehouses] = useState(() => {
+    try {
+      const saved = localStorage.getItem("sellerWarehouses");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.map(w => ({
+          id: w.id || Date.now(),
+          warehouse_type: w.warehouse_type || w.type || "PICKUP",
+          warehouse_name: w.warehouse_name || w.name || "",
+          contact_name: w.contact_name || w.contact || "",
+          phone_number: w.phone_number || w.phone || "",
+          address: w.address || "",
+          is_default: !!(w.is_default !== undefined ? w.is_default : w.isDefault),
+          status: w.status === "ACTIVE" || w.status === "Đang hoạt động" ? "ACTIVE" : "INACTIVE"
+        }));
+      }
+      return initialWarehouses;
+    } catch {
+      return initialWarehouses;
+    }
+  });
   const [activeTab, setActiveTab] = useState("PICKUP"); // 'PICKUP' hoặc 'RETURN'
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMultiWarehouseApproved] = useState(false);
@@ -49,7 +69,14 @@ const WarehouseManagement = () => {
   };
 
   const handleSaveWarehouse = (newWarehouse) => {
-    setWarehouses([newWarehouse, ...warehouses]);
+    const isFirst = warehouses.filter(w => w.warehouse_type === newWarehouse.warehouse_type).length === 0;
+    const updatedWarehouse = {
+      ...newWarehouse,
+      is_default: isFirst || newWarehouse.is_default
+    };
+    const updatedList = [updatedWarehouse, ...warehouses];
+    setWarehouses(updatedList);
+    localStorage.setItem("sellerWarehouses", JSON.stringify(updatedList));
     setIsModalOpen(false);
   };
 
