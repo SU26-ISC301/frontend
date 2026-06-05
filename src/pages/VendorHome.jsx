@@ -426,8 +426,6 @@ function downloadCsv(filename, columns, rows) {
   URL.revokeObjectURL(url);
 }
 
-const MULTI_WAREHOUSE_REQUEST_KEY = "sellerMultiWarehouseRegistration";
-
 const operationSettingDefaults = [
   {
     id: "autoCod",
@@ -450,16 +448,6 @@ const operationSettingDefaults = [
     description: "Hiển thị mẫu phản hồi nhanh trong hộp thư khách hàng.",
   },
 ];
-
-function getSavedMultiWarehouseRegistration() {
-  try {
-    return JSON.parse(
-      localStorage.getItem(MULTI_WAREHOUSE_REQUEST_KEY) || "null",
-    );
-  } catch {
-    return null;
-  }
-}
 
 function StatusBadge({ children, status, className }) {
   const tone =
@@ -3446,27 +3434,12 @@ function VendorToggle({ checked, onChange, disabled = false, label }) {
 }
 
 function SettingsPage({ onToast }) {
-  const savedRegistration = getSavedMultiWarehouseRegistration();
   const [operationSettings, setOperationSettings] = useState({
     autoCod: false,
     lowStockAlert: true,
     hideOutOfStock: true,
     quickChatReply: true,
   });
-  const [multiWarehouseEnabled, setMultiWarehouseEnabled] = useState(
-    Boolean(savedRegistration),
-  );
-  const [multiWarehouseRegistration, setMultiWarehouseRegistration] =
-    useState(savedRegistration);
-  const [multiWarehouseForm, setMultiWarehouseForm] = useState({
-    expectedWarehouseCount: "",
-    pickupCities: "",
-    returnCities: "",
-    contactName: "Nguyễn Tài Phát",
-    phone: "0922393339",
-    reason: "",
-  });
-  const [multiWarehouseError, setMultiWarehouseError] = useState("");
 
   const updateOperationSetting = (settingId, enabled) => {
     setOperationSettings((current) => ({ ...current, [settingId]: enabled }));
@@ -3476,68 +3449,6 @@ function SettingsPage({ onToast }) {
     onToast({
       title: enabled ? "Đã bật cấu hình" : "Đã tắt cấu hình",
       message: setting ? setting.label : "Cấu hình vận hành đã được cập nhật.",
-    });
-  };
-
-  const updateMultiWarehouseForm = (field, value) => {
-    setMultiWarehouseForm((current) => ({ ...current, [field]: value }));
-    setMultiWarehouseError("");
-  };
-
-  const handleMultiWarehouseToggle = (enabled) => {
-    if (multiWarehouseRegistration) {
-      setMultiWarehouseEnabled(true);
-      onToast({
-        title: "Yêu cầu đang chờ duyệt",
-        message: "Admin sẽ kiểm tra hồ sơ đăng ký tính năng đa kho của shop.",
-      });
-      return;
-    }
-    setMultiWarehouseEnabled(enabled);
-    if (enabled) {
-      onToast({
-        title: "Đăng ký tính năng đa kho",
-        message: "Vui lòng nhập thông tin vận hành để gửi Admin duyệt.",
-      });
-    }
-  };
-
-  const submitMultiWarehouseRegistration = (event) => {
-    event.preventDefault();
-    const requiredFields = [
-      "expectedWarehouseCount",
-      "pickupCities",
-      "returnCities",
-      "contactName",
-      "phone",
-      "reason",
-    ];
-    const hasMissingField = requiredFields.some(
-      (field) => !String(multiWarehouseForm[field]).trim(),
-    );
-    if (hasMissingField) {
-      setMultiWarehouseError("Vui lòng nhập đầy đủ thông tin đăng ký đa kho.");
-      return;
-    }
-
-    const registration = {
-      ...multiWarehouseForm,
-      id: `MW-${Date.now()}`,
-      shopId: "VND-2026-0412",
-      shopName: "ShopVN Seller",
-      status: "PENDING_ADMIN_REVIEW",
-      submittedAt: new Date().toISOString(),
-    };
-    localStorage.setItem(
-      MULTI_WAREHOUSE_REQUEST_KEY,
-      JSON.stringify(registration),
-    );
-    setMultiWarehouseRegistration(registration);
-    setMultiWarehouseEnabled(true);
-    onToast({
-      title: "Đã gửi Admin duyệt",
-      message:
-        "Yêu cầu đăng ký tính năng đa kho đã được chuyển sang trạng thái chờ duyệt.",
     });
   };
 
@@ -3644,158 +3555,6 @@ function SettingsPage({ onToast }) {
                 />
               </div>
             ))}
-            <div className="py-3">
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-bold text-stone-700">
-                      Đăng ký tính năng đa kho
-                    </p>
-                    {multiWarehouseRegistration && (
-                      <StatusBadge status="Chờ Admin duyệt" />
-                    )}
-                  </div>
-                  <p className="mt-1 text-xs font-semibold leading-5 text-stone-400">
-                    Cho phép shop tạo thêm kho lấy hàng, kho trả hàng sau khi
-                    Admin duyệt.
-                  </p>
-                  {multiWarehouseRegistration && (
-                    <p className="mt-1 text-xs font-semibold leading-5 text-stone-400">
-                      Hồ sơ đã gửi tới Admin ·{" "}
-                      {multiWarehouseRegistration.expectedWarehouseCount} kho dự
-                      kiến · {multiWarehouseRegistration.pickupCities}
-                    </p>
-                  )}
-                </div>
-                <VendorToggle
-                  checked={multiWarehouseEnabled}
-                  disabled={Boolean(multiWarehouseRegistration)}
-                  label="Đăng ký tính năng đa kho"
-                  onChange={handleMultiWarehouseToggle}
-                />
-              </div>
-
-              {multiWarehouseEnabled && !multiWarehouseRegistration && (
-                <form
-                  className="mt-4 grid gap-3"
-                  onSubmit={submitMultiWarehouseRegistration}
-                >
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <label>
-                      <span className="text-xs font-bold text-stone-500">
-                        Số kho dự kiến
-                      </span>
-                      <input
-                        type="number"
-                        min="2"
-                        className="vendor-input mt-1 h-11 w-full px-3 text-sm"
-                        value={multiWarehouseForm.expectedWarehouseCount}
-                        onChange={(event) =>
-                          updateMultiWarehouseForm(
-                            "expectedWarehouseCount",
-                            event.target.value,
-                          )
-                        }
-                        placeholder="Ví dụ: 3"
-                      />
-                    </label>
-                    <label>
-                      <span className="text-xs font-bold text-stone-500">
-                        Người phụ trách
-                      </span>
-                      <input
-                        className="vendor-input mt-1 h-11 w-full px-3 text-sm"
-                        value={multiWarehouseForm.contactName}
-                        onChange={(event) =>
-                          updateMultiWarehouseForm(
-                            "contactName",
-                            event.target.value,
-                          )
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span className="text-xs font-bold text-stone-500">
-                        Khu vực kho lấy hàng
-                      </span>
-                      <input
-                        className="vendor-input mt-1 h-11 w-full px-3 text-sm"
-                        value={multiWarehouseForm.pickupCities}
-                        onChange={(event) =>
-                          updateMultiWarehouseForm(
-                            "pickupCities",
-                            event.target.value,
-                          )
-                        }
-                        placeholder="TP.HCM, Hà Nội..."
-                      />
-                    </label>
-                    <label>
-                      <span className="text-xs font-bold text-stone-500">
-                        Khu vực kho trả hàng
-                      </span>
-                      <input
-                        className="vendor-input mt-1 h-11 w-full px-3 text-sm"
-                        value={multiWarehouseForm.returnCities}
-                        onChange={(event) =>
-                          updateMultiWarehouseForm(
-                            "returnCities",
-                            event.target.value,
-                          )
-                        }
-                        placeholder="TP.HCM, Đà Nẵng..."
-                      />
-                    </label>
-                    <label className="sm:col-span-2">
-                      <span className="text-xs font-bold text-stone-500">
-                        Số điện thoại liên hệ
-                      </span>
-                      <input
-                        className="vendor-input mt-1 h-11 w-full px-3 text-sm"
-                        value={multiWarehouseForm.phone}
-                        onChange={(event) =>
-                          updateMultiWarehouseForm("phone", event.target.value)
-                        }
-                      />
-                    </label>
-                  </div>
-                  <label>
-                    <span className="text-xs font-bold text-stone-500">
-                      Lý do đăng ký
-                    </span>
-                    <textarea
-                      className="vendor-input mt-1 min-h-24 w-full px-3 py-2 text-sm"
-                      value={multiWarehouseForm.reason}
-                      onChange={(event) =>
-                        updateMultiWarehouseForm("reason", event.target.value)
-                      }
-                      placeholder="Mô tả nhu cầu vận hành đa kho của shop..."
-                    />
-                  </label>
-                  {multiWarehouseError && (
-                    <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
-                      {multiWarehouseError}
-                    </p>
-                  )}
-                  <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                    <button
-                      type="button"
-                      className="vendor-secondary-button justify-center"
-                      onClick={() => setMultiWarehouseEnabled(false)}
-                    >
-                      Hủy
-                    </button>
-                    <button
-                      type="submit"
-                      className="vendor-primary-button justify-center"
-                    >
-                      <Send className="h-4 w-4" />
-                      Đăng ký
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
           </div>
         </Panel>
       </div>
