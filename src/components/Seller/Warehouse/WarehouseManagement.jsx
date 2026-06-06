@@ -74,14 +74,25 @@ const WarehouseManagement = () => {
   };
 
   const handleSaveWarehouse = (newWarehouse) => {
-    const isFirst =
-      warehouses.filter((w) => w.warehouse_type === newWarehouse.warehouse_type)
-        .length === 0;
-    const updatedWarehouse = {
-      ...newWarehouse,
-      is_default: isFirst || newWarehouse.is_default,
-    };
-    const updatedList = [updatedWarehouse, ...warehouses];
+    let updatedList;
+    if (newWarehouse.is_default) {
+      // Set all other warehouses of the same type to non-default
+      const mapped = warehouses.map((w) =>
+        w.warehouse_type === newWarehouse.warehouse_type
+          ? { ...w, is_default: false }
+          : w,
+      );
+      updatedList = [newWarehouse, ...mapped];
+    } else {
+      const isFirst =
+        warehouses.filter((w) => w.warehouse_type === newWarehouse.warehouse_type)
+          .length === 0;
+      const updatedWarehouse = {
+        ...newWarehouse,
+        is_default: isFirst || newWarehouse.is_default,
+      };
+      updatedList = [updatedWarehouse, ...warehouses];
+    }
     setWarehouses(updatedList);
     localStorage.setItem("sellerWarehouses", JSON.stringify(updatedList));
     setIsModalOpen(false);
@@ -168,6 +179,11 @@ const WarehouseManagement = () => {
                     <div className="text-sm font-medium text-gray-900">
                       {wh.warehouse_name}
                     </div>
+                    {wh.shipping_regions && wh.shipping_regions.length > 0 && (
+                      <div className="text-xs text-gray-500 mt-1 font-semibold">
+                        Khu vực phục vụ: {wh.shipping_regions.join(", ")}
+                      </div>
+                    )}
                     <div className="flex items-center space-x-2 mt-2">
                       {wh.is_default && (
                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
@@ -205,6 +221,7 @@ const WarehouseManagement = () => {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveWarehouse}
         currentTab={activeTab}
+        existingWarehouses={warehouses}
       />
     </div>
   );

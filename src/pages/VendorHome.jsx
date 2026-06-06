@@ -50,6 +50,7 @@ import {
   CategorySelectorField,
   ELECTRONICS_CATEGORIES,
 } from "../components/Seller/CategorySelectorField";
+import AddWarehouseModal from "../components/Seller/Warehouse/AddWarehouseModal";
 
 const navItems = [
   { slug: "trangchu", label: "Tổng quan", icon: LayoutDashboard },
@@ -58,7 +59,11 @@ const navItems = [
   { slug: "van-chuyen", label: "Vận chuyển", icon: Truck },
   { slug: "kho-hang", label: "Kho hàng", icon: Warehouse },
   { slug: "tin-nhan", label: "Tin nhắn", icon: MessageSquareText },
-  { slug: "nghien-cuu-thi-truong", label: "Nghiên cứu thị trường", icon: TrendingUp },
+  {
+    slug: "nghien-cuu-thi-truong",
+    label: "Nghiên cứu thị trường",
+    icon: TrendingUp,
+  },
   { slug: "marketing", label: "Marketing", icon: TicketPercent },
   { slug: "tai-chinh", label: "Tài chính", icon: WalletCards },
   { slug: "cai-dat-shop", label: "Cài đặt shop", icon: Settings },
@@ -280,11 +285,56 @@ const marketResearchSamples = [
     strategy:
       "Giữ giá quanh 249.000đ, tạo combo với cáp sạc để tăng giá trị giỏ hàng thay vì giảm giá sâu.",
     sources: [
-      { source: "CellphoneS", min: 259000, avg: 289000, max: 329000, sales: "2.900+", rating: 4.8, promo: "Mua kèm giảm 10%", trust: 94 },
-      { source: "FPT Shop", min: 279000, avg: 309000, max: 349000, sales: "1.600+", rating: 4.7, promo: "Bảo hành 12 tháng", trust: 93 },
-      { source: "Shopee Mall", min: 219000, avg: 252000, max: 299000, sales: "9.800+", rating: 4.6, promo: "Flash voucher", trust: 82 },
-      { source: "TikTok Shop", min: 199000, avg: 238000, max: 289000, sales: "7.400+", rating: 4.5, promo: "Live deal", trust: 78 },
-      { source: "TopZone", min: 299000, avg: 339000, max: 399000, sales: "840+", rating: 4.9, promo: "Hàng Apple MFi", trust: 97 },
+      {
+        source: "CellphoneS",
+        min: 259000,
+        avg: 289000,
+        max: 329000,
+        sales: "2.900+",
+        rating: 4.8,
+        promo: "Mua kèm giảm 10%",
+        trust: 94,
+      },
+      {
+        source: "FPT Shop",
+        min: 279000,
+        avg: 309000,
+        max: 349000,
+        sales: "1.600+",
+        rating: 4.7,
+        promo: "Bảo hành 12 tháng",
+        trust: 93,
+      },
+      {
+        source: "Shopee Mall",
+        min: 219000,
+        avg: 252000,
+        max: 299000,
+        sales: "9.800+",
+        rating: 4.6,
+        promo: "Flash voucher",
+        trust: 82,
+      },
+      {
+        source: "TikTok Shop",
+        min: 199000,
+        avg: 238000,
+        max: 289000,
+        sales: "7.400+",
+        rating: 4.5,
+        promo: "Live deal",
+        trust: 78,
+      },
+      {
+        source: "TopZone",
+        min: 299000,
+        avg: 339000,
+        max: 399000,
+        sales: "840+",
+        rating: 4.9,
+        promo: "Hàng Apple MFi",
+        trust: 97,
+      },
     ],
   },
   {
@@ -301,11 +351,56 @@ const marketResearchSamples = [
     strategy:
       "Giữ giá thấp hơn trung bình thị trường 2-3%, ưu tiên quà tặng phụ kiện và bảo hành mở rộng.",
     sources: [
-      { source: "TopZone", min: 29990000, avg: 30990000, max: 31990000, sales: "1.240+", rating: 4.9, promo: "Trả góp 0%", trust: 98 },
-      { source: "FPT Shop", min: 29790000, avg: 30590000, max: 31590000, sales: "980+", rating: 4.8, promo: "Voucher 800K", trust: 96 },
-      { source: "CellphoneS", min: 29490000, avg: 30290000, max: 31290000, sales: "1.560+", rating: 4.8, promo: "Giảm 1 triệu", trust: 95 },
-      { source: "Shopee Mall", min: 28890000, avg: 29820000, max: 30990000, sales: "3.800+", rating: 4.7, promo: "Freeship + voucher", trust: 89 },
-      { source: "TikTok Shop", min: 28690000, avg: 29650000, max: 30690000, sales: "2.100+", rating: 4.6, promo: "Flash sale", trust: 84 },
+      {
+        source: "TopZone",
+        min: 29990000,
+        avg: 30990000,
+        max: 31990000,
+        sales: "1.240+",
+        rating: 4.9,
+        promo: "Trả góp 0%",
+        trust: 98,
+      },
+      {
+        source: "FPT Shop",
+        min: 29790000,
+        avg: 30590000,
+        max: 31590000,
+        sales: "980+",
+        rating: 4.8,
+        promo: "Voucher 800K",
+        trust: 96,
+      },
+      {
+        source: "CellphoneS",
+        min: 29490000,
+        avg: 30290000,
+        max: 31290000,
+        sales: "1.560+",
+        rating: 4.8,
+        promo: "Giảm 1 triệu",
+        trust: 95,
+      },
+      {
+        source: "Shopee Mall",
+        min: 28890000,
+        avg: 29820000,
+        max: 30990000,
+        sales: "3.800+",
+        rating: 4.7,
+        promo: "Freeship + voucher",
+        trust: 89,
+      },
+      {
+        source: "TikTok Shop",
+        min: 28690000,
+        avg: 29650000,
+        max: 30690000,
+        sales: "2.100+",
+        rating: 4.6,
+        promo: "Flash sale",
+        trust: 84,
+      },
     ],
   },
   {
@@ -322,10 +417,46 @@ const marketResearchSamples = [
     strategy:
       "Không cần đua giá quá mạnh; nhấn bảo hành, đổi trả và hỗ trợ kỹ thuật để giữ biên lợi nhuận.",
     sources: [
-      { source: "TopZone", min: 22490000, avg: 22990000, max: 23690000, sales: "680+", rating: 4.9, promo: "Trả góp 0%", trust: 98 },
-      { source: "FPT Shop", min: 22290000, avg: 22850000, max: 23590000, sales: "720+", rating: 4.8, promo: "Voucher 500K", trust: 96 },
-      { source: "CellphoneS", min: 21990000, avg: 22690000, max: 23390000, sales: "940+", rating: 4.8, promo: "Balo + Office", trust: 95 },
-      { source: "Shopee Mall", min: 21490000, avg: 22190000, max: 22990000, sales: "1.870+", rating: 4.7, promo: "Mã giảm 5%", trust: 88 },
+      {
+        source: "TopZone",
+        min: 22490000,
+        avg: 22990000,
+        max: 23690000,
+        sales: "680+",
+        rating: 4.9,
+        promo: "Trả góp 0%",
+        trust: 98,
+      },
+      {
+        source: "FPT Shop",
+        min: 22290000,
+        avg: 22850000,
+        max: 23590000,
+        sales: "720+",
+        rating: 4.8,
+        promo: "Voucher 500K",
+        trust: 96,
+      },
+      {
+        source: "CellphoneS",
+        min: 21990000,
+        avg: 22690000,
+        max: 23390000,
+        sales: "940+",
+        rating: 4.8,
+        promo: "Balo + Office",
+        trust: 95,
+      },
+      {
+        source: "Shopee Mall",
+        min: 21490000,
+        avg: 22190000,
+        max: 22990000,
+        sales: "1.870+",
+        rating: 4.7,
+        promo: "Mã giảm 5%",
+        trust: 88,
+      },
     ],
   },
   {
@@ -342,10 +473,46 @@ const marketResearchSamples = [
     strategy:
       "Tối ưu video demo chống ồn, chạy voucher khách mới và đẩy review thật để cạnh tranh với sàn.",
     sources: [
-      { source: "Shopee Mall", min: 1190000, avg: 1320000, max: 1490000, sales: "5.200+", rating: 4.7, promo: "Voucher 12%", trust: 86 },
-      { source: "TikTok Shop", min: 1090000, avg: 1260000, max: 1450000, sales: "4.600+", rating: 4.6, promo: "Live sale", trust: 80 },
-      { source: "CellphoneS", min: 1350000, avg: 1490000, max: 1690000, sales: "1.100+", rating: 4.8, promo: "Bảo hành chính hãng", trust: 95 },
-      { source: "FPT Shop", min: 1390000, avg: 1530000, max: 1720000, sales: "940+", rating: 4.8, promo: "Trả góp 0%", trust: 94 },
+      {
+        source: "Shopee Mall",
+        min: 1190000,
+        avg: 1320000,
+        max: 1490000,
+        sales: "5.200+",
+        rating: 4.7,
+        promo: "Voucher 12%",
+        trust: 86,
+      },
+      {
+        source: "TikTok Shop",
+        min: 1090000,
+        avg: 1260000,
+        max: 1450000,
+        sales: "4.600+",
+        rating: 4.6,
+        promo: "Live sale",
+        trust: 80,
+      },
+      {
+        source: "CellphoneS",
+        min: 1350000,
+        avg: 1490000,
+        max: 1690000,
+        sales: "1.100+",
+        rating: 4.8,
+        promo: "Bảo hành chính hãng",
+        trust: 95,
+      },
+      {
+        source: "FPT Shop",
+        min: 1390000,
+        avg: 1530000,
+        max: 1720000,
+        sales: "940+",
+        rating: 4.8,
+        promo: "Trả góp 0%",
+        trust: 94,
+      },
     ],
   },
   {
@@ -362,10 +529,46 @@ const marketResearchSamples = [
     strategy:
       "Giữ tồn kho vừa phải, bán kèm dây đeo và bảo hành mở rộng để tăng giá trị đơn hàng.",
     sources: [
-      { source: "TopZone", min: 6190000, avg: 6490000, max: 6990000, sales: "520+", rating: 4.9, promo: "Thu cũ đổi mới", trust: 98 },
-      { source: "FPT Shop", min: 5990000, avg: 6290000, max: 6790000, sales: "610+", rating: 4.8, promo: "Voucher 300K", trust: 96 },
-      { source: "CellphoneS", min: 5790000, avg: 6120000, max: 6590000, sales: "780+", rating: 4.8, promo: "Tặng dây đeo", trust: 95 },
-      { source: "Shopee Mall", min: 5590000, avg: 5920000, max: 6390000, sales: "1.900+", rating: 4.6, promo: "Freeship", trust: 85 },
+      {
+        source: "TopZone",
+        min: 6190000,
+        avg: 6490000,
+        max: 6990000,
+        sales: "520+",
+        rating: 4.9,
+        promo: "Thu cũ đổi mới",
+        trust: 98,
+      },
+      {
+        source: "FPT Shop",
+        min: 5990000,
+        avg: 6290000,
+        max: 6790000,
+        sales: "610+",
+        rating: 4.8,
+        promo: "Voucher 300K",
+        trust: 96,
+      },
+      {
+        source: "CellphoneS",
+        min: 5790000,
+        avg: 6120000,
+        max: 6590000,
+        sales: "780+",
+        rating: 4.8,
+        promo: "Tặng dây đeo",
+        trust: 95,
+      },
+      {
+        source: "Shopee Mall",
+        min: 5590000,
+        avg: 5920000,
+        max: 6390000,
+        sales: "1.900+",
+        rating: 4.6,
+        promo: "Freeship",
+        trust: 85,
+      },
     ],
   },
 ];
@@ -523,11 +726,18 @@ function getCategoryLeaves(node) {
 function categoryContainsId(node, categoryId) {
   if (!node || !categoryId) return false;
   if (node.id === categoryId) return true;
-  return node.children?.some((child) => categoryContainsId(child, categoryId)) || false;
+  return (
+    node.children?.some((child) => categoryContainsId(child, categoryId)) ||
+    false
+  );
 }
 
 function getFirstLeafCategoryId(node) {
-  return getCategoryLeaves(node)[0]?.id || node?.id || DEFAULT_VENDOR_MARKET_CATEGORY_ID;
+  return (
+    getCategoryLeaves(node)[0]?.id ||
+    node?.id ||
+    DEFAULT_VENDOR_MARKET_CATEGORY_ID
+  );
 }
 
 function getVendorRegisteredCategoryValue(vendorInfo = {}) {
@@ -618,7 +828,10 @@ function getVendorMarketQuickCategories(parentCategory) {
 function buildVendorMarketFallback(categoryId) {
   const path = findVendorCategoryPath(ELECTRONICS_CATEGORIES, categoryId) || [];
   const leaf = path.at(-1) || { id: categoryId, name: "Hạng mục đang chọn" };
-  const seed = [...leaf.id].reduce((total, char) => total + char.charCodeAt(0), 0);
+  const seed = [...leaf.id].reduce(
+    (total, char) => total + char.charCodeAt(0),
+    0,
+  );
   const basePrice = 180000 + (seed % 34) * 85000;
   const sourceTemplates = [
     ["Shopee Mall", 0.86, 1.02, 1.18, "3.200+", 4.6, "Voucher ngành hàng", 84],
@@ -641,16 +854,27 @@ function buildVendorMarketFallback(categoryId) {
     sampleCount: 54 + (seed % 96),
     status: seed % 3 === 0 ? "Theo dõi" : "Có cơ hội",
     strategy: `Dùng dữ liệu mẫu cho ${path.map((item) => item.name).join(" > ") || leaf.name}; nên kiểm tra thêm giá thực tế trước khi nhập hàng hoặc chạy khuyến mãi.`,
-    sources: sourceTemplates.map(([source, minFactor, avgFactor, maxFactor, sales, rating, promo, trust]) => ({
-      source,
-      min: Math.round((basePrice * minFactor) / 10000) * 10000,
-      avg: Math.round((basePrice * avgFactor) / 10000) * 10000,
-      max: Math.round((basePrice * maxFactor) / 10000) * 10000,
-      sales,
-      rating,
-      promo,
-      trust,
-    })),
+    sources: sourceTemplates.map(
+      ([
+        source,
+        minFactor,
+        avgFactor,
+        maxFactor,
+        sales,
+        rating,
+        promo,
+        trust,
+      ]) => ({
+        source,
+        min: Math.round((basePrice * minFactor) / 10000) * 10000,
+        avg: Math.round((basePrice * avgFactor) / 10000) * 10000,
+        max: Math.round((basePrice * maxFactor) / 10000) * 10000,
+        sales,
+        rating,
+        promo,
+        trust,
+      }),
+    ),
   };
 }
 
@@ -2084,18 +2308,20 @@ function WarehousePage({ onToast }) {
 
   // Form State
   const [formData, setFormData] = useState({
-    hdbizUser: "",
-    hdbizPass: "",
     type: "PICKUP",
     name: "",
     contact: "",
     phone: "",
+    country: "Việt Nam",
     province: "",
     district: "",
     ward: "",
     addressDetail: "",
     lat: 10.7626,
     lng: 106.6602,
+    isPinned: false,
+    shippingRegions: [],
+    isDefault: true,
   });
 
   // Geo selection options
@@ -2107,9 +2333,12 @@ function WarehousePage({ onToast }) {
   );
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => {
-      const updated = { ...prev, [name]: value };
+      const updated = {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
       // Reset dependent geo fields
       if (name === "province") {
         updated.district = "";
@@ -2118,6 +2347,20 @@ function WarehousePage({ onToast }) {
         updated.ward = "";
       }
       return updated;
+    });
+  };
+
+  const handleRegionToggle = (region) => {
+    setFormData((prev) => {
+      const current = prev.shippingRegions || [];
+      if (current.includes(region)) {
+        return {
+          ...prev,
+          shippingRegions: current.filter((r) => r !== region),
+        };
+      } else {
+        return { ...prev, shippingRegions: [...current, region] };
+      }
     });
   };
 
@@ -2134,6 +2377,7 @@ function WarehousePage({ onToast }) {
       ...prev,
       lat: parseFloat(mockLat.toFixed(6)),
       lng: parseFloat(mockLng.toFixed(6)),
+      isPinned: true,
     }));
   };
 
@@ -2152,10 +2396,6 @@ function WarehousePage({ onToast }) {
     e.preventDefault();
 
     // Validation
-    if (!formData.hdbizUser || !formData.hdbizPass) {
-      setBpmnError("Vui lòng nhập tài khoản HDBiz để thực hiện liên kết!");
-      return;
-    }
     if (
       !formData.name ||
       !formData.contact ||
@@ -2170,9 +2410,34 @@ function WarehousePage({ onToast }) {
       );
       return;
     }
-    if (!formData.phone.match(/^[0-9]{9,10}$/)) {
+
+    if (formData.name.trim().length < 1 || formData.name.trim().length > 50) {
+      setBpmnError("Tên kho hàng chỉ giới hạn từ 1 đến 50 ký tự!");
+      return;
+    }
+
+    // Check duplicate name with old warehouses
+    const nameExists = warehouses.some(
+      (w) => w.name.toLowerCase() === formData.name.trim().toLowerCase(),
+    );
+    if (nameExists) {
       setBpmnError(
-        "Số điện thoại liên hệ không hợp lệ! Vui lòng nhập số từ 9-10 chữ số.",
+        "Tên kho hàng đã tồn tại trong danh sách kho của bạn. Vui lòng nhập tên khác!",
+      );
+      return;
+    }
+
+    const phoneRegex = /(0[3|5|7|8|9])+([0-9]{8})\b/;
+    if (!phoneRegex.test(formData.phone.trim())) {
+      setBpmnError(
+        "Số điện thoại không hợp lệ (phải gồm 10 chữ số bắt đầu bằng 0)!",
+      );
+      return;
+    }
+
+    if (!formData.isPinned) {
+      setBpmnError(
+        "Bắt buộc phải ghim vị trí chính xác trên bản đồ để hệ thống tính toán khoảng cách và phân bổ shipper!",
       );
       return;
     }
@@ -2191,20 +2456,13 @@ function WarehousePage({ onToast }) {
       });
     };
 
-    // Simulate step-by-step BPMN check
+    // Simulate step-by-step warehouse initialization check
     Promise.resolve()
+      .then(() => addLog("🔍 Kiểm tra tính hợp lệ của địa chỉ kho...", 600))
       .then(() =>
-        addLog(
-          "🔍 [BPMN 5] Mở phiên làm việc và kiểm tra thông tin HDBiz...",
-          600,
-        ),
+        addLog("🔄 Khởi tạo và thiết lập kho hàng trên hệ thống...", 1000),
       )
-      .then(() =>
-        addLog("🔄 Đang gửi truy vấn trạng thái đăng ký dịch vụ...", 1000),
-      )
-      .then(() =>
-        addLog("⚙️ Đang phân tích phản hồi hệ thống ngân hàng HDBank...", 800),
-      )
+      .then(() => addLog("⚙️ Hoàn tất liên kết kho mặc định...", 800))
       .then(() => {
         setTimeout(() => {
           setIsProcessing(false);
@@ -2212,7 +2470,7 @@ function WarehousePage({ onToast }) {
           if (selectedOutcome === "FAILURE") {
             // Step 6.1: Registration failure, back to editing with error message
             setBpmnError(
-              "❌ [BPMN 6.1] Đăng ký dịch vụ thất bại hoặc thông tin tài khoản HDBiz bị từ chối. Vui lòng kiểm tra lại thông tin và thử lại.",
+              "❌ Đăng ký dịch vụ thất bại hoặc thông tin bị từ chối. Vui lòng kiểm tra lại thông tin và thử lại.",
             );
             setCurrentStep(2);
           } else if (selectedOutcome === "UNLINKED") {
@@ -2224,12 +2482,14 @@ function WarehousePage({ onToast }) {
             const newWarehouse = {
               id: Date.now(),
               type: formData.type,
-              name: formData.name,
-              contact: formData.contact,
-              phone: formData.phone,
-              address: `${formData.addressDetail}, ${formData.ward}, ${formData.district}, ${formData.province}`,
-              isDefault: true, // Auto-marked as default
+              name: formData.name.trim(),
+              contact: formData.contact.trim(),
+              phone: formData.phone.trim(),
+              address: `${formData.addressDetail.trim()}, ${formData.ward}, ${formData.district}, ${formData.province}, Việt Nam`,
+              isDefault: formData.isDefault,
               status: "Đang hoạt động",
+              shippingRegions: formData.shippingRegions || [],
+              isPinned: formData.isPinned,
             };
 
             const updatedList = [...warehouses, newWarehouse];
@@ -2240,8 +2500,8 @@ function WarehousePage({ onToast }) {
             );
 
             onToast({
-              title: "[BPMN 7.2] Kích hoạt thành công",
-              message: `Đã kết nối tài khoản HDBiz và khởi tạo kho ${formData.type === "PICKUP" ? "lấy" : "trả"} hàng mặc định!`,
+              title: "Kích hoạt thành công",
+              message: `Đã khởi tạo kho ${formData.type === "PICKUP" ? "lấy" : "trả"} hàng mặc định!`,
             });
 
             setIsOnboarding(false);
@@ -2292,37 +2552,41 @@ function WarehousePage({ onToast }) {
     setShowNormalAddModal(true);
   };
 
-  const handleSaveNormalWarehouse = (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const wName = form.w_name.value;
-    const wContact = form.w_contact.value;
-    const wPhone = form.w_phone.value;
-    const wAddr = form.w_addr.value;
-
-    if (!wName || !wContact || !wPhone || !wAddr) {
-      alert("Vui lòng điền đủ thông tin!");
-      return;
-    }
-
-    const newW = {
-      id: Date.now(),
-      type: activeTab,
-      name: wName,
-      contact: wContact,
-      phone: wPhone,
-      address: wAddr,
-      isDefault: warehouses.filter((w) => w.type === activeTab).length === 0, // default if first of its type
+  const handleSaveNormalWarehouse = (newW) => {
+    const normalized = {
+      id: newW.id || Date.now(),
+      type: newW.warehouse_type || newW.type || activeTab,
+      name: newW.warehouse_name || newW.name || "",
+      contact: newW.contact_name || newW.contact || "",
+      phone: newW.phone_number || newW.phone || "",
+      address: newW.address || "",
+      isDefault: !!(newW.is_default !== undefined
+        ? newW.is_default
+        : newW.isDefault),
       status: "Đang hoạt động",
+      shippingRegions: newW.shipping_regions || newW.shippingRegions || [],
+      isPinned: !!(newW.is_pinned !== undefined
+        ? newW.is_pinned
+        : newW.isPinned),
     };
 
-    const updated = [...warehouses, newW];
-    setWarehouses(updated);
-    localStorage.setItem("sellerWarehouses", JSON.stringify(updated));
+    let updatedList;
+    if (normalized.isDefault) {
+      // Set all other warehouses of the same type to non-default
+      const mapped = warehouses.map((w) =>
+        w.type === normalized.type ? { ...w, isDefault: false } : w,
+      );
+      updatedList = [...mapped, normalized];
+    } else {
+      updatedList = [...warehouses, normalized];
+    }
+
+    setWarehouses(updatedList);
+    localStorage.setItem("sellerWarehouses", JSON.stringify(updatedList));
     setShowNormalAddModal(false);
     onToast({
       title: "Thêm kho thành công",
-      message: `Đã thêm mới kho ${activeTab === "PICKUP" ? "lấy" : "trả"} hàng.`,
+      message: `Đã thêm mới kho ${normalized.type === "PICKUP" ? "lấy" : "trả"} hàng.`,
     });
   };
 
@@ -2331,57 +2595,6 @@ function WarehousePage({ onToast }) {
   if (isOnboarding) {
     return (
       <div className="space-y-6">
-        {/* Scenario Test Controller */}
-        <div className="rounded-xl border-2 border-orange-200 bg-orange-50/50 p-4 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-extrabold text-orange-900 flex items-center gap-1.5">
-                <SlidersHorizontal className="h-4 w-4" />
-                BPMN Simulation Controls (Bảng Điều Khiển Kịch Bản)
-              </h3>
-              <p className="text-xs font-semibold text-orange-700 mt-0.5">
-                Thay đổi kết quả kiểm tra kết nối để kiểm thử toàn bộ các nhánh
-                trong luồng BPMN.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedOutcome("LINKED")}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
-                  selectedOutcome === "LINKED"
-                    ? "bg-teal-600 border-teal-600 text-white shadow-sm"
-                    : "bg-white border-stone-200 text-stone-600 hover:bg-stone-50",
-                )}
-              >
-                🟢 Đã liên kết (Success)
-              </button>
-              <button
-                onClick={() => setSelectedOutcome("UNLINKED")}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
-                  selectedOutcome === "UNLINKED"
-                    ? "bg-amber-600 border-amber-600 text-white shadow-sm"
-                    : "bg-white border-stone-200 text-stone-600 hover:bg-stone-50",
-                )}
-              >
-                🟡 Chưa liên kết (BPMN 7.1 Popup)
-              </button>
-              <button
-                onClick={() => setSelectedOutcome("FAILURE")}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
-                  selectedOutcome === "FAILURE"
-                    ? "bg-red-600 border-red-600 text-white shadow-sm"
-                    : "bg-white border-stone-200 text-stone-600 hover:bg-stone-50",
-                )}
-              >
-                🔴 Thất bại (BPMN 6.1 Nhập lại)
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* Onboarding welcome screen */}
         {currentStep === 1 && (
           <Panel className="p-8 text-center max-w-4xl mx-auto flex flex-col items-center">
@@ -2394,8 +2607,7 @@ function WarehousePage({ onToast }) {
             </h2>
             <p className="mt-2 text-sm text-stone-500 max-w-xl font-semibold leading-relaxed">
               Theo quy trình vận hành và quy định <b>Quản lý kho - MTTDL</b>,
-              bạn cần đăng ký liên kết tài khoản HDBiz và tạo kho lấy/trả hàng
-              mặc định để bắt đầu xử lý vận chuyển.
+              bạn cần tạo kho lấy/trả hàng mặc định để bắt đầu xử lý vận chuyển.
             </p>
 
             {/* Visual BPMN flow path */}
@@ -2425,7 +2637,7 @@ function WarehousePage({ onToast }) {
                     Bước 2
                   </div>
                   <div className="text-xs font-extrabold text-stone-700 mt-1">
-                    Mở form HDBiz
+                    Nhập thông tin
                   </div>
                   <div className="text-[10px] font-medium text-stone-400 mt-0.5">
                     Nhập & Ghim vị trí
@@ -2457,7 +2669,7 @@ function WarehousePage({ onToast }) {
                     Bước 4
                   </div>
                   <div className="text-xs font-extrabold text-stone-700 mt-1">
-                    Đã kết nối
+                    Hoàn tất
                   </div>
                   <div className="text-[10px] font-medium text-stone-400 mt-0.5">
                     Kích hoạt kho
@@ -2481,11 +2693,11 @@ function WarehousePage({ onToast }) {
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 mb-6">
               <div>
                 <h2 className="text-lg font-extrabold text-stone-900">
-                  Thiết lập Kho mặc định & Liên kết tài khoản
+                  Form Thêm Mới Kho Hàng
                 </h2>
                 <p className="text-xs text-stone-400 font-semibold mt-1">
-                  Bước 2 trong luồng BPMN: Nhập thông tin tài khoản HDBiz và
-                  thông tin vật lý của kho.
+                  Khởi tạo thông tin kho lấy hàng / trả hàng mặc định theo tài
+                  liệu Quản lý kho - MTTDL.
                 </p>
               </div>
               <button
@@ -2506,49 +2718,26 @@ function WarehousePage({ onToast }) {
             )}
 
             <form onSubmit={handleVerifyAndLink} className="space-y-6">
-              {/* Account linkage section */}
-              <div className="p-4 rounded-xl bg-stone-50 border border-stone-100 space-y-4">
-                <h3 className="text-xs font-extrabold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4 text-teal-700" />
-                  1. Tài khoản HDBiz (Webview Login)
-                </h3>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="text-xs font-bold text-stone-500">
-                      Tên đăng nhập HDBiz *
-                    </span>
-                    <input
-                      name="hdbizUser"
-                      type="text"
-                      value={formData.hdbizUser}
-                      onChange={handleInputChange}
-                      placeholder="Nhập tài khoản doanh nghiệp"
-                      className="vendor-input mt-1.5 h-10 w-full px-3 text-sm"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="text-xs font-bold text-stone-500">
-                      Mật khẩu HDBiz *
-                    </span>
-                    <input
-                      name="hdbizPass"
-                      type="password"
-                      value={formData.hdbizPass}
-                      onChange={handleInputChange}
-                      placeholder="••••••••"
-                      className="vendor-input mt-1.5 h-10 w-full px-3 text-sm"
-                    />
-                  </label>
-                </div>
-              </div>
-
               {/* Warehouse info section */}
               <div className="space-y-4">
                 <h3 className="text-xs font-extrabold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
                   <Boxes className="h-4 w-4 text-orange-600" />
-                  2. Thông tin kho hàng mặc định
+                  1. Thông tin kho hàng mặc định
                 </h3>
+
                 <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="text-xs font-bold text-stone-500">
+                      Quốc gia / Khu vực
+                    </span>
+                    <input
+                      type="text"
+                      value={formData.country || "Việt Nam"}
+                      readOnly
+                      className="vendor-input mt-1.5 h-10 w-full px-3 text-sm bg-stone-50 text-stone-400 cursor-not-allowed border-stone-200"
+                    />
+                  </label>
+
                   <label className="block">
                     <span className="text-xs font-bold text-stone-500">
                       Loại kho mặc định *
@@ -2563,7 +2752,9 @@ function WarehousePage({ onToast }) {
                       <option value="RETURN">Kho trả hàng (RETURN)</option>
                     </select>
                   </label>
+                </div>
 
+                <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block">
                     <span className="text-xs font-bold text-stone-500">
                       Tên kho hàng *
@@ -2581,9 +2772,7 @@ function WarehousePage({ onToast }) {
                       {formData.name.length}/50 ký tự
                     </span>
                   </label>
-                </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block">
                     <span className="text-xs font-bold text-stone-500">
                       Người liên hệ *
@@ -2597,7 +2786,9 @@ function WarehousePage({ onToast }) {
                       className="vendor-input mt-1.5 h-10 w-full px-3 text-sm"
                     />
                   </label>
+                </div>
 
+                <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block">
                     <span className="text-xs font-bold text-stone-500">
                       Số điện thoại *
@@ -2698,14 +2889,19 @@ function WarehousePage({ onToast }) {
               {/* Map mockup pinning */}
               <div className="space-y-3">
                 <span className="text-xs font-bold text-stone-500 block">
-                  3. Ghim tọa độ trên bản đồ (Click vào bản đồ để chọn tọa độ)
+                  2. Ghim tọa độ trên bản đồ (Click vào bản đồ để chọn tọa độ) *
                 </span>
 
                 <div className="grid gap-4 md:grid-cols-[1.6fr_0.4fr] items-stretch">
                   {/* Interactive Map Visual Grid */}
                   <div
                     onClick={handleMapClick}
-                    className="h-48 rounded-xl border border-stone-200 bg-stone-100 relative overflow-hidden cursor-crosshair select-none flex flex-col justify-end p-3"
+                    className={cn(
+                      "h-48 rounded-xl border-2 border-dashed flex flex-col justify-end p-3 relative overflow-hidden cursor-crosshair select-none transition-all duration-200",
+                      formData.isPinned
+                        ? "bg-emerald-50/70 border-emerald-500 text-emerald-800 shadow-sm"
+                        : "bg-stone-100 border-stone-200 text-stone-500 hover:bg-stone-50",
+                    )}
                     style={{
                       backgroundImage:
                         "radial-gradient(#ddd 1.5px, transparent 1.5px)",
@@ -2724,22 +2920,26 @@ function WarehousePage({ onToast }) {
                     </div>
 
                     {/* Glowing Pin Marker */}
-                    <div
-                      className="absolute h-8 w-8 -mt-8 -ml-4 transition-all duration-300 ease-out flex flex-col items-center pointer-events-none"
-                      style={{
-                        left: `${((formData.lng - 106.6602) / 0.08 + 0.5) * 100}%`,
-                        top: `${(0.5 - (formData.lat - 10.7626) / 0.08) * 100}%`,
-                      }}
-                    >
-                      <span className="text-orange-500 text-2xl filter drop-shadow">
-                        📍
-                      </span>
-                      <span className="animate-ping absolute top-0 h-4.5 w-4.5 rounded-full bg-orange-400 opacity-75"></span>
-                    </div>
+                    {formData.isPinned && (
+                      <div
+                        className="absolute h-8 w-8 -mt-8 -ml-4 transition-all duration-300 ease-out flex flex-col items-center pointer-events-none"
+                        style={{
+                          left: `${((formData.lng - 106.6602) / 0.08 + 0.5) * 100}%`,
+                          top: `${(0.5 - (formData.lat - 10.7626) / 0.08) * 100}%`,
+                        }}
+                      >
+                        <span className="text-orange-500 text-2xl filter drop-shadow">
+                          📍
+                        </span>
+                        <span className="animate-ping absolute top-0 h-4.5 w-4.5 rounded-full bg-orange-400 opacity-75"></span>
+                      </div>
+                    )}
 
-                    <div className="bg-stone-900/70 backdrop-blur-sm rounded-lg py-1 px-2.5 text-[10px] font-extrabold text-white self-start pointer-events-none flex items-center gap-1">
-                      <span className="text-teal-400">🗺️</span> Bản đồ mô phỏng
-                      vệ tinh (HCM/HN Center)
+                    <div className="bg-stone-900/70 backdrop-blur-sm rounded-lg py-1 px-2.5 text-[10px] font-extrabold text-white self-start pointer-events-none flex items-center gap-1 z-10">
+                      <span className="text-teal-400">🗺️</span>{" "}
+                      {formData.isPinned
+                        ? `Đã ghim vị trí (${formData.lat}, ${formData.lng})`
+                        : "Ghim vị trí chính xác trên bản đồ"}
                     </div>
                   </div>
 
@@ -2771,6 +2971,80 @@ function WarehousePage({ onToast }) {
                 </div>
               </div>
 
+              {/* Shipping Region (Khu vực vận chuyển) - Only shown from 2nd warehouse */}
+              {warehouses.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-extrabold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <Truck className="h-4 w-4 text-orange-600" />
+                    3. Khu vực vận chuyển *
+                  </h3>
+                  <p className="text-xs text-stone-400 font-semibold">
+                    Cho phép thiết lập kho này sẽ phục vụ giao hàng cho những
+                    vùng tỉnh/thành cụ thể nào.
+                  </p>
+                  <div className="flex flex-wrap gap-2.5 mt-2">
+                    {["Miền Bắc", "Miền Trung", "Miền Nam"].map((region) => {
+                      const isSelected =
+                        formData.shippingRegions?.includes(region);
+                      return (
+                        <button
+                          key={region}
+                          type="button"
+                          onClick={() => handleRegionToggle(region)}
+                          className={cn(
+                            "px-4 py-2 text-xs font-semibold rounded-full border transition-all duration-200 flex items-center gap-1.5",
+                            isSelected
+                              ? "bg-orange-50 border-orange-500 text-orange-700 shadow-sm font-bold scale-102"
+                              : "bg-white border-stone-200 text-stone-600 hover:bg-stone-50",
+                          )}
+                        >
+                          {isSelected && (
+                            <span className="text-orange-500">✓</span>
+                          )}
+                          {region}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Set Default (Cài đặt mặc định) Checkbox */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-extrabold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <BadgeCheck className="h-4 w-4 text-orange-600" />
+                  {warehouses.length === 0
+                    ? "3. Cài đặt mặc định"
+                    : "4. Cài đặt mặc định"}
+                </h3>
+                <label
+                  className={cn(
+                    "flex items-center space-x-3.5 p-3.5 border border-stone-200 rounded-xl transition-all",
+                    warehouses.length === 0
+                      ? "bg-stone-50 opacity-80 cursor-not-allowed"
+                      : "cursor-pointer hover:bg-stone-50",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    name="isDefault"
+                    checked={formData.isDefault}
+                    onChange={handleInputChange}
+                    disabled={warehouses.length === 0}
+                    className="w-5 h-5 text-orange-600 border-stone-300 rounded focus:ring-orange-500"
+                  />
+                  <div>
+                    <p className="font-extrabold text-stone-800 text-xs">
+                      Cài đặt làm Kho mặc định
+                    </p>
+                    <p className="text-[10px] text-stone-400 mt-0.5 leading-4 font-semibold">
+                      Tự động nhận tồn kho của sản phẩm mới được đăng bán khi có
+                      đơn.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
               {/* Form buttons */}
               <div className="pt-4 border-t border-stone-100 flex justify-end gap-3">
                 <button
@@ -2784,7 +3058,7 @@ function WarehousePage({ onToast }) {
                   type="submit"
                   className="vendor-primary-button px-6 font-extrabold"
                 >
-                  Xác nhận & Liên kết HDBiz
+                  Xác nhận & Khởi tạo kho
                 </button>
               </div>
             </form>
@@ -2997,87 +3271,22 @@ function WarehousePage({ onToast }) {
       </Panel>
 
       {/* Add warehouse modal (after onboarding) */}
-      {showNormalAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md border border-stone-100 overflow-hidden">
-            <div className="flex justify-between items-center p-4 border-b border-stone-100">
-              <h3 className="font-extrabold text-stone-900 text-sm">
-                Thêm kho hàng mới
-              </h3>
-              <button
-                onClick={() => setShowNormalAddModal(false)}
-                className="text-stone-400 hover:text-stone-600 font-bold"
-              >
-                &times;
-              </button>
-            </div>
-            <form
-              onSubmit={handleSaveNormalWarehouse}
-              className="p-4 space-y-4"
-            >
-              <label className="block">
-                <span className="text-xs font-bold text-stone-500">
-                  Tên kho *
-                </span>
-                <input
-                  name="w_name"
-                  type="text"
-                  className="vendor-input mt-1.5 h-9 w-full px-3 text-xs"
-                  required
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs font-bold text-stone-500">
-                  Người liên hệ *
-                </span>
-                <input
-                  name="w_contact"
-                  type="text"
-                  className="vendor-input mt-1.5 h-9 w-full px-3 text-xs"
-                  required
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs font-bold text-stone-500">
-                  Số điện thoại *
-                </span>
-                <input
-                  name="w_phone"
-                  type="text"
-                  className="vendor-input mt-1.5 h-9 w-full px-3 text-xs"
-                  required
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs font-bold text-stone-500">
-                  Địa chỉ *
-                </span>
-                <input
-                  name="w_addr"
-                  type="text"
-                  className="vendor-input mt-1.5 h-9 w-full px-3 text-xs"
-                  required
-                />
-              </label>
-              <div className="pt-3 border-t border-stone-100 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowNormalAddModal(false)}
-                  className="vendor-secondary-button text-xs py-1.5 px-3"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="vendor-primary-button text-xs py-1.5 px-3"
-                >
-                  Lưu lại
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddWarehouseModal
+        isOpen={showNormalAddModal}
+        onClose={() => setShowNormalAddModal(false)}
+        onSave={handleSaveNormalWarehouse}
+        currentTab={activeTab}
+        existingWarehouses={warehouses.map((w) => ({
+          id: w.id,
+          warehouse_type: w.type,
+          warehouse_name: w.name,
+          contact_name: w.contact,
+          phone_number: w.phone,
+          address: w.address,
+          is_default: w.isDefault,
+          status: w.status === "Đang hoạt động" ? "ACTIVE" : "INACTIVE",
+        }))}
+      />
     </div>
   );
 }
@@ -3490,9 +3699,11 @@ function MarketResearchPage({ onToast }) {
     () => [vendorParentCategory],
     [vendorParentCategory],
   );
-  const defaultCategoryId = getVendorMarketDefaultCategoryId(vendorParentCategory);
+  const defaultCategoryId =
+    getVendorMarketDefaultCategoryId(vendorParentCategory);
   const quickCategories = getVendorMarketQuickCategories(vendorParentCategory);
-  const [selectedCategoryId, setSelectedCategoryId] = useState(defaultCategoryId);
+  const [selectedCategoryId, setSelectedCategoryId] =
+    useState(defaultCategoryId);
   const [source, setSource] = useState("");
   const [query, setQuery] = useState("");
   const [lastSync, setLastSync] = useState("08:45 hôm nay");
@@ -3640,19 +3851,26 @@ function MarketResearchPage({ onToast }) {
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-stone-50 px-3 py-2">
               <Store className="h-4 w-4 text-orange-500" />
               <span className="min-w-0 truncate">
-                Ngành đăng ký: <strong className="text-stone-800">{vendorParentCategory.name}</strong>
+                Ngành đăng ký:{" "}
+                <strong className="text-stone-800">
+                  {vendorParentCategory.name}
+                </strong>
               </span>
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-stone-50 px-3 py-2">
               <ChevronRight className="h-4 w-4 text-orange-500" />
               <span className="min-w-0 truncate">
-                Đường dẫn: <strong className="text-stone-800">{selectedBreadcrumb}</strong>
+                Đường dẫn:{" "}
+                <strong className="text-stone-800">{selectedBreadcrumb}</strong>
               </span>
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-stone-50 px-3 py-2">
               <Search className="h-4 w-4 text-teal-700" />
               <span className="min-w-0 truncate">
-                Từ khóa: <strong className="text-stone-800">{selectedMarket.keyword}</strong>
+                Từ khóa:{" "}
+                <strong className="text-stone-800">
+                  {selectedMarket.keyword}
+                </strong>
               </span>
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-stone-50 px-3 py-2">
@@ -3661,7 +3879,8 @@ function MarketResearchPage({ onToast }) {
             </span>
             {!registeredCategoryValue && (
               <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-amber-700">
-                Chưa thấy hạng mục từ phiên đăng nhập, đang dùng ngành mặc định để demo.
+                Chưa thấy hạng mục từ phiên đăng nhập, đang dùng ngành mặc định
+                để demo.
               </span>
             )}
           </div>
@@ -3811,7 +4030,9 @@ function MarketResearchPage({ onToast }) {
                         {item.source.slice(0, 2).toUpperCase()}
                       </span>
                       <div>
-                        <p className="font-extrabold text-stone-900">{item.source}</p>
+                        <p className="font-extrabold text-stone-900">
+                          {item.source}
+                        </p>
                         <p className="mt-1 text-xs font-semibold text-stone-400">
                           {selectedMarket.keyword}
                         </p>
@@ -3827,9 +4048,15 @@ function MarketResearchPage({ onToast }) {
                   <td className="px-5 py-4 font-semibold text-stone-500">
                     {formatCurrency(item.max)}
                   </td>
-                  <td className="px-5 py-4 font-semibold text-stone-600">{item.sales}</td>
-                  <td className="px-5 py-4 font-semibold text-stone-600">{item.rating}/5</td>
-                  <td className="px-5 py-4 font-semibold text-stone-600">{item.promo}</td>
+                  <td className="px-5 py-4 font-semibold text-stone-600">
+                    {item.sales}
+                  </td>
+                  <td className="px-5 py-4 font-semibold text-stone-600">
+                    {item.rating}/5
+                  </td>
+                  <td className="px-5 py-4 font-semibold text-stone-600">
+                    {item.promo}
+                  </td>
                   <td className="px-5 py-4">
                     <div className="flex min-w-32 items-center gap-2">
                       <div className="h-2 flex-1 overflow-hidden rounded-full bg-stone-100">
@@ -3855,8 +4082,16 @@ function MarketResearchPage({ onToast }) {
 }
 
 function VendorMarketPriceChart({ sources, recommendedPrice, shopPrice }) {
-  const maxPrice = Math.max(...sources.map((item) => item.max), recommendedPrice, shopPrice);
-  const minPrice = Math.min(...sources.map((item) => item.min), recommendedPrice, shopPrice);
+  const maxPrice = Math.max(
+    ...sources.map((item) => item.max),
+    recommendedPrice,
+    shopPrice,
+  );
+  const minPrice = Math.min(
+    ...sources.map((item) => item.min),
+    recommendedPrice,
+    shopPrice,
+  );
   const range = maxPrice - minPrice || 1;
 
   const toPercent = (value) => ((value - minPrice) / range) * 100;
@@ -3898,10 +4133,17 @@ function VendorMarketPriceChart({ sources, recommendedPrice, shopPrice }) {
           const width = toPercent(item.max) - left;
           const avg = toPercent(item.avg);
           return (
-            <div key={item.source} className="grid gap-2 sm:grid-cols-[124px_1fr_98px] sm:items-center">
+            <div
+              key={item.source}
+              className="grid gap-2 sm:grid-cols-[124px_1fr_98px] sm:items-center"
+            >
               <div className="min-w-0">
-                <p className="truncate text-sm font-extrabold text-stone-700">{item.source}</p>
-                <p className="text-[11px] font-semibold text-stone-400">{item.sales} lượt bán</p>
+                <p className="truncate text-sm font-extrabold text-stone-700">
+                  {item.source}
+                </p>
+                <p className="text-[11px] font-semibold text-stone-400">
+                  {item.sales} lượt bán
+                </p>
               </div>
               <div className="relative h-8 rounded-full bg-stone-100">
                 <span
@@ -3933,7 +4175,9 @@ function MarketInsightRow({ icon: Icon, label, value }) {
       </span>
       <div className="min-w-0">
         <p className="text-xs font-bold text-stone-400">{label}</p>
-        <p className="mt-1 truncate text-sm font-extrabold text-stone-800">{value}</p>
+        <p className="mt-1 truncate text-sm font-extrabold text-stone-800">
+          {value}
+        </p>
       </div>
     </div>
   );
