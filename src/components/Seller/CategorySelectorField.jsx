@@ -235,7 +235,12 @@ function flattenLeaves(nodes, prefix = '') {
  *  - Cột 3: Danh mục cấp 3 (leaf — có thể chọn)
  * Hỗ trợ search toàn bộ
  */
-export function CategorySelectorField({ value, onChange, error }) {
+export function CategorySelectorField({
+  value,
+  onChange,
+  error,
+  categories = ELECTRONICS_CATEGORIES,
+}) {
   const [open, setOpen] = useState(false);
   const [l1Id, setL1Id] = useState(null);
   const [l2Id, setL2Id] = useState(null);
@@ -243,15 +248,15 @@ export function CategorySelectorField({ value, onChange, error }) {
   const containerRef = useRef(null);
 
   // Computed
-  const selectedPath = value ? findPath(ELECTRONICS_CATEGORIES, value) : null;
+  const selectedPath = value ? findPath(categories, value) : null;
   const breadcrumb = selectedPath
     ? selectedPath.map((n) => n.name).join(' > ')
     : null;
 
-  const l1Node = l1Id ? findNode(ELECTRONICS_CATEGORIES, l1Id) : null;
-  const l2Node = l2Id ? findNode(ELECTRONICS_CATEGORIES, l2Id) : null;
+  const l1Node = l1Id ? findNode(categories, l1Id) : null;
+  const l2Node = l2Id ? findNode(categories, l2Id) : null;
 
-  const allLeaves = flattenLeaves(ELECTRONICS_CATEGORIES);
+  const allLeaves = flattenLeaves(categories);
   const searchResults = search.trim()
     ? allLeaves.filter((l) =>
         l.fullName.toLowerCase().includes(search.toLowerCase())
@@ -414,7 +419,7 @@ export function CategorySelectorField({ value, onChange, error }) {
             <div className="flex" style={{ height: '260px' }}>
               {/* Cột 1: Danh mục cấp 1 */}
               <div className="w-1/3 border-r border-slate-100 overflow-y-auto py-1">
-                {ELECTRONICS_CATEGORIES.map((cat) => (
+                {categories.map((cat) => (
                   <button
                     key={cat.id}
                     type="button"
