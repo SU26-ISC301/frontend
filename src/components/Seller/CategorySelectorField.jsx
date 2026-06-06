@@ -183,6 +183,11 @@ export const ELECTRONICS_CATEGORIES = [
   },
 ];
 
+export const SELLER_PARENT_CATEGORIES = ELECTRONICS_CATEGORIES.map(({ id, name }) => ({
+  id,
+  name,
+}));
+
 // Helper: tìm node theo id (bất kỳ cấp)
 function findNode(nodes, id) {
   for (const node of nodes) {

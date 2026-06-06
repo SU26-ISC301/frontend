@@ -18,6 +18,7 @@ import { Input } from '../ui/input';
 import { cn } from '../../lib/utils';
 import { sellerApi } from '../../api/sellerAPI';
 import { authApi } from '../../api/authAPI';
+import { SELLER_PARENT_CATEGORIES } from './CategorySelectorField';
 
 const MAX_IMAGE_SIZE_MB = 5;
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -31,16 +32,6 @@ const initialForm = {
   phone: '',
   taxCode: '',
 };
-
-const categories = [
-  'Thời trang',
-  'Mỹ phẩm',
-  'Điện tử',
-  'Gia dụng',
-  'Mẹ và bé',
-  'Sách',
-  'Văn phòng phẩm',
-];
 
 const disabledInputClass = 'cursor-not-allowed bg-gray-100 text-gray-500';
 
@@ -540,27 +531,34 @@ export function SellerRegisterDetailsStep({ email, otpResult, credentials, onNex
                 className="input-field min-h-28 resize-y"
               />
             </div>
-            <div className="space-y-1.5">
-              <label htmlFor="category" className="block text-sm font-semibold text-brand-dark/80">
-                Danh mục bán hàng *
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-brand-dark/80">
+                Hạng Mục *
               </label>
-              <select
-                id="category"
-                name="category"
-                value={form.category}
-                onChange={handleChange}
-                className={cn(
-                  'input-field',
-                  errors.category && 'border-red-400 focus:border-red-500 focus:ring-red-500/15'
-                )}
-              >
-                <option value="">Chọn danh mục</option>
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {SELLER_PARENT_CATEGORIES.map((category) => {
+                  const active = form.category === category.id;
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => {
+                        setForm((prev) => ({ ...prev, category: category.id }));
+                        setErrors((prev) => ({ ...prev, category: '' }));
+                      }}
+                      aria-pressed={active}
+                      className={cn(
+                        'min-h-12 rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-all',
+                        active
+                          ? 'border-orange-400 bg-orange-50 text-orange-700 ring-4 ring-orange-500/10'
+                          : 'border-gray-200 bg-white text-slate-600 hover:border-orange-200 hover:bg-orange-50/40'
+                      )}
+                    >
+                      {category.name}
+                    </button>
+                  );
+                })}
+              </div>
               {errors.category && (
                 <p className="text-xs font-medium text-red-500">{errors.category}</p>
               )}
