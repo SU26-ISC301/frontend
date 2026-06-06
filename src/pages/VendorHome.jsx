@@ -50,6 +50,7 @@ import {
   CategorySelectorField,
   ELECTRONICS_CATEGORIES,
 } from "../components/Seller/CategorySelectorField";
+import AddWarehouseModal from "../components/Seller/Warehouse/AddWarehouseModal";
 
 const navItems = [
   { slug: "trangchu", label: "Tổng quan", icon: LayoutDashboard },
