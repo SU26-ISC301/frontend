@@ -46,6 +46,10 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { vendorMessageApi } from "../api/vendorMessageAPI";
+import {
+  CategorySelectorField,
+  ELECTRONICS_CATEGORIES,
+} from "../components/Seller/CategorySelectorField";
 
 const navItems = [
   { slug: "trangchu", label: "Tổng quan", icon: LayoutDashboard },
@@ -54,6 +58,7 @@ const navItems = [
   { slug: "van-chuyen", label: "Vận chuyển", icon: Truck },
   { slug: "kho-hang", label: "Kho hàng", icon: Warehouse },
   { slug: "tin-nhan", label: "Tin nhắn", icon: MessageSquareText },
+  { slug: "nghien-cuu-thi-truong", label: "Nghiên cứu thị trường", icon: TrendingUp },
   { slug: "marketing", label: "Marketing", icon: TicketPercent },
   { slug: "tai-chinh", label: "Tài chính", icon: WalletCards },
   { slug: "cai-dat-shop", label: "Cài đặt shop", icon: Settings },
@@ -83,6 +88,10 @@ const pageTitles = {
   "tin-nhan": [
     "Tin nhắn khách hàng",
     "Phản hồi nhanh để duy trì điểm chăm sóc khách hàng của shop.",
+  ],
+  "nghien-cuu-thi-truong": [
+    "Nghiên cứu thị trường",
+    "So sánh giá theo hạng mục, theo dõi nguồn bán và gợi ý mức giá cho shop.",
   ],
   marketing: [
     "Marketing",
@@ -256,6 +265,114 @@ const products = [
   },
 ];
 
+const marketResearchSamples = [
+  {
+    id: "op-lung-bao-da",
+    name: "Ốp lưng & Bao da",
+    keyword: "Ốp lưng MagSafe iPhone 15 Pro Max",
+    demand: 86,
+    trend: "+12,6%",
+    recommendedPrice: 249000,
+    shopPrice: 269000,
+    marketAverage: 272000,
+    sampleCount: 214,
+    status: "Có cơ hội",
+    strategy:
+      "Giữ giá quanh 249.000đ, tạo combo với cáp sạc để tăng giá trị giỏ hàng thay vì giảm giá sâu.",
+    sources: [
+      { source: "CellphoneS", min: 259000, avg: 289000, max: 329000, sales: "2.900+", rating: 4.8, promo: "Mua kèm giảm 10%", trust: 94 },
+      { source: "FPT Shop", min: 279000, avg: 309000, max: 349000, sales: "1.600+", rating: 4.7, promo: "Bảo hành 12 tháng", trust: 93 },
+      { source: "Shopee Mall", min: 219000, avg: 252000, max: 299000, sales: "9.800+", rating: 4.6, promo: "Flash voucher", trust: 82 },
+      { source: "TikTok Shop", min: 199000, avg: 238000, max: 289000, sales: "7.400+", rating: 4.5, promo: "Live deal", trust: 78 },
+      { source: "TopZone", min: 299000, avg: 339000, max: 399000, sales: "840+", rating: 4.9, promo: "Hàng Apple MFi", trust: 97 },
+    ],
+  },
+  {
+    id: "dien-thoai-thong-minh",
+    name: "Điện thoại thông minh",
+    keyword: "iPhone 15 Pro Max 256GB",
+    demand: 92,
+    trend: "+8,4%",
+    recommendedPrice: 29290000,
+    shopPrice: 29990000,
+    marketAverage: 30180000,
+    sampleCount: 126,
+    status: "Nên cạnh tranh",
+    strategy:
+      "Giữ giá thấp hơn trung bình thị trường 2-3%, ưu tiên quà tặng phụ kiện và bảo hành mở rộng.",
+    sources: [
+      { source: "TopZone", min: 29990000, avg: 30990000, max: 31990000, sales: "1.240+", rating: 4.9, promo: "Trả góp 0%", trust: 98 },
+      { source: "FPT Shop", min: 29790000, avg: 30590000, max: 31590000, sales: "980+", rating: 4.8, promo: "Voucher 800K", trust: 96 },
+      { source: "CellphoneS", min: 29490000, avg: 30290000, max: 31290000, sales: "1.560+", rating: 4.8, promo: "Giảm 1 triệu", trust: 95 },
+      { source: "Shopee Mall", min: 28890000, avg: 29820000, max: 30990000, sales: "3.800+", rating: 4.7, promo: "Freeship + voucher", trust: 89 },
+      { source: "TikTok Shop", min: 28690000, avg: 29650000, max: 30690000, sales: "2.100+", rating: 4.6, promo: "Flash sale", trust: 84 },
+    ],
+  },
+  {
+    id: "laptop",
+    name: "Máy tính xách tay",
+    keyword: "MacBook Air M2 13 inch 256GB",
+    demand: 78,
+    trend: "+3,1%",
+    recommendedPrice: 21990000,
+    shopPrice: 22490000,
+    marketAverage: 22720000,
+    sampleCount: 84,
+    status: "Theo dõi",
+    strategy:
+      "Không cần đua giá quá mạnh; nhấn bảo hành, đổi trả và hỗ trợ kỹ thuật để giữ biên lợi nhuận.",
+    sources: [
+      { source: "TopZone", min: 22490000, avg: 22990000, max: 23690000, sales: "680+", rating: 4.9, promo: "Trả góp 0%", trust: 98 },
+      { source: "FPT Shop", min: 22290000, avg: 22850000, max: 23590000, sales: "720+", rating: 4.8, promo: "Voucher 500K", trust: 96 },
+      { source: "CellphoneS", min: 21990000, avg: 22690000, max: 23390000, sales: "940+", rating: 4.8, promo: "Balo + Office", trust: 95 },
+      { source: "Shopee Mall", min: 21490000, avg: 22190000, max: 22990000, sales: "1.870+", rating: 4.7, promo: "Mã giảm 5%", trust: 88 },
+    ],
+  },
+  {
+    id: "tai-nghe-bluetooth",
+    name: "Tai nghe Bluetooth",
+    keyword: "Tai nghe bluetooth chống ồn",
+    demand: 81,
+    trend: "+6,9%",
+    recommendedPrice: 1290000,
+    shopPrice: 1390000,
+    marketAverage: 1385000,
+    sampleCount: 148,
+    status: "Nên chạy quảng cáo",
+    strategy:
+      "Tối ưu video demo chống ồn, chạy voucher khách mới và đẩy review thật để cạnh tranh với sàn.",
+    sources: [
+      { source: "Shopee Mall", min: 1190000, avg: 1320000, max: 1490000, sales: "5.200+", rating: 4.7, promo: "Voucher 12%", trust: 86 },
+      { source: "TikTok Shop", min: 1090000, avg: 1260000, max: 1450000, sales: "4.600+", rating: 4.6, promo: "Live sale", trust: 80 },
+      { source: "CellphoneS", min: 1350000, avg: 1490000, max: 1690000, sales: "1.100+", rating: 4.8, promo: "Bảo hành chính hãng", trust: 95 },
+      { source: "FPT Shop", min: 1390000, avg: 1530000, max: 1720000, sales: "940+", rating: 4.8, promo: "Trả góp 0%", trust: 94 },
+    ],
+  },
+  {
+    id: "dong-ho-thong-minh",
+    name: "Đồng hồ thông minh",
+    keyword: "Apple Watch SE GPS 40mm",
+    demand: 74,
+    trend: "-1,8%",
+    recommendedPrice: 5890000,
+    shopPrice: 6090000,
+    marketAverage: 6210000,
+    sampleCount: 72,
+    status: "Cẩn trọng tồn kho",
+    strategy:
+      "Giữ tồn kho vừa phải, bán kèm dây đeo và bảo hành mở rộng để tăng giá trị đơn hàng.",
+    sources: [
+      { source: "TopZone", min: 6190000, avg: 6490000, max: 6990000, sales: "520+", rating: 4.9, promo: "Thu cũ đổi mới", trust: 98 },
+      { source: "FPT Shop", min: 5990000, avg: 6290000, max: 6790000, sales: "610+", rating: 4.8, promo: "Voucher 300K", trust: 96 },
+      { source: "CellphoneS", min: 5790000, avg: 6120000, max: 6590000, sales: "780+", rating: 4.8, promo: "Tặng dây đeo", trust: 95 },
+      { source: "Shopee Mall", min: 5590000, avg: 5920000, max: 6390000, sales: "1.900+", rating: 4.6, promo: "Freeship", trust: 85 },
+    ],
+  },
+];
+
+const DEFAULT_VENDOR_MARKET_CATEGORY_ID = "op-lung-bao-da";
+const DEFAULT_VENDOR_PARENT_CATEGORY_ID = "dt-do-dien-tu";
+
 const shipments = [
   {
     id: "GHN-78422",
@@ -364,6 +481,184 @@ function getVendorInfo() {
 
 function formatCurrency(value) {
   return `${new Intl.NumberFormat("vi-VN").format(value)}đ`;
+}
+
+function formatShortCurrency(value) {
+  if (value >= 1000000) {
+    return `${new Intl.NumberFormat("vi-VN", {
+      maximumFractionDigits: 1,
+    }).format(value / 1000000)}tr`;
+  }
+  return `${new Intl.NumberFormat("vi-VN").format(value / 1000)}K`;
+}
+
+function findVendorCategoryPath(nodes, targetId, path = []) {
+  for (const node of nodes) {
+    const nextPath = [...path, node];
+    if (node.id === targetId) return nextPath;
+    if (node.children) {
+      const found = findVendorCategoryPath(node.children, targetId, nextPath);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function normalizeCategoryText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getCategoryLeaves(node) {
+  if (!node.children?.length) return [node];
+  return node.children.flatMap(getCategoryLeaves);
+}
+
+function categoryContainsId(node, categoryId) {
+  if (!node || !categoryId) return false;
+  if (node.id === categoryId) return true;
+  return node.children?.some((child) => categoryContainsId(child, categoryId)) || false;
+}
+
+function getFirstLeafCategoryId(node) {
+  return getCategoryLeaves(node)[0]?.id || node?.id || DEFAULT_VENDOR_MARKET_CATEGORY_ID;
+}
+
+function getVendorRegisteredCategoryValue(vendorInfo = {}) {
+  const readValue = (value) => {
+    if (!value) return "";
+    if (typeof value === "object") {
+      return (
+        value.id ||
+        value.categoryId ||
+        value.name ||
+        value.displayName ||
+        value.value ||
+        ""
+      );
+    }
+    return value;
+  };
+
+  const candidates = [
+    vendorInfo.category,
+    vendorInfo.vendorCategory,
+    vendorInfo.businessCategory,
+    vendorInfo.businessCategoryId,
+    vendorInfo.mainCategory,
+    vendorInfo.mainCategoryId,
+    vendorInfo.categoryId,
+    vendorInfo.vendor?.category,
+    vendorInfo.vendor?.categoryId,
+    vendorInfo.profile?.category,
+    vendorInfo.profile?.categoryId,
+  ];
+
+  return candidates.map(readValue).find(Boolean) || "";
+}
+
+function getVendorParentCategory(vendorInfo = {}) {
+  const rawCategory = getVendorRegisteredCategoryValue(vendorInfo);
+  const normalized = normalizeCategoryText(rawCategory);
+  const aliases = {
+    "dien-tu": "dt-do-dien-tu",
+    "dien-thoai-do-dien-tu": "dt-do-dien-tu",
+    "dt-do-dien-tu": "dt-do-dien-tu",
+    "may-tinh-thiet-bi-van-phong": "may-tinh-van-phong",
+    "may-tinh-van-phong": "may-tinh-van-phong",
+    "thiet-bi-mang": "thiet-bi-mang",
+    "tv-thiet-bi-giai-tri": "tv-giai-tri",
+    "tv-giai-tri": "tv-giai-tri",
+  };
+  const targetId = aliases[normalized] || rawCategory;
+
+  return (
+    ELECTRONICS_CATEGORIES.find(
+      (category) =>
+        category.id === targetId ||
+        normalizeCategoryText(category.id) === normalized ||
+        normalizeCategoryText(category.name) === normalized,
+    ) ||
+    ELECTRONICS_CATEGORIES.find(
+      (category) => category.id === DEFAULT_VENDOR_PARENT_CATEGORY_ID,
+    ) ||
+    ELECTRONICS_CATEGORIES[0]
+  );
+}
+
+function getVendorMarketDefaultCategoryId(parentCategory) {
+  const sample = marketResearchSamples.find((category) =>
+    categoryContainsId(parentCategory, category.id),
+  );
+  return sample?.id || getFirstLeafCategoryId(parentCategory);
+}
+
+function getVendorMarketQuickCategories(parentCategory) {
+  const sampleCategories = marketResearchSamples
+    .filter((category) => categoryContainsId(parentCategory, category.id))
+    .map(({ id, name }) => ({ id, name }));
+  const leafCategories = getCategoryLeaves(parentCategory)
+    .slice(0, 6)
+    .map(({ id, name }) => ({ id, name }));
+  const unique = new Map();
+
+  [...sampleCategories, ...leafCategories].forEach((category) => {
+    unique.set(category.id, category);
+  });
+
+  return Array.from(unique.values()).slice(0, 6);
+}
+
+function buildVendorMarketFallback(categoryId) {
+  const path = findVendorCategoryPath(ELECTRONICS_CATEGORIES, categoryId) || [];
+  const leaf = path.at(-1) || { id: categoryId, name: "Hạng mục đang chọn" };
+  const seed = [...leaf.id].reduce((total, char) => total + char.charCodeAt(0), 0);
+  const basePrice = 180000 + (seed % 34) * 85000;
+  const sourceTemplates = [
+    ["Shopee Mall", 0.86, 1.02, 1.18, "3.200+", 4.6, "Voucher ngành hàng", 84],
+    ["TikTok Shop", 0.82, 0.98, 1.13, "2.600+", 4.5, "Deal livestream", 79],
+    ["CellphoneS", 0.98, 1.08, 1.22, "780+", 4.8, "Bảo hành chính hãng", 94],
+    ["FPT Shop", 1.02, 1.12, 1.26, "640+", 4.7, "Trả góp 0%", 93],
+  ];
+  const marketAverage = Math.round((basePrice * 1.08) / 10000) * 10000;
+  const recommendedPrice = Math.round((basePrice * 0.98) / 10000) * 10000;
+
+  return {
+    id: leaf.id,
+    name: leaf.name,
+    keyword: leaf.name,
+    demand: 68 + (seed % 24),
+    trend: seed % 3 === 0 ? "-1,6%" : `+${2 + (seed % 8)},4%`,
+    recommendedPrice,
+    shopPrice: Math.round((basePrice * 1.04) / 10000) * 10000,
+    marketAverage,
+    sampleCount: 54 + (seed % 96),
+    status: seed % 3 === 0 ? "Theo dõi" : "Có cơ hội",
+    strategy: `Dùng dữ liệu mẫu cho ${path.map((item) => item.name).join(" > ") || leaf.name}; nên kiểm tra thêm giá thực tế trước khi nhập hàng hoặc chạy khuyến mãi.`,
+    sources: sourceTemplates.map(([source, minFactor, avgFactor, maxFactor, sales, rating, promo, trust]) => ({
+      source,
+      min: Math.round((basePrice * minFactor) / 10000) * 10000,
+      avg: Math.round((basePrice * avgFactor) / 10000) * 10000,
+      max: Math.round((basePrice * maxFactor) / 10000) * 10000,
+      sales,
+      rating,
+      promo,
+      trust,
+    })),
+  };
+}
+
+function getVendorMarketCategory(categoryId) {
+  return (
+    marketResearchSamples.find((category) => category.id === categoryId) ||
+    buildVendorMarketFallback(categoryId)
+  );
 }
 
 function getTodayLabel() {
@@ -3187,6 +3482,463 @@ function MessagesPage({ onToast }) {
   );
 }
 
+function MarketResearchPage({ onToast }) {
+  const vendorInfo = getVendorInfo();
+  const registeredCategoryValue = getVendorRegisteredCategoryValue(vendorInfo);
+  const vendorParentCategory = getVendorParentCategory(vendorInfo);
+  const vendorCategoryTree = useMemo(
+    () => [vendorParentCategory],
+    [vendorParentCategory],
+  );
+  const defaultCategoryId = getVendorMarketDefaultCategoryId(vendorParentCategory);
+  const quickCategories = getVendorMarketQuickCategories(vendorParentCategory);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(defaultCategoryId);
+  const [source, setSource] = useState("");
+  const [query, setQuery] = useState("");
+  const [lastSync, setLastSync] = useState("08:45 hôm nay");
+  const selectedMarket = getVendorMarketCategory(selectedCategoryId);
+  const selectedPath =
+    findVendorCategoryPath(vendorCategoryTree, selectedCategoryId) || [];
+  const selectedBreadcrumb =
+    selectedPath.map((item) => item.name).join(" > ") || selectedMarket.name;
+  const sourceOptions = Array.from(
+    new Set(selectedMarket.sources.map((item) => item.source)),
+  );
+  const filteredSources = selectedMarket.sources.filter((item) => {
+    const matchesSource = !source || item.source === source;
+    const matchesQuery = `${item.source} ${item.promo}`
+      .toLowerCase()
+      .includes(query.trim().toLowerCase());
+    return matchesSource && matchesQuery;
+  });
+  const lowestSource = selectedMarket.sources.reduce(
+    (best, item) => (item.min < best.min ? item : best),
+    selectedMarket.sources[0],
+  );
+  const priceGap = selectedMarket.shopPrice - selectedMarket.recommendedPrice;
+  const priceGapPercent = Math.round(
+    (priceGap / selectedMarket.recommendedPrice) * 100,
+  );
+
+  useEffect(() => {
+    if (!categoryContainsId(vendorParentCategory, selectedCategoryId)) {
+      setSelectedCategoryId(defaultCategoryId);
+      setSource("");
+      setQuery("");
+    }
+  }, [defaultCategoryId, selectedCategoryId, vendorParentCategory]);
+
+  const resetFilters = () => {
+    setSource("");
+    setQuery("");
+  };
+
+  const syncMarketData = () => {
+    const now = new Intl.DateTimeFormat("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date());
+    setLastSync(`${now} hôm nay`);
+    onToast({
+      title: "Đã cập nhật dữ liệu mẫu",
+      message: `${selectedMarket.name} đã được làm mới trong ngành ${vendorParentCategory.name}.`,
+    });
+  };
+
+  const exportMarketRows = () => {
+    downloadCsv(
+      `vendor-market-${selectedMarket.id}.csv`,
+      [
+        "Ngành đăng ký",
+        "Hạng mục",
+        "Từ khóa",
+        "Nguồn bán",
+        "Giá thấp nhất",
+        "Giá trung bình",
+        "Giá cao nhất",
+        "Lượt bán",
+        "Đánh giá",
+        "Khuyến mãi",
+        "Độ tin cậy",
+      ],
+      filteredSources.map((item) => [
+        vendorParentCategory.name,
+        selectedMarket.name,
+        selectedMarket.keyword,
+        item.source,
+        item.min,
+        item.avg,
+        item.max,
+        item.sales,
+        item.rating,
+        item.promo,
+        `${item.trust}%`,
+      ]),
+    );
+    onToast({
+      title: "Đã xuất nghiên cứu thị trường",
+      message: `${filteredSources.length} nguồn bán trong ngành ${vendorParentCategory.name} đã được tải xuống.`,
+    });
+  };
+
+  return (
+    <div className="space-y-5">
+      <Panel className="p-5">
+        <PanelHeader
+          title="Thị trường theo ngành đăng ký"
+          subtitle="Vendor chỉ xem dữ liệu tham khảo trong hạng mục kinh doanh chính của shop"
+        >
+          <button
+            type="button"
+            className="vendor-secondary-button"
+            onClick={exportMarketRows}
+          >
+            <Download className="h-4 w-4" />
+            Xuất báo cáo
+          </button>
+          <button
+            type="button"
+            className="vendor-primary-button"
+            onClick={syncMarketData}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Cập nhật
+          </button>
+        </PanelHeader>
+        <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_0.7fr]">
+          <div>
+            <CategorySelectorField
+              categories={vendorCategoryTree}
+              value={selectedCategoryId}
+              onChange={(categoryId) => {
+                setSelectedCategoryId(categoryId || defaultCategoryId);
+                resetFilters();
+              }}
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              {quickCategories.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategoryId(category.id);
+                    resetFilters();
+                  }}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs font-extrabold transition",
+                    selectedMarket.id === category.id
+                      ? "border-orange-300 bg-orange-50 text-orange-700"
+                      : "border-stone-200 bg-white text-stone-500 hover:border-orange-200 hover:bg-orange-50/60",
+                  )}
+                >
+                  {category.name}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-2 text-xs font-semibold text-stone-500 sm:grid-cols-2 xl:grid-cols-1">
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-stone-50 px-3 py-2">
+              <Store className="h-4 w-4 text-orange-500" />
+              <span className="min-w-0 truncate">
+                Ngành đăng ký: <strong className="text-stone-800">{vendorParentCategory.name}</strong>
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-stone-50 px-3 py-2">
+              <ChevronRight className="h-4 w-4 text-orange-500" />
+              <span className="min-w-0 truncate">
+                Đường dẫn: <strong className="text-stone-800">{selectedBreadcrumb}</strong>
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-stone-50 px-3 py-2">
+              <Search className="h-4 w-4 text-teal-700" />
+              <span className="min-w-0 truncate">
+                Từ khóa: <strong className="text-stone-800">{selectedMarket.keyword}</strong>
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-stone-50 px-3 py-2">
+              <RefreshCw className="h-4 w-4 text-stone-400" />
+              Cập nhật: {lastSync}
+            </span>
+            {!registeredCategoryValue && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-amber-700">
+                Chưa thấy hạng mục từ phiên đăng nhập, đang dùng ngành mặc định để demo.
+              </span>
+            )}
+          </div>
+        </div>
+      </Panel>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          stat={{
+            label: "Giá thị trường",
+            value: formatShortCurrency(selectedMarket.marketAverage),
+            change: selectedMarket.trend,
+            note: "xu hướng nhu cầu",
+            icon: BarChart3,
+            tone: "is-orange",
+          }}
+        />
+        <StatCard
+          stat={{
+            label: "Giá đề xuất",
+            value: formatShortCurrency(selectedMarket.recommendedPrice),
+            change:
+              priceGap > 0
+                ? `Shop cao hơn ${priceGapPercent}%`
+                : priceGap < 0
+                  ? `Shop thấp hơn ${Math.abs(priceGapPercent)}%`
+                  : "Sát đề xuất",
+            note: "so với giá shop",
+            icon: TicketPercent,
+            tone: "is-teal",
+          }}
+        />
+        <StatCard
+          stat={{
+            label: "Mẫu đối chiếu",
+            value: String(selectedMarket.sampleCount),
+            change: `${selectedMarket.sources.length} nguồn`,
+            note: "dữ liệu mock",
+            icon: Store,
+            tone: "is-green",
+          }}
+        />
+        <StatCard
+          stat={{
+            label: "Mức quan tâm",
+            value: `${selectedMarket.demand}/100`,
+            change: selectedMarket.status,
+            note: "cơ hội bán",
+            icon: TrendingUp,
+            tone: "is-yellow",
+          }}
+        />
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1.45fr_0.85fr]">
+        <Panel className="p-5">
+          <PanelHeader
+            title="Khoảng giá theo nguồn bán"
+            subtitle="So sánh giá thấp nhất, trung bình và cao nhất"
+          />
+          <VendorMarketPriceChart
+            sources={selectedMarket.sources}
+            recommendedPrice={selectedMarket.recommendedPrice}
+            shopPrice={selectedMarket.shopPrice}
+          />
+        </Panel>
+        <Panel className="p-5">
+          <PanelHeader
+            title="Gợi ý cho shop"
+            subtitle="Dùng khi thêm hoặc chỉnh sửa sản phẩm trong ngành đã đăng ký"
+          />
+          <div className="mt-4 space-y-3">
+            <MarketInsightRow
+              icon={TicketPercent}
+              label="Giá nên niêm yết"
+              value={formatCurrency(selectedMarket.recommendedPrice)}
+            />
+            <MarketInsightRow
+              icon={Store}
+              label="Nguồn giá thấp nhất"
+              value={`${lowestSource.source} - ${formatShortCurrency(lowestSource.min)}`}
+            />
+            <MarketInsightRow
+              icon={SlidersHorizontal}
+              label="Giá shop hiện tại"
+              value={formatCurrency(selectedMarket.shopPrice)}
+            />
+          </div>
+          <div className="mt-5 rounded-xl border border-orange-100 bg-orange-50/70 p-4">
+            <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange-700">
+              Chiến lược đề xuất
+            </p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-stone-700">
+              {selectedMarket.strategy}
+            </p>
+          </div>
+        </Panel>
+      </section>
+
+      <Panel className="overflow-hidden">
+        <div className="p-5">
+          <PanelHeader
+            title="Bảng so sánh nguồn bán"
+            subtitle={`Chỉ hiển thị nguồn tham khảo liên quan đến ${vendorParentCategory.name}`}
+          >
+            <Toolbar
+              query={query}
+              onQueryChange={setQuery}
+              onReset={resetFilters}
+              placeholder="Tìm nguồn bán hoặc khuyến mãi"
+            >
+              <SelectFilter
+                value={source}
+                onChange={setSource}
+                placeholder="Tất cả nguồn"
+                options={sourceOptions}
+              />
+            </Toolbar>
+          </PanelHeader>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[980px] text-left text-sm">
+            <thead className="vendor-table-head">
+              <tr>
+                {[
+                  "Nguồn bán",
+                  "Giá thấp nhất",
+                  "Giá TB",
+                  "Giá cao nhất",
+                  "Lượt bán",
+                  "Đánh giá",
+                  "Khuyến mãi",
+                  "Độ tin cậy",
+                ].map((column) => (
+                  <th key={column} className="px-5 py-3.5">
+                    {column}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {filteredSources.map((item) => (
+                <tr key={item.source} className="vendor-table-row">
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-50 font-extrabold text-orange-600">
+                        {item.source.slice(0, 2).toUpperCase()}
+                      </span>
+                      <div>
+                        <p className="font-extrabold text-stone-900">{item.source}</p>
+                        <p className="mt-1 text-xs font-semibold text-stone-400">
+                          {selectedMarket.keyword}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 font-extrabold text-teal-700">
+                    {formatCurrency(item.min)}
+                  </td>
+                  <td className="px-5 py-4 font-bold text-stone-800">
+                    {formatCurrency(item.avg)}
+                  </td>
+                  <td className="px-5 py-4 font-semibold text-stone-500">
+                    {formatCurrency(item.max)}
+                  </td>
+                  <td className="px-5 py-4 font-semibold text-stone-600">{item.sales}</td>
+                  <td className="px-5 py-4 font-semibold text-stone-600">{item.rating}/5</td>
+                  <td className="px-5 py-4 font-semibold text-stone-600">{item.promo}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex min-w-32 items-center gap-2">
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-stone-100">
+                        <div
+                          className="h-full rounded-full bg-teal-600"
+                          style={{ width: `${item.trust}%` }}
+                        />
+                      </div>
+                      <span className="w-9 text-right text-xs font-extrabold text-stone-700">
+                        {item.trust}%
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {filteredSources.length === 0 && <EmptyState />}
+      </Panel>
+    </div>
+  );
+}
+
+function VendorMarketPriceChart({ sources, recommendedPrice, shopPrice }) {
+  const maxPrice = Math.max(...sources.map((item) => item.max), recommendedPrice, shopPrice);
+  const minPrice = Math.min(...sources.map((item) => item.min), recommendedPrice, shopPrice);
+  const range = maxPrice - minPrice || 1;
+
+  const toPercent = (value) => ((value - minPrice) / range) * 100;
+
+  return (
+    <div className="mt-5 space-y-4">
+      <div className="relative h-11 rounded-lg bg-stone-50">
+        <span className="absolute left-0 top-0 text-[10px] font-bold text-stone-400">
+          {formatShortCurrency(minPrice)}
+        </span>
+        <span className="absolute right-0 top-0 text-[10px] font-bold text-stone-400">
+          {formatShortCurrency(maxPrice)}
+        </span>
+        {[
+          ["Giá đề xuất", recommendedPrice, "bg-teal-600", "text-teal-700"],
+          ["Giá shop", shopPrice, "bg-orange-500", "text-orange-700"],
+        ].map(([label, value, barClass, textClass], index) => (
+          <span
+            key={label}
+            className="absolute bottom-0 top-4 w-px"
+            style={{ left: `${toPercent(value)}%` }}
+          >
+            <span className={cn("block h-full w-px", barClass)} />
+            <span
+              className={cn(
+                "absolute top-6 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-2 py-0.5 text-[10px] font-extrabold shadow-sm",
+                textClass,
+              )}
+              style={{ marginTop: index ? 18 : 0 }}
+            >
+              {label}
+            </span>
+          </span>
+        ))}
+      </div>
+      <div className="space-y-3 pt-5">
+        {sources.map((item) => {
+          const left = toPercent(item.min);
+          const width = toPercent(item.max) - left;
+          const avg = toPercent(item.avg);
+          return (
+            <div key={item.source} className="grid gap-2 sm:grid-cols-[124px_1fr_98px] sm:items-center">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-extrabold text-stone-700">{item.source}</p>
+                <p className="text-[11px] font-semibold text-stone-400">{item.sales} lượt bán</p>
+              </div>
+              <div className="relative h-8 rounded-full bg-stone-100">
+                <span
+                  className="absolute top-1/2 h-3 -translate-y-1/2 rounded-full bg-orange-200"
+                  style={{ left: `${left}%`, width: `${Math.max(width, 4)}%` }}
+                />
+                <span
+                  className="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-orange-500 shadow-sm"
+                  style={{ left: `${avg}%` }}
+                  title={`Giá trung bình ${formatCurrency(item.avg)}`}
+                />
+              </div>
+              <p className="text-xs font-bold text-stone-500 sm:text-right">
+                {formatShortCurrency(item.avg)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MarketInsightRow({ icon: Icon, label, value }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-stone-100 bg-stone-50/70 p-3">
+      <span className="vendor-stat-icon is-teal h-9 w-9">
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-bold text-stone-400">{label}</p>
+        <p className="mt-1 truncate text-sm font-extrabold text-stone-800">{value}</p>
+      </div>
+    </div>
+  );
+}
+
 function MarketingPage({ onToast }) {
   return (
     <div className="space-y-5">
@@ -3569,6 +4321,7 @@ const pageComponents = {
   "van-chuyen": ShippingPage,
   "kho-hang": WarehousePage,
   "tin-nhan": MessagesPage,
+  "nghien-cuu-thi-truong": MarketResearchPage,
   marketing: MarketingPage,
   "tai-chinh": FinancePage,
   "cai-dat-shop": SettingsPage,
