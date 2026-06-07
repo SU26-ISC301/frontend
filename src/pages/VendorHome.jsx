@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, Navigate, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowUpRight,
+  AlertTriangle,
   BadgeCheck,
   Banknote,
   BarChart3,
@@ -51,6 +52,8 @@ import {
   ELECTRONICS_CATEGORIES,
 } from "../components/Seller/CategorySelectorField";
 import AddWarehouseModal from "../components/Seller/Warehouse/AddWarehouseModal";
+import WarehouseGoogleMap from "../components/Seller/Warehouse/WarehouseGoogleMap";
+import { VIETNAM_PROVINCES } from "../data/vietnamAdministrativeUnits";
 
 const navItems = [
   { slug: "trangchu", label: "Tổng quan", icon: LayoutDashboard },
@@ -87,8 +90,8 @@ const pageTitles = {
     "Quản lý lịch bàn giao và hiệu suất của đối tác vận chuyển.",
   ],
   "kho-hang": [
-    "Quản lý Kho vận",
-    "Thiết lập địa chỉ lấy hàng và trả hàng của Shop.",
+    "Kho hàng & lấy trả",
+    "Thiết lập địa chỉ lấy hàng, trả hàng và vùng phục vụ của shop.",
   ],
   "tin-nhan": [
     "Tin nhắn khách hàng",
@@ -2179,86 +2182,6 @@ function ProductsPage({ onToast, navigate }) {
   );
 }
 
-const VN_PROVINCES = [
-  {
-    name: "TP. Hồ Chí Minh",
-    districts: [
-      {
-        name: "Quận 1",
-        wards: [
-          "Phường Bến Nghé",
-          "Phường Bến Thành",
-          "Phường Đa Kao",
-          "Phường Nguyễn Thái Bình",
-        ],
-      },
-      {
-        name: "Quận 3",
-        wards: ["Phường Võ Thị Sáu", "Phường 1", "Phường 2", "Phường 5"],
-      },
-      {
-        name: "Quận Bình Thạnh",
-        wards: ["Phường 15", "Phường 25", "Phường 26", "Phường 27"],
-      },
-    ],
-  },
-  {
-    name: "Hà Nội",
-    districts: [
-      {
-        name: "Quận Hoàn Kiếm",
-        wards: [
-          "Phường Hàng Trống",
-          "Phường Hàng Bạc",
-          "Phường Hàng Bông",
-          "Phường Tràng Tiền",
-        ],
-      },
-      {
-        name: "Quận Hai Bà Trưng",
-        wards: [
-          "Phường Bách Khoa",
-          "Phường Đồng Tâm",
-          "Phường Quỳnh Lôi",
-          "Phường Lê Đại Hành",
-        ],
-      },
-      {
-        name: "Quận Cầu Giấy",
-        wards: [
-          "Phường Dịch Vọng",
-          "Phường Nghĩa Tân",
-          "Phường Quan Hoa",
-          "Phường Mai Dịch",
-        ],
-      },
-    ],
-  },
-  {
-    name: "Đà Nẵng",
-    districts: [
-      {
-        name: "Quận Hải Châu",
-        wards: [
-          "Phường Hòa Cường Bắc",
-          "Phường Hòa Cường Nam",
-          "Phường Thạch Thang",
-          "Phường Phước Ninh",
-        ],
-      },
-      {
-        name: "Quận Thanh Khê",
-        wards: [
-          "Phường An Khê",
-          "Phường Chính Gián",
-          "Phường Thạc Gián",
-          "Phường Hòa Khê",
-        ],
-      },
-    ],
-  },
-];
-
 const normalizeWarehouse = (w) => ({
   id: w.id || Date.now(),
   type: w.type || w.warehouse_type || "PICKUP",
@@ -2273,7 +2196,20 @@ const normalizeWarehouse = (w) => ({
       : "Tạm ngưng",
 });
 
-function WarehousePage({ onToast }) {
+const warehouseSetupSteps = [
+  ["1", "Nhập thông tin", "Tên kho, người phụ trách và loại kho"],
+  ["2", "Chọn địa chỉ", "Tỉnh thành, địa chỉ chi tiết và vị trí ghim"],
+  ["3", "Kiểm tra", "Hệ thống xác thực dữ liệu vận hành"],
+  ["4", "Kích hoạt", "Kho sẵn sàng nhận đơn và xử lý trả hàng"],
+];
+
+const warehouseSetupNotes = [
+  ["Dùng cho vận chuyển", "Đơn mới sẽ lấy địa chỉ này để điều phối bàn giao."],
+  ["Dùng cho trả hàng", "Khách và đối tác vận chuyển có điểm trả hàng rõ ràng."],
+  ["Có thể chỉnh sửa sau", "Bạn vẫn cập nhật được liên hệ, địa chỉ và trạng thái kho."],
+];
+
+function WarehousePage({ action, navigate, onToast }) {
   // Load warehouses from localStorage, default to empty to simulate "chưa tạo kho mặc định"
   const [warehouses, setWarehouses] = useState(() => {
     try {
@@ -2298,13 +2234,15 @@ function WarehousePage({ onToast }) {
     }
   });
 
-  const [currentStep, setCurrentStep] = useState(1); // 1: Welcome/BPMN, 2: Form, 3: Processing
+  const isCreateRoute = action === "tao-kho";
+  const [currentStep, setCurrentStep] = useState(isCreateRoute ? 2 : 1);
   const [selectedOutcome, setSelectedOutcome] = useState("LINKED"); // 'LINKED', 'UNLINKED', 'FAILURE'
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingLogs, setProcessingLogs] = useState([]);
   const [bpmnError, setBpmnError] = useState("");
   const [showUnlinkedPopup, setShowUnlinkedPopup] = useState(false);
   const [showNormalAddModal, setShowNormalAddModal] = useState(false);
+  const [locationMode, setLocationMode] = useState("manual");
 
   // Form State
   const [formData, setFormData] = useState({
@@ -2325,12 +2263,18 @@ function WarehousePage({ onToast }) {
   });
 
   // Geo selection options
-  const selectedProvinceData = VN_PROVINCES.find(
+  const selectedProvinceData = VIETNAM_PROVINCES.find(
     (p) => p.name === formData.province,
   );
   const selectedDistrictData = selectedProvinceData?.districts.find(
     (d) => d.name === formData.district,
   );
+
+  useEffect(() => {
+    if (!isOnboarding) return;
+    setCurrentStep(isCreateRoute ? 2 : 1);
+    setBpmnError("");
+  }, [isCreateRoute, isOnboarding]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -2343,8 +2287,12 @@ function WarehousePage({ onToast }) {
       if (name === "province") {
         updated.district = "";
         updated.ward = "";
+        updated.isPinned = false;
       } else if (name === "district") {
         updated.ward = "";
+        updated.isPinned = false;
+      } else if (name === "ward" || name === "addressDetail") {
+        updated.isPinned = false;
       }
       return updated;
     });
@@ -2364,34 +2312,44 @@ function WarehousePage({ onToast }) {
     });
   };
 
-  const handleMapClick = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // Map click relative coords to Vietnam coords centered near Saigon
-    const mockLat = 10.7626 + (0.5 - y / rect.height) * 0.08;
-    const mockLng = 106.6602 + (x / rect.width - 0.5) * 0.08;
-
+  const handleMapLocationChange = useCallback((location) => {
     setFormData((prev) => ({
       ...prev,
-      lat: parseFloat(mockLat.toFixed(6)),
-      lng: parseFloat(mockLng.toFixed(6)),
-      isPinned: true,
+      ...(location.province ? { province: location.province } : {}),
+      ...(location.district ? { district: location.district } : {}),
+      ...(location.ward ? { ward: location.ward } : {}),
+      ...(location.addressDetail
+        ? { addressDetail: location.addressDetail }
+        : {}),
+      ...(Number.isFinite(location.lat) ? { lat: location.lat } : {}),
+      ...(Number.isFinite(location.lng) ? { lng: location.lng } : {}),
+      isPinned: location.isPinned,
     }));
+    setBpmnError("");
+  }, []);
+
+  const handleLocationModeChange = (mode) => {
+    setLocationMode(mode);
+    setFormData((prev) => ({
+      ...prev,
+      isPinned: false,
+    }));
+    setBpmnError("");
   };
 
   const handleStartOnboarding = () => {
+    navigate("/vendor/kho-hang/tao-kho");
     setCurrentStep(2);
     setBpmnError("");
   };
 
   const handleCancelOnboarding = () => {
+    navigate("/vendor/kho-hang");
     setCurrentStep(1);
     setBpmnError("");
   };
 
-  // BPMN Service Check Simulation
+  // Service check simulation
   const handleVerifyAndLink = (e) => {
     e.preventDefault();
 
@@ -2400,10 +2358,11 @@ function WarehousePage({ onToast }) {
       !formData.name ||
       !formData.contact ||
       !formData.phone ||
-      !formData.province ||
-      !formData.district ||
-      !formData.ward ||
-      !formData.addressDetail
+      (locationMode === "manual" &&
+        (!formData.province ||
+          !formData.district ||
+          !formData.ward ||
+          !formData.addressDetail))
     ) {
       setBpmnError(
         "Vui lòng nhập đầy đủ các trường thông tin kho hàng bắt buộc!",
@@ -2435,9 +2394,9 @@ function WarehousePage({ onToast }) {
       return;
     }
 
-    if (!formData.isPinned) {
+    if (locationMode === "map" && !formData.isPinned) {
       setBpmnError(
-        "Bắt buộc phải ghim vị trí chính xác trên bản đồ để hệ thống tính toán khoảng cách và phân bổ shipper!",
+        "Vui lòng chọn vị trí trên Google Map và bấm Đồng ý!",
       );
       return;
     }
@@ -2456,13 +2415,12 @@ function WarehousePage({ onToast }) {
       });
     };
 
-    // Simulate step-by-step warehouse initialization check
     Promise.resolve()
-      .then(() => addLog("🔍 Kiểm tra tính hợp lệ của địa chỉ kho...", 600))
+      .then(() => addLog("Kiểm tra tính hợp lệ của địa chỉ kho...", 600))
       .then(() =>
-        addLog("🔄 Khởi tạo và thiết lập kho hàng trên hệ thống...", 1000),
+        addLog("Khởi tạo kho hàng trên hệ thống...", 1000),
       )
-      .then(() => addLog("⚙️ Hoàn tất liên kết kho mặc định...", 800))
+      .then(() => addLog("Hoàn tất liên kết kho mặc định...", 800))
       .then(() => {
         setTimeout(() => {
           setIsProcessing(false);
@@ -2470,7 +2428,7 @@ function WarehousePage({ onToast }) {
           if (selectedOutcome === "FAILURE") {
             // Step 6.1: Registration failure, back to editing with error message
             setBpmnError(
-              "❌ Đăng ký dịch vụ thất bại hoặc thông tin bị từ chối. Vui lòng kiểm tra lại thông tin và thử lại.",
+              "Đăng ký dịch vụ thất bại hoặc thông tin bị từ chối. Vui lòng kiểm tra lại thông tin và thử lại.",
             );
             setCurrentStep(2);
           } else if (selectedOutcome === "UNLINKED") {
@@ -2485,11 +2443,17 @@ function WarehousePage({ onToast }) {
               name: formData.name.trim(),
               contact: formData.contact.trim(),
               phone: formData.phone.trim(),
-              address: `${formData.addressDetail.trim()}, ${formData.ward}, ${formData.district}, ${formData.province}, Việt Nam`,
+              address:
+                locationMode === "manual"
+                  ? `${formData.addressDetail.trim()}, ${formData.ward}, ${formData.district}, ${formData.province}, Việt Nam`
+                  : `Vị trí đã chọn trên Google Map (${formData.lat}, ${formData.lng})`,
               isDefault: formData.isDefault,
               status: "Đang hoạt động",
               shippingRegions: formData.shippingRegions || [],
-              isPinned: formData.isPinned,
+              isPinned: locationMode === "map" ? formData.isPinned : false,
+              lat: locationMode === "map" ? formData.lat : null,
+              lng: locationMode === "map" ? formData.lng : null,
+              locationMode,
             };
 
             const updatedList = [...warehouses, newWarehouse];
@@ -2506,6 +2470,7 @@ function WarehousePage({ onToast }) {
 
             setIsOnboarding(false);
             setCurrentStep(1);
+            navigate("/vendor/kho-hang");
           }
         }, 800);
       });
@@ -2517,7 +2482,7 @@ function WarehousePage({ onToast }) {
     onToast({
       title: "Liên kết HDBank",
       message:
-        "Liên kết tài khoản HDBank thành công! Trạng thái BPMN được đặt thành 'Đã liên kết'.",
+        "Liên kết tài khoản HDBank thành công. Bạn có thể tiếp tục kích hoạt kho.",
     });
     setSelectedOutcome("LINKED");
   };
@@ -2568,6 +2533,8 @@ function WarehousePage({ onToast }) {
       isPinned: !!(newW.is_pinned !== undefined
         ? newW.is_pinned
         : newW.isPinned),
+      lat: newW.lat,
+      lng: newW.lng,
     };
 
     let updatedList;
@@ -2597,121 +2564,151 @@ function WarehousePage({ onToast }) {
       <div className="space-y-6">
         {/* Onboarding welcome screen */}
         {currentStep === 1 && (
-          <Panel className="p-8 text-center max-w-4xl mx-auto flex flex-col items-center">
-            <div className="h-16 w-16 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 mb-6 shadow-inner">
-              <Warehouse className="h-8 w-8 animate-pulse" />
-            </div>
+          <Panel className="overflow-hidden max-w-5xl mx-auto">
+            <div className="grid gap-0 lg:grid-cols-[0.95fr_1.25fr]">
+              <div className="bg-[#12372d] p-6 text-white sm:p-8">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-extrabold text-emerald-50">
+                  <ShieldCheck className="h-3.5 w-3.5 text-orange-300" />
+                  Thiết lập bắt buộc
+                </div>
+                <h2 className="mt-5 max-w-sm text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
+                  Tạo kho mặc định để bắt đầu xử lý đơn hàng
+                </h2>
+                <p className="mt-3 max-w-sm text-sm font-semibold leading-6 text-emerald-50/72">
+                  Shop cần ít nhất một địa chỉ lấy hàng hoặc trả hàng. Sau khi
+                  kích hoạt, hệ thống sẽ dùng kho này để điều phối vận chuyển.
+                </p>
 
-            <h2 className="text-xl font-extrabold text-stone-900">
-              Chưa Thiết Lập Kho Hàng Mặc Định
-            </h2>
-            <p className="mt-2 text-sm text-stone-500 max-w-xl font-semibold leading-relaxed">
-              Theo quy trình vận hành và quy định <b>Quản lý kho - MTTDL</b>,
-              bạn cần tạo kho lấy/trả hàng mặc định để bắt đầu xử lý vận chuyển.
-            </p>
+                <div className="mt-7 space-y-3">
+                  {warehouseSetupNotes.map(([title, text]) => (
+                    <div key={title} className="flex gap-3">
+                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-400/18 text-orange-200">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      </span>
+                      <span>
+                        <span className="block text-sm font-extrabold">
+                          {title}
+                        </span>
+                        <span className="mt-0.5 block text-xs font-semibold leading-5 text-emerald-50/58">
+                          {text}
+                        </span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-            {/* Visual BPMN flow path */}
-            <div className="mt-8 w-full max-w-2xl bg-stone-50 rounded-xl p-5 border border-stone-100">
-              <p className="text-xs font-bold text-stone-400 text-left uppercase tracking-wider mb-4">
-                Sơ đồ quy trình liên kết & cấu hình kho (BPMN)
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                <div className="bg-white p-3 rounded-lg border border-stone-200 shadow-sm text-left">
-                  <div className="text-[10px] font-extrabold text-stone-400 uppercase">
-                    Bước 1
+              <div className="p-6 sm:p-8">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-teal-700">
+                      Kho mặc định
+                    </p>
+                    <h3 className="mt-2 text-xl font-extrabold text-stone-950">
+                      Chưa có kho đang hoạt động
+                    </h3>
+                    <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-stone-500">
+                      Hoàn tất 4 bước dưới đây để tạo kho đầu tiên. Toàn bộ
+                      thông tin có thể cập nhật lại trong trang quản lý kho.
+                    </p>
                   </div>
-                  <div className="text-xs font-extrabold text-stone-700 mt-1">
-                    Truy cập kênh
-                  </div>
-                  <div className="text-[10px] font-medium text-stone-400 mt-0.5">
-                    Khởi tạo yêu cầu
-                  </div>
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600 ring-1 ring-orange-100">
+                    <Warehouse className="h-6 w-6" />
+                  </span>
                 </div>
 
-                <div className="hidden md:flex justify-center text-stone-300">
-                  ➔
+                <div className="mt-7 grid gap-3 sm:grid-cols-2">
+                  {warehouseSetupSteps.map(([step, title, text], index) => {
+                    const isActive = index === 0;
+                    return (
+                      <div
+                        key={step}
+                        className={cn(
+                          "rounded-xl border p-4 transition-colors",
+                          isActive
+                            ? "border-orange-200 bg-orange-50/60"
+                            : "border-stone-200 bg-white",
+                        )}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span
+                            className={cn(
+                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-extrabold",
+                              isActive
+                                ? "bg-orange-500 text-white shadow-sm shadow-orange-500/20"
+                                : "bg-stone-100 text-stone-500",
+                            )}
+                          >
+                            {step}
+                          </span>
+                          <span>
+                            <span
+                              className={cn(
+                                "block text-sm font-extrabold",
+                                isActive ? "text-orange-700" : "text-stone-800",
+                              )}
+                            >
+                              {title}
+                            </span>
+                            <span className="mt-1 block text-xs font-semibold leading-5 text-stone-500">
+                              {text}
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                <div className="bg-white p-3 rounded-lg border border-orange-300 ring-2 ring-orange-100 shadow-sm text-left">
-                  <div className="text-[10px] font-extrabold text-orange-500 uppercase">
-                    Bước 2
-                  </div>
-                  <div className="text-xs font-extrabold text-stone-700 mt-1">
-                    Nhập thông tin
-                  </div>
-                  <div className="text-[10px] font-medium text-stone-400 mt-0.5">
-                    Nhập & Ghim vị trí
-                  </div>
-                </div>
-
-                <div className="hidden md:flex justify-center text-stone-300">
-                  ➔
-                </div>
-
-                <div className="bg-white p-3 rounded-lg border border-stone-200 shadow-sm text-left">
-                  <div className="text-[10px] font-extrabold text-stone-400 uppercase">
-                    Bước 3
-                  </div>
-                  <div className="text-xs font-extrabold text-stone-700 mt-1">
-                    Kiểm tra kết nối
-                  </div>
-                  <div className="text-[10px] font-medium text-stone-400 mt-0.5">
-                    Xác thực tự động
-                  </div>
-                </div>
-
-                <div className="hidden md:flex justify-center text-stone-300">
-                  ➔
-                </div>
-
-                <div className="bg-white p-3 rounded-lg border border-stone-200 shadow-sm text-left">
-                  <div className="text-[10px] font-extrabold text-stone-400 uppercase">
-                    Bước 4
-                  </div>
-                  <div className="text-xs font-extrabold text-stone-700 mt-1">
-                    Hoàn tất
-                  </div>
-                  <div className="text-[10px] font-medium text-stone-400 mt-0.5">
-                    Kích hoạt kho
+                <div className="mt-7 rounded-xl border border-stone-200 bg-stone-50 p-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-extrabold text-stone-900">
+                        Sẵn sàng tạo kho đầu tiên?
+                      </p>
+                      <p className="mt-1 text-xs font-semibold leading-5 text-stone-500">
+                        Mất khoảng 2 phút nếu bạn đã có địa chỉ và số điện thoại
+                        người phụ trách.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleStartOnboarding}
+                      className="vendor-primary-button shrink-0 justify-center whitespace-nowrap px-5 py-2.5 text-sm font-extrabold"
+                    >
+                      <Plus className="h-4 w-4" /> Tạo kho mặc định
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
-
-            <button
-              onClick={handleStartOnboarding}
-              className="mt-8 vendor-primary-button px-6 py-3 text-sm font-extrabold flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" /> Khởi tạo & Liên kết kho mặc định
-            </button>
           </Panel>
         )}
 
         {/* Setup Form (currentStep = 2) */}
         {currentStep === 2 && (
           <Panel className="p-6 max-w-4xl mx-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-stone-100 mb-6">
+            <div className="flex items-center justify-between gap-4 pb-4 border-b border-stone-100 mb-6">
               <div>
                 <h2 className="text-lg font-extrabold text-stone-900">
-                  Form Thêm Mới Kho Hàng
+                  Thông tin kho mặc định
                 </h2>
                 <p className="text-xs text-stone-400 font-semibold mt-1">
-                  Khởi tạo thông tin kho lấy hàng / trả hàng mặc định theo tài
-                  liệu Quản lý kho - MTTDL.
+                  Điền địa chỉ, người phụ trách và ghim vị trí để kích hoạt kho
+                  đầu tiên cho shop.
                 </p>
               </div>
               <button
                 onClick={handleCancelOnboarding}
                 className="text-stone-400 hover:text-stone-600 text-sm font-bold"
               >
-                Hủy bỏ
+                Hủy
               </button>
             </div>
 
             {bpmnError && (
               <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
                 <span className="text-red-600 text-sm font-bold shrink-0 mt-0.5">
-                  ⚠️
+                  <AlertTriangle className="h-4 w-4" />
                 </span>
                 <p className="text-xs font-bold text-red-700">{bpmnError}</p>
               </div>
@@ -2722,7 +2719,7 @@ function WarehousePage({ onToast }) {
               <div className="space-y-4">
                 <h3 className="text-xs font-extrabold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
                   <Boxes className="h-4 w-4 text-orange-600" />
-                  1. Thông tin kho hàng mặc định
+                  1. Thông tin cơ bản
                 </h3>
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -2740,7 +2737,7 @@ function WarehousePage({ onToast }) {
 
                   <label className="block">
                     <span className="text-xs font-bold text-stone-500">
-                      Loại kho mặc định *
+                      Loại kho *
                     </span>
                     <select
                       name="type"
@@ -2748,8 +2745,8 @@ function WarehousePage({ onToast }) {
                       onChange={handleInputChange}
                       className="vendor-input mt-1.5 h-10 w-full px-3 text-sm appearance-none bg-white font-semibold"
                     >
-                      <option value="PICKUP">Kho lấy hàng (PICKUP)</option>
-                      <option value="RETURN">Kho trả hàng (RETURN)</option>
+                      <option value="PICKUP">Kho lấy hàng</option>
+                      <option value="RETURN">Kho trả hàng</option>
                     </select>
                   </label>
                 </div>
@@ -2809,142 +2806,152 @@ function WarehousePage({ onToast }) {
                   </label>
                 </div>
 
-                {/* Geography selectors */}
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <label className="block">
-                    <span className="text-xs font-bold text-stone-500">
-                      Tỉnh/Thành phố *
-                    </span>
-                    <select
-                      name="province"
-                      value={formData.province}
-                      onChange={handleInputChange}
-                      className="vendor-input mt-1.5 h-10 w-full px-3 text-sm appearance-none bg-white font-semibold"
-                    >
-                      <option value="">-- Chọn Tỉnh/Thành --</option>
-                      {VN_PROVINCES.map((p) => (
-                        <option key={p.name} value={p.name}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="block">
-                    <span className="text-xs font-bold text-stone-500">
-                      Quận/Huyện *
-                    </span>
-                    <select
-                      name="district"
-                      value={formData.district}
-                      onChange={handleInputChange}
-                      disabled={!formData.province}
-                      className="vendor-input mt-1.5 h-10 w-full px-3 text-sm appearance-none bg-white font-semibold disabled:bg-stone-50 disabled:text-stone-300"
-                    >
-                      <option value="">-- Chọn Quận/Huyện --</option>
-                      {selectedProvinceData?.districts.map((d) => (
-                        <option key={d.name} value={d.name}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="block">
-                    <span className="text-xs font-bold text-stone-500">
-                      Phường/Xã *
-                    </span>
-                    <select
-                      name="ward"
-                      value={formData.ward}
-                      onChange={handleInputChange}
-                      disabled={!formData.district}
-                      className="vendor-input mt-1.5 h-10 w-full px-3 text-sm appearance-none bg-white font-semibold disabled:bg-stone-50 disabled:text-stone-300"
-                    >
-                      <option value="">-- Chọn Phường/Xã --</option>
-                      {selectedDistrictData?.wards.map((w) => (
-                        <option key={w} value={w}>
-                          {w}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                <div className="grid grid-cols-2 gap-2 rounded-xl bg-stone-100 p-1">
+                  <button
+                    type="button"
+                    onClick={() => handleLocationModeChange("manual")}
+                    className={cn(
+                      "rounded-lg px-3 py-2 text-xs font-extrabold transition-all",
+                      locationMode === "manual"
+                        ? "bg-white text-orange-700 shadow-sm"
+                        : "text-stone-500 hover:text-stone-700",
+                    )}
+                  >
+                    Nhập thủ công
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleLocationModeChange("map")}
+                    className={cn(
+                      "rounded-lg px-3 py-2 text-xs font-extrabold transition-all",
+                      locationMode === "map"
+                        ? "bg-white text-orange-700 shadow-sm"
+                        : "text-stone-500 hover:text-stone-700",
+                    )}
+                  >
+                    Chọn trên Map
+                  </button>
                 </div>
 
-                <label className="block">
-                  <span className="text-xs font-bold text-stone-500">
-                    Địa chỉ chi tiết *
-                  </span>
-                  <input
-                    name="addressDetail"
-                    type="text"
-                    value={formData.addressDetail}
-                    onChange={handleInputChange}
-                    placeholder="Số nhà, ngõ ngách, tên đường..."
-                    className="vendor-input mt-1.5 h-10 w-full px-3 text-sm"
-                  />
-                </label>
+                {locationMode === "manual" && (
+                  <>
+                    {/* Geography selectors */}
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <label className="block">
+                        <span className="text-xs font-bold text-stone-500">
+                          Tỉnh/Thành phố *
+                        </span>
+                        <select
+                          name="province"
+                          value={formData.province}
+                          onChange={handleInputChange}
+                          className="vendor-input mt-1.5 h-10 w-full px-3 text-sm appearance-none bg-white font-semibold"
+                        >
+                          <option value="">-- Chọn Tỉnh/Thành --</option>
+                          {VIETNAM_PROVINCES.map((p) => (
+                            <option key={p.name} value={p.name}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="text-xs font-bold text-stone-500">
+                          Quận/Huyện *
+                        </span>
+                        <select
+                          name="district"
+                          value={formData.district}
+                          onChange={handleInputChange}
+                          disabled={!formData.province}
+                          className="vendor-input mt-1.5 h-10 w-full px-3 text-sm appearance-none bg-white font-semibold disabled:bg-stone-50 disabled:text-stone-300"
+                        >
+                          <option value="">-- Chọn Quận/Huyện --</option>
+                          {selectedProvinceData?.districts.map((d) => (
+                            <option key={d.name} value={d.name}>
+                              {d.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="text-xs font-bold text-stone-500">
+                          Phường/Xã *
+                        </span>
+                        <select
+                          name="ward"
+                          value={formData.ward}
+                          onChange={handleInputChange}
+                          disabled={!formData.district}
+                          className="vendor-input mt-1.5 h-10 w-full px-3 text-sm appearance-none bg-white font-semibold disabled:bg-stone-50 disabled:text-stone-300"
+                        >
+                          <option value="">-- Chọn Phường/Xã --</option>
+                          {selectedDistrictData?.wards.map((w) => (
+                            <option key={w} value={w}>
+                              {w}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
+                    <label className="block">
+                      <span className="text-xs font-bold text-stone-500">
+                        Địa chỉ chi tiết *
+                      </span>
+                      <input
+                        name="addressDetail"
+                        type="text"
+                        value={formData.addressDetail}
+                        onChange={handleInputChange}
+                        placeholder="Số nhà, ngõ ngách, tên đường..."
+                        className="vendor-input mt-1.5 h-10 w-full px-3 text-sm"
+                      />
+                    </label>
+                  </>
+                )}
+
+                {locationMode === "map" && (
+                  <div className="rounded-xl border border-orange-100 bg-orange-50 px-3.5 py-3 text-xs font-semibold leading-5 text-orange-700">
+                    Chọn vị trí trực tiếp trên Google Map. Hệ thống sẽ không tự
+                    điền lại Tỉnh/Quận/Phường/Địa chỉ chi tiết.
+                  </div>
+                )}
               </div>
 
-              {/* Map mockup pinning */}
+              {/* Map pinning */}
               <div className="space-y-3">
                 <span className="text-xs font-bold text-stone-500 block">
-                  2. Ghim tọa độ trên bản đồ (Click vào bản đồ để chọn tọa độ) *
+                  {locationMode === "manual"
+                    ? "2. Bản đồ tham khảo"
+                    : "2. Chọn vị trí trên Google Map *"}
                 </span>
 
                 <div className="grid gap-4 md:grid-cols-[1.6fr_0.4fr] items-stretch">
-                  {/* Interactive Map Visual Grid */}
-                  <div
-                    onClick={handleMapClick}
-                    className={cn(
-                      "h-48 rounded-xl border-2 border-dashed flex flex-col justify-end p-3 relative overflow-hidden cursor-crosshair select-none transition-all duration-200",
-                      formData.isPinned
-                        ? "bg-emerald-50/70 border-emerald-500 text-emerald-800 shadow-sm"
-                        : "bg-stone-100 border-stone-200 text-stone-500 hover:bg-stone-50",
-                    )}
-                    style={{
-                      backgroundImage:
-                        "radial-gradient(#ddd 1.5px, transparent 1.5px)",
-                      backgroundSize: "20px 20px",
+                  <WarehouseGoogleMap
+                    mode={locationMode}
+                    addressParts={{
+                      province: formData.province,
+                      district: formData.district,
+                      ward: formData.ward,
+                      addressDetail: formData.addressDetail,
                     }}
-                  >
-                    {/* Mock Streets */}
-                    <div className="absolute inset-x-0 top-1/3 h-6 bg-stone-200/60 flex items-center justify-center border-y border-stone-300/40 text-[9px] font-extrabold text-stone-400 uppercase tracking-widest pointer-events-none">
-                      Đường Lê Lợi
-                    </div>
-                    <div
-                      className="absolute inset-y-0 left-1/3 w-6 bg-stone-200/60 flex items-center justify-center border-x border-stone-300/40 text-[9px] font-extrabold text-stone-400 uppercase tracking-widest writing-mode-vertical pointer-events-none"
-                      style={{ writingMode: "vertical-rl" }}
-                    >
-                      Đại lộ Hùng Vương
-                    </div>
-
-                    {/* Glowing Pin Marker */}
-                    {formData.isPinned && (
-                      <div
-                        className="absolute h-8 w-8 -mt-8 -ml-4 transition-all duration-300 ease-out flex flex-col items-center pointer-events-none"
-                        style={{
-                          left: `${((formData.lng - 106.6602) / 0.08 + 0.5) * 100}%`,
-                          top: `${(0.5 - (formData.lat - 10.7626) / 0.08) * 100}%`,
-                        }}
-                      >
-                        <span className="text-orange-500 text-2xl filter drop-shadow">
-                          📍
-                        </span>
-                        <span className="animate-ping absolute top-0 h-4.5 w-4.5 rounded-full bg-orange-400 opacity-75"></span>
-                      </div>
-                    )}
-
-                    <div className="bg-stone-900/70 backdrop-blur-sm rounded-lg py-1 px-2.5 text-[10px] font-extrabold text-white self-start pointer-events-none flex items-center gap-1 z-10">
-                      <span className="text-teal-400">🗺️</span>{" "}
-                      {formData.isPinned
-                        ? `Đã ghim vị trí (${formData.lat}, ${formData.lng})`
-                        : "Ghim vị trí chính xác trên bản đồ"}
-                    </div>
-                  </div>
-
+                    coordinates={{
+                      lat: formData.lat,
+                      lng: formData.lng,
+                      isPinned: formData.isPinned,
+                    }}
+                    onLocationChange={handleMapLocationChange}
+                  />
                   {/* Coordinates view */}
-                  <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 flex flex-col justify-center gap-3">
+                  <div
+                    className={cn(
+                      "rounded-xl border border-stone-200 bg-stone-50 p-4 flex flex-col justify-center gap-3",
+                      locationMode === "manual" && "opacity-60",
+                    )}
+                  >
                     <div>
                       <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-wider">
                         Vĩ độ (Latitude)
@@ -3035,11 +3042,10 @@ function WarehousePage({ onToast }) {
                   />
                   <div>
                     <p className="font-extrabold text-stone-800 text-xs">
-                      Cài đặt làm Kho mặc định
+                      Đặt làm kho mặc định
                     </p>
                     <p className="text-[10px] text-stone-400 mt-0.5 leading-4 font-semibold">
-                      Tự động nhận tồn kho của sản phẩm mới được đăng bán khi có
-                      đơn.
+                      Hệ thống sẽ ưu tiên kho này khi điều phối đơn hàng mới.
                     </p>
                   </div>
                 </label>
@@ -3058,7 +3064,7 @@ function WarehousePage({ onToast }) {
                   type="submit"
                   className="vendor-primary-button px-6 font-extrabold"
                 >
-                  Xác nhận & Khởi tạo kho
+                  Kích hoạt kho
                 </button>
               </div>
             </form>
@@ -3075,17 +3081,17 @@ function WarehousePage({ onToast }) {
             </div>
 
             <h2 className="text-lg font-extrabold text-stone-900">
-              Kiểm Tra Đăng Ký Dịch Vụ
+              Đang kiểm tra thông tin kho
             </h2>
             <p className="text-xs font-semibold text-stone-400 mt-1">
-              Hệ thống đang chạy quy trình kiểm tra tự động theo mô hình BPMN...
+              Hệ thống đang xác thực địa chỉ, vị trí ghim và trạng thái liên kết.
             </p>
 
-            {/* Simulated Live Logging */}
+            {/* Live logging */}
             <div className="mt-6 w-full bg-stone-900 rounded-xl p-4 text-left font-mono text-xs text-stone-300 min-h-36 flex flex-col gap-2.5 shadow-lg border border-stone-850">
               {processingLogs.map((log, index) => (
                 <div key={index} className="flex items-start gap-2">
-                  <span className="text-teal-400">⚡</span>
+                  <span className="text-teal-400">•</span>
                   <span>{log}</span>
                 </div>
               ))}
@@ -3099,27 +3105,27 @@ function WarehousePage({ onToast }) {
           </Panel>
         )}
 
-        {/* Unlinked Popup Modal (BPMN 7.1) */}
+        {/* Unlinked account modal */}
         {showUnlinkedPopup && (
           <div className="fixed inset-0 z-[80] flex items-center justify-center bg-stone-950/60 p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-stone-100 overflow-hidden animate-scaleUp">
               <div className="p-5 text-center flex flex-col items-center">
                 <span className="h-12 w-12 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 text-xl font-bold mb-4">
-                  ⚠️
+                  <AlertTriangle className="h-5 w-5" />
                 </span>
                 <h3 className="text-base font-extrabold text-stone-900">
-                  [BPMN 7.1] Chưa Liên Kết HDBank
+                  Cần liên kết tài khoản thanh toán
                 </h3>
                 <p className="mt-2 text-xs font-semibold leading-relaxed text-stone-500">
-                  Tài khoản HDBiz đã đăng nhập thành công, nhưng phát hiện chưa
-                  thực hiện liên kết liên ngân hàng HDBank để xử lý kênh chi hộ.
+                  Hệ thống chưa ghi nhận liên kết HDBank cho shop. Vui lòng liên
+                  kết để hoàn tất kích hoạt kho và xử lý các khoản chi hộ.
                 </p>
                 <div className="mt-6 w-full flex flex-col gap-2.5">
                   <button
                     onClick={handleLinkHDBankNow}
                     className="w-full bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-extrabold py-2.5 rounded-xl transition-all shadow-md shadow-amber-500/10"
                   >
-                    Liên kết HDBank ngay (Simulate Link)
+                    Liên kết HDBank ngay
                   </button>
                   <button
                     onClick={() => setShowUnlinkedPopup(false)}
@@ -3139,23 +3145,22 @@ function WarehousePage({ onToast }) {
   // Normal dashboard after default warehouse is successfully created
   return (
     <div className="space-y-5">
-      {/* Simulation Reset Banner */}
+      {/* Demo reset banner */}
       <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <span className="text-xs font-extrabold text-stone-600 flex items-center gap-1.5">
             <CheckCircle2 className="h-4 w-4 text-teal-700" />
-            Trạng thái: Đã cấu hình kho hàng mặc định (BPMN 7.2)
+            Trạng thái: Đã cấu hình kho mặc định
           </span>
           <p className="text-[11px] text-stone-400 font-semibold mt-0.5">
-            Quy trình liên kết HDBiz hoàn tất. Bạn có thể nhấn Reset để chạy lại
-            luồng kiểm thử.
+            Shop đã có địa chỉ kho để xử lý lấy hàng và trả hàng.
           </p>
         </div>
         <button
           onClick={handleResetDemo}
           className="text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 bg-white text-xs font-bold py-1.5 px-3 rounded-lg transition-all"
         >
-          Reset dữ liệu (Thử lại BPMN)
+          Reset dữ liệu
         </button>
       </div>
 
@@ -4572,7 +4577,7 @@ const pageComponents = {
 };
 
 export default function VendorHome() {
-  const { section = "trangchu" } = useParams();
+  const { section = "trangchu", action } = useParams();
   const navigate = useNavigate();
   const [toast, setToast] = useState(null);
   const Page = pageComponents[section];
@@ -4581,7 +4586,12 @@ export default function VendorHome() {
   return (
     <>
       <VendorLayout activeSlug={section} onToast={setToast}>
-        <Page navigate={navigate} navigateTo={navigateTo} onToast={setToast} />
+        <Page
+          action={action}
+          navigate={navigate}
+          navigateTo={navigateTo}
+          onToast={setToast}
+        />
       </VendorLayout>
       {toast && <VendorToast toast={toast} onClose={() => setToast(null)} />}
     </>
