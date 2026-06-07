@@ -7,6 +7,7 @@ import VendorHome from "./pages/VendorHome";
 import BuyerHome from "./pages/BuyerHome";
 import GoogleMapDebug from "./pages/GoogleMapDebug";
 import WarehouseManagement from "./components/Seller/Warehouse/WarehouseManagement";
+import { ThemeToggle } from "./components/ThemeToggle";
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <ThemeToggle />
     </BrowserRouter>
   );
 }
