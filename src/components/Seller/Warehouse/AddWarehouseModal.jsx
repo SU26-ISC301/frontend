@@ -1,24 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { X, MapPin, Check } from "lucide-react";
-
-// Dữ liệu hành chính 3 cấp
-const addressData = {
-  "Hồ Chí Minh": {
-    "Quận 1": ["Phường Bến Nghé", "Phường Bến Thành", "Phường Phạm Ngũ Lão", "Phường Đa Kao"],
-    "Quận 7": ["Phường Tân Quy", "Phường Tân Phong", "Phường Tân Thuận Đông", "Phường Phú Mỹ"],
-    "Bình Thạnh": ["Phường 15", "Phường 22", "Phường 25", "Phường Hàng Xanh"]
-  },
-  "Hà Nội": {
-    "Hai Bà Trưng": ["Phường Bạch Mai", "Phường Đồng Tâm", "Phường Bách Khoa", "Phường Minh Khai"],
-    "Hoàn Kiếm": ["Phường Tràng Tiền", "Phường Hàng Bạc", "Phường Hàng Bông", "Phường Đồng Xuân"],
-    "Cầu Giấy": ["Phường Dịch Vọng", "Phường Quan Hoa", "Phường Yên Hòa", "Phường Nghĩa Đô"]
-  },
-  "Đà Nẵng": {
-    "Hải Châu": ["Phường Hòa Cường Bắc", "Phường Phước Ninh", "Phường Thạch Thang", "Phường Hải Châu I"],
-    "Thanh Khê": ["Phường An Khê", "Phường Chính Gián", "Phường Xuân Hà", "Phường Vĩnh Trung"],
-    "Sơn Trà": ["Phường An Hải Bắc", "Phường Thọ Quang", "Phường Mân Thái", "Phường Phước Mỹ"]
-  }
-};
+import React, { useCallback, useState, useEffect } from "react";
+import { X, Check } from "lucide-react";
+import { VIETNAM_ADDRESS_DATA } from "../../../data/vietnamAdministrativeUnits";
+import WarehouseGoogleMap from "./WarehouseGoogleMap";
 
 const AddWarehouseModal = ({ isOpen, onClose, onSave, currentTab, existingWarehouses = [] }) => {
   const isFirstWarehouse = existingWarehouses.filter(w => w.warehouse_type === currentTab).length === 0;
@@ -32,12 +15,15 @@ const AddWarehouseModal = ({ isOpen, onClose, onSave, currentTab, existingWareho
     district: "",
     ward: "",
     addressDetail: "",
+    lat: 10.7626,
+    lng: 106.6602,
     isPinned: false,
     shippingRegions: [],
     isDefault: false,
   });
 
   const [error, setError] = useState("");
+  const [locationMode, setLocationMode] = useState("manual");
 
   // Reset form when modal opens
   useEffect(() => {
@@ -52,21 +38,24 @@ const AddWarehouseModal = ({ isOpen, onClose, onSave, currentTab, existingWareho
         district: "",
         ward: "",
         addressDetail: "",
+        lat: 10.7626,
+        lng: 106.6602,
         isPinned: false,
         shippingRegions: [],
         isDefault: isFirst,
       });
+      setLocationMode("manual");
       setError("");
     }
   }, [isOpen, currentTab, existingWarehouses]);
 
-  if (!isOpen) return null;
-
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    const isAddressField = ["ward", "addressDetail"].includes(name);
     setFormData(prev => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
+      ...(isAddressField ? { isPinned: false } : {}),
     }));
     setError("");
   };
@@ -77,6 +66,7 @@ const AddWarehouseModal = ({ isOpen, onClose, onSave, currentTab, existingWareho
       province: e.target.value,
       district: "",
       ward: "",
+      isPinned: false,
     }));
     setError("");
   };
@@ -86,6 +76,7 @@ const AddWarehouseModal = ({ isOpen, onClose, onSave, currentTab, existingWareho
       ...prev,
       district: e.target.value,
       ward: "",
+      isPinned: false,
     }));
     setError("");
   };
@@ -101,6 +92,33 @@ const AddWarehouseModal = ({ isOpen, onClose, onSave, currentTab, existingWareho
     });
     setError("");
   };
+
+  const handleLocationModeChange = (mode) => {
+    setLocationMode(mode);
+    setFormData((prev) => ({
+      ...prev,
+      isPinned: false,
+    }));
+    setError("");
+  };
+
+  const handleMapLocationChange = useCallback((location) => {
+    setFormData((prev) => ({
+      ...prev,
+      ...(location.province ? { province: location.province } : {}),
+      ...(location.district ? { district: location.district } : {}),
+      ...(location.ward ? { ward: location.ward } : {}),
+      ...(location.addressDetail
+        ? { addressDetail: location.addressDetail }
+        : {}),
+      ...(Number.isFinite(location.lat) ? { lat: location.lat } : {}),
+      ...(Number.isFinite(location.lng) ? { lng: location.lng } : {}),
+      isPinned: location.isPinned,
+    }));
+    setError("");
+  }, []);
+
+  if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -140,16 +158,19 @@ const AddWarehouseModal = ({ isOpen, onClose, onSave, currentTab, existingWareho
       return;
     }
 
-    if (!formData.province || !formData.district || !formData.ward) {
+    if (
+      locationMode === "manual" &&
+      (!formData.province || !formData.district || !formData.ward)
+    ) {
       setError("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã!");
       return;
     }
-    if (!formData.addressDetail.trim()) {
+    if (locationMode === "manual" && !formData.addressDetail.trim()) {
       setError("Địa chỉ chi tiết là bắt buộc!");
       return;
     }
-    if (!formData.isPinned) {
-      setError("Bắt buộc phải ghim vị trí chính xác trên bản đồ!");
+    if (locationMode === "map" && !formData.isPinned) {
+      setError("Vui lòng chọn vị trí trên Google Map và bấm Đồng ý!");
       return;
     }
 
@@ -165,11 +186,17 @@ const AddWarehouseModal = ({ isOpen, onClose, onSave, currentTab, existingWareho
       warehouse_name: formData.warehouseName.trim(),
       contact_name: formData.contactName.trim(),
       phone_number: formData.phone.trim(),
-      address: `${formData.addressDetail.trim()}, ${formData.ward}, ${formData.district}, ${formData.province}, Việt Nam`,
+      address:
+        locationMode === "manual"
+          ? `${formData.addressDetail.trim()}, ${formData.ward}, ${formData.district}, ${formData.province}, Việt Nam`
+          : `Vị trí đã chọn trên Google Map (${formData.lat}, ${formData.lng})`,
       is_default: formData.isDefault,
       status: "ACTIVE",
       shipping_regions: formData.shippingRegions,
-      is_pinned: formData.isPinned,
+      is_pinned: locationMode === "map" ? formData.isPinned : false,
+      lat: locationMode === "map" ? formData.lat : null,
+      lng: locationMode === "map" ? formData.lng : null,
+      location_mode: locationMode,
     };
 
     onSave(mappedWarehouse);
@@ -265,109 +292,165 @@ const AddWarehouseModal = ({ isOpen, onClose, onSave, currentTab, existingWareho
               Địa chỉ lấy / trả hàng
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">
-                  Quốc gia / Khu vực
-                </label>
-                <input
-                  type="text"
-                  value={formData.country}
-                  readOnly
-                  className="w-full px-3 py-2.5 text-sm border border-gray-200 bg-gray-50 text-gray-500 rounded-lg cursor-not-allowed focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">
-                  Tỉnh / Thành phố <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="province"
-                  value={formData.province}
-                  onChange={handleProvinceChange}
-                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                >
-                  <option value="">Chọn Tỉnh/Thành</option>
-                  {Object.keys(addressData).map(p => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              </div>
+            <div className="grid grid-cols-2 gap-2 rounded-xl bg-gray-100 p-1">
+              <button
+                type="button"
+                onClick={() => handleLocationModeChange("manual")}
+                className={`rounded-lg px-3 py-2 text-xs font-extrabold transition-all ${
+                  locationMode === "manual"
+                    ? "bg-white text-blue-700 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Nhập thủ công
+              </button>
+              <button
+                type="button"
+                onClick={() => handleLocationModeChange("map")}
+                className={`rounded-lg px-3 py-2 text-xs font-extrabold transition-all ${
+                  locationMode === "map"
+                    ? "bg-white text-blue-700 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Chọn trên Map
+              </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">
-                  Quận / Huyện <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="district"
-                  value={formData.district}
-                  onChange={handleDistrictChange}
-                  disabled={!formData.province}
-                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
-                >
-                  <option value="">Chọn Quận/Huyện</option>
-                  {formData.province && Object.keys(addressData[formData.province]).map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">
-                  Phường / Xã <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="ward"
-                  value={formData.ward}
-                  onChange={handleChange}
-                  disabled={!formData.district}
-                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
-                >
-                  <option value="">Chọn Phường/Xã</option>
-                  {formData.province && formData.district && addressData[formData.province][formData.district].map(w => (
-                    <option key={w} value={w}>{w}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            {locationMode === "manual" && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">
+                      Quốc gia / Khu vực
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.country}
+                      readOnly
+                      className="w-full px-3 py-2.5 text-sm border border-gray-200 bg-gray-50 text-gray-500 rounded-lg cursor-not-allowed focus:outline-none"
+                    />
+                  </div>
 
-            <div>
-              <label className="block text-xs font-bold text-gray-600 mb-1">
-                Địa chỉ chi tiết (Số nhà, đường) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="addressDetail"
-                value={formData.addressDetail}
-                onChange={handleChange}
-                placeholder="Ví dụ: 123 Đường ABC..."
-                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
-            </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">
+                      Tỉnh / Thành phố <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="province"
+                      value={formData.province}
+                      onChange={handleProvinceChange}
+                      className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    >
+                      <option value="">Chọn Tỉnh/Thành</option>
+                      {Object.keys(VIETNAM_ADDRESS_DATA).map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">
+                      Quận / Huyện <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="district"
+                      value={formData.district}
+                      onChange={handleDistrictChange}
+                      disabled={!formData.province}
+                      className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Chọn Quận/Huyện</option>
+                      {formData.province && Object.keys(VIETNAM_ADDRESS_DATA[formData.province]).map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">
+                      Phường / Xã <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="ward"
+                      value={formData.ward}
+                      onChange={handleChange}
+                      disabled={!formData.district}
+                      className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Chọn Phường/Xã</option>
+                      {formData.province && formData.district && VIETNAM_ADDRESS_DATA[formData.province][formData.district].map(w => (
+                        <option key={w} value={w}>{w}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">
+                    Địa chỉ chi tiết (Số nhà, đường) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="addressDetail"
+                    value={formData.addressDetail}
+                    onChange={handleChange}
+                    placeholder="Ví dụ: 123 Đường ABC..."
+                    className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                </div>
+              </>
+            )}
+
+            {locationMode === "map" && (
+              <div className="rounded-xl border border-blue-100 bg-blue-50 px-3.5 py-3 text-xs font-semibold leading-5 text-blue-700">
+                Chọn vị trí trực tiếp trên Google Map. Hệ thống sẽ không tự điền
+                lại Tỉnh/Quận/Phường/Địa chỉ chi tiết.
+              </div>
+            )}
 
             {/* Map Widget (Định vị bản đồ) */}
             <div>
               <label className="block text-xs font-bold text-gray-600 mb-1">
-                Định vị Bản đồ <span className="text-red-500">*</span>
+                {locationMode === "manual"
+                  ? "Bản đồ tham khảo"
+                  : "Chọn vị trí trên Google Map"}{" "}
+                <span className={locationMode === "map" ? "text-red-500" : "text-gray-400"}>
+                  {locationMode === "map" ? "*" : ""}
+                </span>
               </label>
-              <div
-                onClick={() => setFormData(prev => ({ ...prev, isPinned: !prev.isPinned }))}
-                className={`w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all duration-200 ${
-                  formData.isPinned
-                    ? "bg-emerald-50/70 border-emerald-500 text-emerald-800 shadow-sm"
-                    : "bg-gray-50 border-gray-300 text-gray-500 hover:bg-gray-100"
-                }`}
-              >
-                <MapPin className={`w-7 h-7 mb-1.5 transition-transform duration-300 ${formData.isPinned ? "scale-110 text-emerald-600 animate-bounce" : "text-gray-400"}`} />
-                <span className="text-xs font-bold">
-                  {formData.isPinned ? "Đã ghim vị trí thành công (10.7769° N, 106.7009° E)" : "Ghim vị trí chính xác trên bản đồ"}
-                </span>
-                <span className="text-[10px] text-gray-400 mt-1">
-                  {formData.isPinned ? "Click để thay đổi vị trí ghim" : "Bắt buộc để hệ thống tính toán khoảng cách và phân bổ shipper"}
-                </span>
-              </div>
+              <WarehouseGoogleMap
+                mode={locationMode}
+                addressParts={{
+                  province: formData.province,
+                  district: formData.district,
+                  ward: formData.ward,
+                  addressDetail: formData.addressDetail,
+                }}
+                coordinates={{
+                  lat: formData.lat,
+                  lng: formData.lng,
+                  isPinned: formData.isPinned,
+                }}
+                onLocationChange={handleMapLocationChange}
+              />
+              {locationMode === "map" && (
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={formData.lat}
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-center text-xs font-bold text-gray-500"
+                  />
+                  <input
+                    type="text"
+                    readOnly
+                    value={formData.lng}
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-center text-xs font-bold text-gray-500"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
