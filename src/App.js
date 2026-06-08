@@ -5,7 +5,6 @@ import SellerAddProduct from "./pages/SellerAddProduct";
 import AdminDashboard from "./pages/AdminDashboard";
 import VendorHome from "./pages/VendorHome";
 import BuyerHome from "./pages/BuyerHome";
-import GoogleMapDebug from "./pages/GoogleMapDebug";
 import WarehouseManagement from "./components/Seller/Warehouse/WarehouseManagement";
 import { ThemeToggle } from "./components/ThemeToggle";
 
@@ -35,7 +34,6 @@ function App() {
         <Route path="/vendor/:section" element={<VendorHome />} />
 
         <Route path="/quantri" element={<AdminDashboard />} />
-        <Route path="/debug/google-map" element={<GoogleMapDebug />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

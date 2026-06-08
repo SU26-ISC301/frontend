@@ -52,7 +52,6 @@ import {
   ELECTRONICS_CATEGORIES,
 } from "../components/Seller/CategorySelectorField";
 import AddWarehouseModal from "../components/Seller/Warehouse/AddWarehouseModal";
-import WarehouseGoogleMap from "../components/Seller/Warehouse/WarehouseGoogleMap";
 import { VIETNAM_PROVINCES } from "../data/vietnamAdministrativeUnits";
 
 const navItems = [
@@ -2242,7 +2241,6 @@ function WarehousePage({ action, navigate, onToast }) {
   const [bpmnError, setBpmnError] = useState("");
   const [showUnlinkedPopup, setShowUnlinkedPopup] = useState(false);
   const [showNormalAddModal, setShowNormalAddModal] = useState(false);
-  const [locationMode, setLocationMode] = useState("manual");
 
   // Form State
   const [formData, setFormData] = useState({
@@ -2255,9 +2253,6 @@ function WarehousePage({ action, navigate, onToast }) {
     district: "",
     ward: "",
     addressDetail: "",
-    lat: 10.7626,
-    lng: 106.6602,
-    isPinned: false,
     shippingRegions: [],
     isDefault: true,
   });
@@ -2287,12 +2282,8 @@ function WarehousePage({ action, navigate, onToast }) {
       if (name === "province") {
         updated.district = "";
         updated.ward = "";
-        updated.isPinned = false;
       } else if (name === "district") {
         updated.ward = "";
-        updated.isPinned = false;
-      } else if (name === "ward" || name === "addressDetail") {
-        updated.isPinned = false;
       }
       return updated;
     });
@@ -2310,31 +2301,6 @@ function WarehousePage({ action, navigate, onToast }) {
         return { ...prev, shippingRegions: [...current, region] };
       }
     });
-  };
-
-  const handleMapLocationChange = useCallback((location) => {
-    setFormData((prev) => ({
-      ...prev,
-      ...(location.province ? { province: location.province } : {}),
-      ...(location.district ? { district: location.district } : {}),
-      ...(location.ward ? { ward: location.ward } : {}),
-      ...(location.addressDetail
-        ? { addressDetail: location.addressDetail }
-        : {}),
-      ...(Number.isFinite(location.lat) ? { lat: location.lat } : {}),
-      ...(Number.isFinite(location.lng) ? { lng: location.lng } : {}),
-      isPinned: location.isPinned,
-    }));
-    setBpmnError("");
-  }, []);
-
-  const handleLocationModeChange = (mode) => {
-    setLocationMode(mode);
-    setFormData((prev) => ({
-      ...prev,
-      isPinned: false,
-    }));
-    setBpmnError("");
   };
 
   const handleStartOnboarding = () => {
@@ -2358,11 +2324,10 @@ function WarehousePage({ action, navigate, onToast }) {
       !formData.name ||
       !formData.contact ||
       !formData.phone ||
-      (locationMode === "manual" &&
-        (!formData.province ||
-          !formData.district ||
-          !formData.ward ||
-          !formData.addressDetail))
+      !formData.province ||
+      !formData.district ||
+      !formData.ward ||
+      !formData.addressDetail
     ) {
       setBpmnError(
         "Vui lòng nhập đầy đủ các trường thông tin kho hàng bắt buộc!",
@@ -2390,13 +2355,6 @@ function WarehousePage({ action, navigate, onToast }) {
     if (!phoneRegex.test(formData.phone.trim())) {
       setBpmnError(
         "Số điện thoại không hợp lệ (phải gồm 10 chữ số bắt đầu bằng 0)!",
-      );
-      return;
-    }
-
-    if (locationMode === "map" && !formData.isPinned) {
-      setBpmnError(
-        "Vui lòng chọn vị trí trên Google Map và bấm Đồng ý!",
       );
       return;
     }
@@ -2443,17 +2401,14 @@ function WarehousePage({ action, navigate, onToast }) {
               name: formData.name.trim(),
               contact: formData.contact.trim(),
               phone: formData.phone.trim(),
-              address:
-                locationMode === "manual"
-                  ? `${formData.addressDetail.trim()}, ${formData.ward}, ${formData.district}, ${formData.province}, Việt Nam`
-                  : `Vị trí đã chọn trên Google Map (${formData.lat}, ${formData.lng})`,
+              address: `${formData.addressDetail.trim()}, ${formData.ward}, ${formData.district}, ${formData.province}, Việt Nam`,
               isDefault: formData.isDefault,
               status: "Đang hoạt động",
               shippingRegions: formData.shippingRegions || [],
-              isPinned: locationMode === "map" ? formData.isPinned : false,
-              lat: locationMode === "map" ? formData.lat : null,
-              lng: locationMode === "map" ? formData.lng : null,
-              locationMode,
+              isPinned: false,
+              lat: null,
+              lng: null,
+              locationMode: "manual",
             };
 
             const updatedList = [...warehouses, newWarehouse];
@@ -2806,176 +2761,81 @@ function WarehousePage({ action, navigate, onToast }) {
                   </label>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 rounded-xl bg-stone-100 p-1">
-                  <button
-                    type="button"
-                    onClick={() => handleLocationModeChange("manual")}
-                    className={cn(
-                      "rounded-lg px-3 py-2 text-xs font-extrabold transition-all",
-                      locationMode === "manual"
-                        ? "bg-white text-orange-700 shadow-sm"
-                        : "text-stone-500 hover:text-stone-700",
-                    )}
-                  >
-                    Nhập thủ công
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleLocationModeChange("map")}
-                    className={cn(
-                      "rounded-lg px-3 py-2 text-xs font-extrabold transition-all",
-                      locationMode === "map"
-                        ? "bg-white text-orange-700 shadow-sm"
-                        : "text-stone-500 hover:text-stone-700",
-                    )}
-                  >
-                    Chọn trên Map
-                  </button>
+                {/* Geography selectors */}
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <label className="block">
+                    <span className="text-xs font-bold text-stone-500">
+                      Tỉnh/Thành phố *
+                    </span>
+                    <select
+                      name="province"
+                      value={formData.province}
+                      onChange={handleInputChange}
+                      className="vendor-input mt-1.5 h-10 w-full px-3 text-sm appearance-none bg-white font-semibold"
+                    >
+                      <option value="">-- Chọn Tỉnh/Thành --</option>
+                      {VIETNAM_PROVINCES.map((p) => (
+                        <option key={p.name} value={p.name}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className="text-xs font-bold text-stone-500">
+                      Quận/Huyện *
+                    </span>
+                    <select
+                      name="district"
+                      value={formData.district}
+                      onChange={handleInputChange}
+                      disabled={!formData.province}
+                      className="vendor-input mt-1.5 h-10 w-full px-3 text-sm appearance-none bg-white font-semibold disabled:bg-stone-50 disabled:text-stone-300"
+                    >
+                      <option value="">-- Chọn Quận/Huyện --</option>
+                      {selectedProvinceData?.districts.map((d) => (
+                        <option key={d.name} value={d.name}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className="text-xs font-bold text-stone-500">
+                      Phường/Xã *
+                    </span>
+                    <select
+                      name="ward"
+                      value={formData.ward}
+                      onChange={handleInputChange}
+                      disabled={!formData.district}
+                      className="vendor-input mt-1.5 h-10 w-full px-3 text-sm appearance-none bg-white font-semibold disabled:bg-stone-50 disabled:text-stone-300"
+                    >
+                      <option value="">-- Chọn Phường/Xã --</option>
+                      {selectedDistrictData?.wards.map((w) => (
+                        <option key={w} value={w}>
+                          {w}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
 
-                {locationMode === "manual" && (
-                  <>
-                    {/* Geography selectors */}
-                    <div className="grid gap-4 sm:grid-cols-3">
-                      <label className="block">
-                        <span className="text-xs font-bold text-stone-500">
-                          Tỉnh/Thành phố *
-                        </span>
-                        <select
-                          name="province"
-                          value={formData.province}
-                          onChange={handleInputChange}
-                          className="vendor-input mt-1.5 h-10 w-full px-3 text-sm appearance-none bg-white font-semibold"
-                        >
-                          <option value="">-- Chọn Tỉnh/Thành --</option>
-                          {VIETNAM_PROVINCES.map((p) => (
-                            <option key={p.name} value={p.name}>
-                              {p.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-
-                      <label className="block">
-                        <span className="text-xs font-bold text-stone-500">
-                          Quận/Huyện *
-                        </span>
-                        <select
-                          name="district"
-                          value={formData.district}
-                          onChange={handleInputChange}
-                          disabled={!formData.province}
-                          className="vendor-input mt-1.5 h-10 w-full px-3 text-sm appearance-none bg-white font-semibold disabled:bg-stone-50 disabled:text-stone-300"
-                        >
-                          <option value="">-- Chọn Quận/Huyện --</option>
-                          {selectedProvinceData?.districts.map((d) => (
-                            <option key={d.name} value={d.name}>
-                              {d.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-
-                      <label className="block">
-                        <span className="text-xs font-bold text-stone-500">
-                          Phường/Xã *
-                        </span>
-                        <select
-                          name="ward"
-                          value={formData.ward}
-                          onChange={handleInputChange}
-                          disabled={!formData.district}
-                          className="vendor-input mt-1.5 h-10 w-full px-3 text-sm appearance-none bg-white font-semibold disabled:bg-stone-50 disabled:text-stone-300"
-                        >
-                          <option value="">-- Chọn Phường/Xã --</option>
-                          {selectedDistrictData?.wards.map((w) => (
-                            <option key={w} value={w}>
-                              {w}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-
-                    <label className="block">
-                      <span className="text-xs font-bold text-stone-500">
-                        Địa chỉ chi tiết *
-                      </span>
-                      <input
-                        name="addressDetail"
-                        type="text"
-                        value={formData.addressDetail}
-                        onChange={handleInputChange}
-                        placeholder="Số nhà, ngõ ngách, tên đường..."
-                        className="vendor-input mt-1.5 h-10 w-full px-3 text-sm"
-                      />
-                    </label>
-                  </>
-                )}
-
-                {locationMode === "map" && (
-                  <div className="rounded-xl border border-orange-100 bg-orange-50 px-3.5 py-3 text-xs font-semibold leading-5 text-orange-700">
-                    Chọn vị trí trực tiếp trên Google Map. Hệ thống sẽ không tự
-                    điền lại Tỉnh/Quận/Phường/Địa chỉ chi tiết.
-                  </div>
-                )}
-              </div>
-
-              {/* Map pinning */}
-              <div className="space-y-3">
-                <span className="text-xs font-bold text-stone-500 block">
-                  {locationMode === "manual"
-                    ? "2. Bản đồ tham khảo"
-                    : "2. Chọn vị trí trên Google Map *"}
-                </span>
-
-                <div className="grid gap-4 md:grid-cols-[1.6fr_0.4fr] items-stretch">
-                  <WarehouseGoogleMap
-                    mode={locationMode}
-                    addressParts={{
-                      province: formData.province,
-                      district: formData.district,
-                      ward: formData.ward,
-                      addressDetail: formData.addressDetail,
-                    }}
-                    coordinates={{
-                      lat: formData.lat,
-                      lng: formData.lng,
-                      isPinned: formData.isPinned,
-                    }}
-                    onLocationChange={handleMapLocationChange}
+                <label className="block">
+                  <span className="text-xs font-bold text-stone-500">
+                    Địa chỉ chi tiết *
+                  </span>
+                  <input
+                    name="addressDetail"
+                    type="text"
+                    value={formData.addressDetail}
+                    onChange={handleInputChange}
+                    placeholder="Số nhà, ngõ ngách, tên đường..."
+                    className="vendor-input mt-1.5 h-10 w-full px-3 text-sm"
                   />
-                  {/* Coordinates view */}
-                  <div
-                    className={cn(
-                      "rounded-xl border border-stone-200 bg-stone-50 p-4 flex flex-col justify-center gap-3",
-                      locationMode === "manual" && "opacity-60",
-                    )}
-                  >
-                    <div>
-                      <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-wider">
-                        Vĩ độ (Latitude)
-                      </span>
-                      <input
-                        type="text"
-                        readOnly
-                        value={formData.lat}
-                        className="vendor-input h-9 w-full mt-1 bg-white text-xs font-bold text-stone-600 text-center"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-wider">
-                        Kinh độ (Longitude)
-                      </span>
-                      <input
-                        type="text"
-                        readOnly
-                        value={formData.lng}
-                        className="vendor-input h-9 w-full mt-1 bg-white text-xs font-bold text-stone-600 text-center"
-                      />
-                    </div>
-                  </div>
-                </div>
+                </label>
               </div>
 
               {/* Shipping Region (Khu vực vận chuyển) - Only shown from 2nd warehouse */}
