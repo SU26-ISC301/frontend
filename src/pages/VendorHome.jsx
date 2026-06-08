@@ -1027,7 +1027,7 @@ function VendorToast({ toast, onClose }) {
   );
 }
 
-function VendorLayout({ activeSlug, children, onToast }) {
+function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -1286,14 +1286,24 @@ function VendorLayout({ activeSlug, children, onToast }) {
             >
               <CircleHelp className="h-5 w-5" />
             </button>
-            <button
-              type="button"
-              className="vendor-primary-button hidden sm:inline-flex"
-              onClick={() => navigate("/vendor/products/add")}
-            >
-              <Plus className="h-4 w-4" />
-              Thêm sản phẩm
-            </button>
+            {hasWarehouseConfigured ? (
+              <button
+                type="button"
+                className="vendor-primary-button hidden sm:inline-flex"
+                onClick={() => navigate("/vendor/products/add")}
+              >
+                <Plus className="h-4 w-4" />
+                Thêm sản phẩm
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="vendor-secondary-button hidden sm:inline-flex border-orange-200 text-orange-600 bg-orange-50/50 hover:bg-orange-50"
+                onClick={() => navigate("/vendor/kho-hang")}
+              >
+                Thiết lập kho hàng
+              </button>
+            )}
           </div>
         </header>
         <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -2017,7 +2027,7 @@ function OrdersPage({ onToast }) {
   );
 }
 
-function ProductsPage({ onToast, navigate }) {
+function ProductsPage({ onToast, navigate, hasWarehouseConfigured }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
@@ -2030,6 +2040,29 @@ function ProductsPage({ onToast, navigate }) {
       (!status || product.status === status),
   );
   const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
+  if (!hasWarehouseConfigured) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] p-8 bg-white border border-stone-200/80 rounded-2xl shadow-sm text-center max-w-2xl mx-auto my-4">
+        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-orange-50 text-orange-600 mb-6 shadow-sm shadow-orange-500/5 ring-4 ring-orange-50/50">
+          <Warehouse className="h-10 w-10 animate-bounce" style={{ animationDuration: '3s' }} />
+        </div>
+        <h2 className="text-xl font-extrabold text-stone-800 mb-3">
+          Yêu cầu thiết lập kho hàng trước khi bán
+        </h2>
+        <p className="text-sm text-stone-500 font-medium max-w-md mb-6 leading-relaxed">
+          Bạn cần thiết lập thông tin cho cả <strong>Kho lấy hàng (PICKUP)</strong> và <strong>Kho trả hàng (RETURN)</strong> tại trang cấu hình kho hàng để kích hoạt các tính năng quản lý sản phẩm.
+        </p>
+        <button
+          type="button"
+          className="vendor-primary-button gap-2 py-3 px-6 text-sm font-bold shadow-md shadow-orange-500/10"
+          onClick={() => navigate("/vendor/kho-hang")}
+        >
+          Thiết lập kho hàng ngay
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <Panel className="overflow-hidden">
@@ -2052,14 +2085,16 @@ function ProductsPage({ onToast, navigate }) {
                 <Upload className="h-4 w-4" />
                 Nhập file
               </button>
-              <button
-                type="button"
-                className="vendor-primary-button"
-                onClick={() => navigate("/vendor/products/add")}
-              >
-                <Plus className="h-4 w-4" />
-                Thêm sản phẩm
-              </button>
+              {hasWarehouseConfigured && (
+                <button
+                  type="button"
+                  className="vendor-primary-button"
+                  onClick={() => navigate("/vendor/products/add")}
+                >
+                  <Plus className="h-4 w-4" />
+                  Thêm sản phẩm
+                </button>
+              )}
             </div>
           </PanelHeader>
           <div className="mt-4">
@@ -4440,17 +4475,47 @@ export default function VendorHome() {
   const { section = "trangchu", action } = useParams();
   const navigate = useNavigate();
   const [toast, setToast] = useState(null);
+
+  // Check if warehouse is configured (both PICKUP and RETURN exist)
+  const [hasWarehouseConfigured, setHasWarehouseConfigured] = useState(false);
+
+  useEffect(() => {
+    const checkWarehouse = () => {
+      try {
+        const saved = localStorage.getItem("sellerWarehouses");
+        if (!saved) return false;
+        const list = JSON.parse(saved);
+        if (!Array.isArray(list)) return false;
+        const hasPickup = list.some(
+          (w) => w.type === "PICKUP" || w.warehouse_type === "PICKUP"
+        );
+        const hasReturn = list.some(
+          (w) => w.type === "RETURN" || w.warehouse_type === "RETURN"
+        );
+        return hasPickup && hasReturn;
+      } catch {
+        return false;
+      }
+    };
+    setHasWarehouseConfigured(checkWarehouse());
+  }, [section]);
+
   const Page = pageComponents[section];
   if (!Page) return <Navigate to="/vendor/trangchu" replace />;
   const navigateTo = (slug) => navigate(`/vendor/${slug}`);
   return (
     <>
-      <VendorLayout activeSlug={section} onToast={setToast}>
+      <VendorLayout
+        activeSlug={section}
+        onToast={setToast}
+        hasWarehouseConfigured={hasWarehouseConfigured}
+      >
         <Page
           action={action}
           navigate={navigate}
           navigateTo={navigateTo}
           onToast={setToast}
+          hasWarehouseConfigured={hasWarehouseConfigured}
         />
       </VendorLayout>
       {toast && <VendorToast toast={toast} onClose={() => setToast(null)} />}

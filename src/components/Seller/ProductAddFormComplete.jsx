@@ -85,6 +85,31 @@ export function ProductAddFormComplete() {
   const scrollTimeoutRef = useRef(null);
 
   useEffect(() => {
+    const checkWarehouse = () => {
+      try {
+        const saved = localStorage.getItem("sellerWarehouses");
+        if (!saved) return false;
+        const list = JSON.parse(saved);
+        if (!Array.isArray(list)) return false;
+        const hasPickup = list.some(
+          (w) => w.type === "PICKUP" || w.warehouse_type === "PICKUP"
+        );
+        const hasReturn = list.some(
+          (w) => w.type === "RETURN" || w.warehouse_type === "RETURN"
+        );
+        return hasPickup && hasReturn;
+      } catch {
+        return false;
+      }
+    };
+
+    if (!checkWarehouse()) {
+      alert("Phải thiết lập kho hàng trước khi thêm sản phẩm!");
+      navigate("/vendor/kho-hang");
+    }
+  }, [navigate]);
+
+  useEffect(() => {
     const container = mainRef.current;
     const onScroll = () => handleScroll();
     if (container) {
