@@ -403,8 +403,7 @@ export default function SubscriptionPlanModal({
 
           {/* Footer note */}
           <p className="mt-6 text-center text-[11px] font-semibold text-stone-400">
-            Đây là môi trường demo — không phát sinh chi phí thực tế.
-            <br />
+            {/* <br /> */}
             Gói được cập nhật ngay lập tức sau khi chọn.
           </p>
         </div>
