@@ -12,9 +12,7 @@ import { sellerApi } from '../../api/sellerAPI';
 import { VENDOR_FEATURES } from '../../config/vendorFeatures';
 import SubscriptionPlanModal, {
   getVendorPlan,
-  getRemainingSlots,
   consumeOneSlot,
-  VENDOR_PLANS,
 } from './SubscriptionPlanModal';
 
 export function ProductAddFormComplete() {

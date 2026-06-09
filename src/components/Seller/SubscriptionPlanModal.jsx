@@ -7,11 +7,8 @@ import {
   Crown,
   Package,
   Sparkles,
-  Star,
   ArrowRight,
   Shield,
-  TrendingUp,
-  Clock,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -107,16 +104,6 @@ export function consumeOneSlot() {
   saveVendorPlan(updated);
   return updated;
 }
-
-/* ─── Plan card icons per feature ──────────────────────────── */
-const FEATURE_ICONS = {
-  'Ưu tiên hiển thị': TrendingUp,
-  'Nổi bật trong tìm kiếm': Star,
-  'Đánh dấu tin nổi bật': Sparkles,
-  'Thời hạn hiển thị 7 ngày': Clock,
-  'Thời hạn hiển thị 15 ngày': Clock,
-  'Thời hạn hiển thị 30 ngày': Clock,
-};
 
 /* ─── PlanCard ──────────────────────────────────────────────── */
 function PlanCard({ plan, currentPlanId, onSelect }) {
