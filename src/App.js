@@ -6,6 +6,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import VendorHome from "./pages/VendorHome";
 import BuyerHome from "./pages/BuyerHome";
 import WarehouseManagement from "./components/Seller/Warehouse/WarehouseManagement";
+import VendorSubscriptionCheckout from "./pages/VendorSubscriptionCheckout";
 import { ThemeToggle } from "./components/ThemeToggle";
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
           element={<Navigate to="/vendor/trangchu" replace />}
         />
         <Route path="/vendor/products/add" element={<SellerAddProduct />} />
+        <Route path="/vendor/subscription/checkout" element={<VendorSubscriptionCheckout />} />
         <Route path="/vendor/:section/:action" element={<VendorHome />} />
         <Route path="/vendor/:section" element={<VendorHome />} />
 

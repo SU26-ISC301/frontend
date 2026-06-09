@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   X,
   Check,
@@ -269,6 +270,7 @@ export default function SubscriptionPlanModal({
   currentPlanId,
 }) {
   const [planState, setPlanState] = useState(getVendorPlan);
+  const navigate = useNavigate();
 
   // Re-read on open
   useEffect(() => {
@@ -291,15 +293,15 @@ export default function SubscriptionPlanModal({
   const activePlanId = currentPlanId || planState.planId || 'free';
 
   const handleSelect = (plan) => {
-    const newPlan = {
-      planId: plan.id,
-      usedSlots: planState.usedSlots || 0,
-      totalSlots: plan.totalSlots === Infinity ? -1 : plan.totalSlots,
-    };
-    saveVendorPlan(newPlan);
-    setPlanState(newPlan);
-    onPlanSelected?.(plan);
+    if (plan.id === 'free') {
+      // Giữ gói Free, chỉ đóng modal
+      onPlanSelected?.(plan);
+      onClose();
+      return;
+    }
+    // Plus / Premium → chuyển sang trang thanh toán
     onClose();
+    navigate(`/vendor/subscription/checkout?plan=${plan.id}`);
   };
 
   if (!isOpen) return null;

@@ -1,6 +1,8 @@
-import { Package, Zap, Crown, AlertTriangle, CheckCircle, ArrowUpRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Package, Zap, Crown, AlertTriangle, CheckCircle, ArrowUpRight, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getVendorPlan, VENDOR_PLANS } from './SubscriptionPlanModal';
+import { getSubscriptionStatus } from '../../api/subscriptionApi';
 
 const PLAN_META = {
   free: {
@@ -29,14 +31,57 @@ const PLAN_META = {
 /**
  * Props:
  *  onUpgradeClick: () => void  — opens the plan modal
+ *  refreshKey: number — increment để force reload
  */
-export default function PostingQuotaBanner({ onUpgradeClick }) {
-  const planData = getVendorPlan();
-  const planId = planData.planId || 'free';
-  const used = planData.usedSlots || 0;
-  const total = planData.totalSlots === -1 ? Infinity : (planData.totalSlots || 3);
-  const isPremiumUnlimited = total === Infinity;
+export default function PostingQuotaBanner({ onUpgradeClick, refreshKey }) {
+  const [quota, setQuota] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    getSubscriptionStatus()
+      .then((data) => {
+        if (!cancelled) {
+          setQuota(data);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          // Fallback về localStorage nếu chưa đăng nhập / API lỗi
+          const local = getVendorPlan();
+          setQuota({
+            planType: local.planId || 'free',
+            totalSlots: local.totalSlots === -1 ? -1 : (local.totalSlots || 3),
+            usedSlots: local.usedSlots || 0,
+            remainingSlots: local.totalSlots === -1 ? -1 :
+              Math.max(0, (local.totalSlots || 3) - (local.usedSlots || 0)),
+            canPost: true,
+          });
+          setLoading(false);
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [refreshKey]);
+
+  if (loading) {
+    return (
+      <div className="quota-banner">
+        <Loader2 className="h-5 w-5 animate-spin text-stone-400" />
+        <span className="text-xs font-semibold text-stone-400">Đang tải thông tin gói...</span>
+      </div>
+    );
+  }
+
+  if (!quota) return null;
+
+  const planId = quota.planType || 'free';
+  const used = quota.usedSlots || 0;
+  const total = quota.totalSlots === -1 ? Infinity : (quota.totalSlots || 3);
+  const isPremiumUnlimited = total === Infinity;
   const remaining = isPremiumUnlimited ? Infinity : Math.max(0, total - used);
   const pct = isPremiumUnlimited ? 100 : total > 0 ? Math.min(100, (used / total) * 100) : 100;
   const isExhausted = !isPremiumUnlimited && remaining === 0;
@@ -134,8 +179,6 @@ export default function PostingQuotaBanner({ onUpgradeClick }) {
             'shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold transition-all',
             isExhausted
               ? 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-500/30'
-              : planId === 'free'
-              ? 'border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100'
               : 'border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100',
           )}
         >
