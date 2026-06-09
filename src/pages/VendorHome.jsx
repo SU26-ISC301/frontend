@@ -54,6 +54,7 @@ import {
 } from "../components/Seller/CategorySelectorField";
 import AddWarehouseModal from "../components/Seller/Warehouse/AddWarehouseModal";
 import { VIETNAM_PROVINCES } from "../data/vietnamAdministrativeUnits";
+import { VENDOR_FEATURES } from "../config/vendorFeatures";
 
 const navItems = [
   { slug: "trangchu", label: "Tổng quan", icon: LayoutDashboard },
@@ -71,6 +72,10 @@ const navItems = [
   { slug: "tai-chinh", label: "Tài chính", icon: WalletCards },
   { slug: "cai-dat-shop", label: "Cài đặt shop", icon: Settings },
 ];
+
+const visibleNavItems = navItems.filter(
+  (item) => VENDOR_FEATURES.warehouse || item.slug !== "kho-hang",
+);
 
 const pageTitles = {
   trangchu: [
@@ -637,7 +642,7 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured })
     const normalized = query.trim().toLowerCase();
     if (!normalized) return [];
     return [
-      ...navItems.map((item) => ({
+      ...visibleNavItems.map((item) => ({
         slug: item.slug,
         title: item.label,
         meta: "Chức năng seller",
@@ -718,7 +723,7 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured })
           </button>
         </div>
         <nav className="scrollbar-hide flex-1 space-y-1 overflow-y-auto px-3 py-5">
-          {navItems.map(({ slug, label, icon: Icon, badge }) => (
+          {visibleNavItems.map(({ slug, label, icon: Icon, badge }) => (
             <NavLink
               key={slug}
               to={`/vendor/${slug}`}
@@ -885,14 +890,14 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured })
             >
               <CircleHelp className="h-5 w-5" />
             </button>
-            {hasWarehouseConfigured ? (
+            {hasWarehouseConfigured || !VENDOR_FEATURES.warehouse ? (
               <button
                 type="button"
                 className="vendor-primary-button hidden sm:inline-flex"
                 onClick={() => navigate("/vendor/products/add")}
               >
                 <Plus className="h-4 w-4" />
-                Thêm sản phẩm
+                Đăng tin sản phẩm
               </button>
             ) : (
               <button
@@ -1639,7 +1644,7 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured }) {
       (!status || product.status === status),
   );
   const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
-  if (!hasWarehouseConfigured) {
+  if (VENDOR_FEATURES.warehouse && !hasWarehouseConfigured) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] p-8 bg-white border border-stone-200/80 rounded-2xl shadow-sm text-center max-w-2xl mx-auto my-4">
         <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-orange-50 text-orange-600 mb-6 shadow-sm shadow-orange-500/5 ring-4 ring-orange-50/50">
@@ -1684,14 +1689,14 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured }) {
                 <Upload className="h-4 w-4" />
                 Nhập file
               </button>
-              {hasWarehouseConfigured && (
+              {(hasWarehouseConfigured || !VENDOR_FEATURES.warehouse) && (
                 <button
                   type="button"
                   className="vendor-primary-button"
                   onClick={() => navigate("/vendor/products/add")}
                 >
                   <Plus className="h-4 w-4" />
-                  Thêm sản phẩm
+                  Đăng tin sản phẩm
                 </button>
               )}
             </div>
@@ -4232,7 +4237,7 @@ const pageComponents = {
   "don-hang": OrdersPage,
   "san-pham": ProductsPage,
   "van-chuyen": ShippingPage,
-  "kho-hang": WarehousePage,
+  ...(VENDOR_FEATURES.warehouse ? { "kho-hang": WarehousePage } : {}),
   "tin-nhan": MessagesPage,
   "nghien-cuu-thi-truong": MarketResearchPage,
   marketing: MarketingPage,

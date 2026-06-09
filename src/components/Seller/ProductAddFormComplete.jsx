@@ -9,6 +9,7 @@ import { ProductDescriptionEditor } from './ProductDescriptionEditor';
 import { ProductVariantsField } from './ProductVariantsField';
 import { cn } from '../../lib/utils';
 import { sellerApi } from '../../api/sellerAPI';
+import { VENDOR_FEATURES } from '../../config/vendorFeatures';
 
 export function ProductAddFormComplete() {
   const navigate = useNavigate();
@@ -103,8 +104,8 @@ export function ProductAddFormComplete() {
       }
     };
 
-    if (!checkWarehouse()) {
-      alert("Phải thiết lập kho hàng trước khi thêm sản phẩm!");
+    if (VENDOR_FEATURES.warehouse && !checkWarehouse()) {
+      alert("Phải thiết lập kho hàng trước khi đăng tin sản phẩm!");
       navigate("/vendor/kho-hang");
     }
   }, [navigate]);
