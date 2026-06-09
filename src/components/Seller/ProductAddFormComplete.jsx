@@ -10,6 +10,10 @@ import { ProductVariantsField } from './ProductVariantsField';
 import { cn } from '../../lib/utils';
 import { sellerApi } from '../../api/sellerAPI';
 import { VENDOR_FEATURES } from '../../config/vendorFeatures';
+import SubscriptionPlanModal, {
+  getVendorPlan,
+  consumeOneSlot,
+} from './SubscriptionPlanModal';
 
 export function ProductAddFormComplete() {
   const navigate = useNavigate();
@@ -81,6 +85,14 @@ export function ProductAddFormComplete() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showWeightUnitMenu, setShowWeightUnitMenu] = useState(false);
   const [isBasicExpanded, setIsBasicExpanded] = useState(true);
+
+  // Subscription plan quota
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [planData, setPlanData] = useState(() => getVendorPlan());
+  const remainingSlots = planData.totalSlots === -1
+    ? Infinity
+    : Math.max(0, (planData.totalSlots || 3) - (planData.usedSlots || 0));
+  const isQuotaExhausted = remainingSlots <= 0;
 
   const isScrollingProgrammatically = useRef(false);
   const scrollTimeoutRef = useRef(null);
@@ -426,7 +438,11 @@ export function ProductAddFormComplete() {
 
       await sellerApi.createProduct(payload);
 
-      alert('Gửi xét duyệt thành công!');
+      // Deduct one posting slot from the plan
+      const updated = consumeOneSlot();
+      setPlanData(updated);
+
+      alert('Gửi xét duyệt thành công! Đang chờ Admin duyệt.');
       setTimeout(() => {
         navigate('/vendor/san-pham');
       }, 2000);
@@ -451,7 +467,51 @@ export function ProductAddFormComplete() {
   ];
 
   return (
-    <div className="vendor-app vendor-app-premium flex h-screen bg-slate-50/50 text-slate-800">
+    <div className="vendor-app vendor-app-premium flex h-screen bg-slate-50/50 text-slate-800 relative">
+      {/* ── Quota Exhausted Overlay (Step 3A) ── */}
+      {isQuotaExhausted && (
+        <div className="quota-form-overlay">
+          <div className="quota-form-block-card">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+            </div>
+            <h3 className="text-base font-extrabold text-stone-900 mb-2">
+              Bạn đã dùng hết lượt đăng tin
+            </h3>
+            <p className="text-sm font-semibold text-stone-500 mb-6 leading-relaxed">
+              Gói <span className="font-extrabold text-stone-700 capitalize">{planData.planId}</span> của bạn đã hết{' '}
+              <span className="font-extrabold text-red-600">{planData.totalSlots} lượt</span> đăng tin. Nâng cấp gói để tiếp tục.
+            </p>
+            <button
+              type="button"
+              className="vendor-primary-button w-full justify-center mb-3"
+              onClick={() => setShowPlanModal(true)}
+            >
+              Nâng cấp gói ngay
+            </button>
+            <button
+              type="button"
+              className="vendor-secondary-button w-full justify-center text-xs"
+              onClick={() => navigate('/vendor/san-pham')}
+            >
+              Quay lại trang sản phẩm
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Plan Modal */}
+      <SubscriptionPlanModal
+        isOpen={showPlanModal}
+        onClose={() => setShowPlanModal(false)}
+        onPlanSelected={(plan) => {
+          setPlanData(getVendorPlan());
+        }}
+        blocksNavigation={isQuotaExhausted}
+        currentPlanId={planData.planId}
+      />
       {/* Sidebar Navigation */}
       <aside className="w-64 bg-white border-r border-slate-200/80 shadow-[1px_0_0_0_rgba(0,0,0,0.02)] overflow-y-auto no-scrollbar sticky top-0 h-screen flex flex-col justify-between z-20">
         <div>

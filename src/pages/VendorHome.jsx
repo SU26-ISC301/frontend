@@ -55,6 +55,11 @@ import {
 import AddWarehouseModal from "../components/Seller/Warehouse/AddWarehouseModal";
 import { VIETNAM_PROVINCES } from "../data/vietnamAdministrativeUnits";
 import { VENDOR_FEATURES } from "../config/vendorFeatures";
+import SubscriptionPlanModal, {
+  getVendorPlan,
+  getRemainingSlots,
+} from "../components/Seller/SubscriptionPlanModal";
+import PostingQuotaBanner from "../components/Seller/PostingQuotaBanner";
 
 const navItems = [
   { slug: "trangchu", label: "Tổng quan", icon: LayoutDashboard },
@@ -631,7 +636,7 @@ function VendorToast({ toast, onClose }) {
   );
 }
 
-function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured }) {
+function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, onOpenPlanModal }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -894,7 +899,14 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured })
               <button
                 type="button"
                 className="vendor-primary-button hidden sm:inline-flex"
-                onClick={() => navigate("/vendor/products/add")}
+                onClick={() => {
+                  const remaining = getRemainingSlots();
+                  if (remaining <= 0) {
+                    onOpenPlanModal?.({ blocksNavigation: true });
+                  } else {
+                    navigate("/vendor/products/add");
+                  }
+                }}
               >
                 <Plus className="h-4 w-4" />
                 Đăng tin sản phẩm
@@ -1631,11 +1643,21 @@ function OrdersPage({ onToast }) {
   );
 }
 
-function ProductsPage({ onToast, navigate, hasWarehouseConfigured }) {
+function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanModal }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
+  const [planRefreshKey, setPlanRefreshKey] = useState(0);
   const pageSize = 4;
+
+  const handleAddProductClick = () => {
+    const remaining = getRemainingSlots();
+    if (remaining <= 0) {
+      onOpenPlanModal?.({ blocksNavigation: true });
+    } else {
+      navigate("/vendor/products/add");
+    }
+  };
   const filtered = products.filter(
     (product) =>
       `${product.name} ${product.sku}`
@@ -1669,6 +1691,15 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured }) {
 
   return (
     <div className="space-y-5">
+      {/* Quota Banner */}
+      <PostingQuotaBanner
+        key={planRefreshKey}
+        onUpgradeClick={() => onOpenPlanModal?.({
+          blocksNavigation: false,
+          onAfterSelect: () => setPlanRefreshKey((k) => k + 1),
+        })}
+      />
+
       <Panel className="overflow-hidden">
         <div className="p-5">
           <PanelHeader
@@ -1693,7 +1724,7 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured }) {
                 <button
                   type="button"
                   className="vendor-primary-button"
-                  onClick={() => navigate("/vendor/products/add")}
+                  onClick={handleAddProductClick}
                 >
                   <Plus className="h-4 w-4" />
                   Đăng tin sản phẩm
@@ -4250,6 +4281,32 @@ export default function VendorHome() {
   const navigate = useNavigate();
   const [toast, setToast] = useState(null);
 
+  // Subscription plan modal state
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [planModalBlocks, setPlanModalBlocks] = useState(false);
+  const [afterSelectCb, setAfterSelectCb] = useState(null);
+
+  const openPlanModal = useCallback(({ blocksNavigation = false, onAfterSelect } = {}) => {
+    setPlanModalBlocks(blocksNavigation);
+    setAfterSelectCb(() => onAfterSelect || null);
+    setPlanModalOpen(true);
+  }, []);
+
+  const handlePlanSelected = useCallback((plan) => {
+    setToast({
+      title: `Đã chuyển sang gói ${plan.name}`,
+      message:
+        plan.id === 'premium'
+          ? 'Không giới hạn lượt đăng. Đăng tin ngay thôi!'
+          : `Bạn có ${plan.totalSlots} lượt đăng tin với thời hạn ${plan.displayDays} ngày/tin.`,
+    });
+    afterSelectCb?.();
+    // If was blocking (quota exhausted) and now has slots, navigate to add product
+    if (planModalBlocks && plan.id !== 'free') {
+      navigate('/vendor/products/add');
+    }
+  }, [afterSelectCb, navigate, planModalBlocks]);
+
   // Check if warehouse is configured (both PICKUP and RETURN exist)
   const [hasWarehouseConfigured, setHasWarehouseConfigured] = useState(false);
 
@@ -4283,6 +4340,7 @@ export default function VendorHome() {
         activeSlug={section}
         onToast={setToast}
         hasWarehouseConfigured={hasWarehouseConfigured}
+        onOpenPlanModal={openPlanModal}
       >
         <Page
           action={action}
@@ -4290,9 +4348,17 @@ export default function VendorHome() {
           navigateTo={navigateTo}
           onToast={setToast}
           hasWarehouseConfigured={hasWarehouseConfigured}
+          onOpenPlanModal={openPlanModal}
         />
       </VendorLayout>
       {toast && <VendorToast toast={toast} onClose={() => setToast(null)} />}
+      <SubscriptionPlanModal
+        isOpen={planModalOpen}
+        onClose={() => setPlanModalOpen(false)}
+        onPlanSelected={handlePlanSelected}
+        blocksNavigation={planModalBlocks}
+        currentPlanId={getVendorPlan().planId}
+      />
     </>
   );
 }
