@@ -35,9 +35,12 @@ import {
   TrendingUp,
   Users,
   X,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { ELECTRONICS_CATEGORIES } from '../components/Seller/CategorySelectorField';
+import { authApi } from '../api/authAPI';
+import { adminApi } from '../api/adminAPI';
 
 const adminNavItems = [
   { id: 'tong-quan', label: 'Tổng quan', icon: LayoutDashboard },
@@ -254,12 +257,6 @@ function getMarketCategoryById(categoryId) {
 
 const DEFAULT_MARKET_CATEGORY_ID = 'op-lung-bao-da';
 
-const users = [
-  ['USR-4821', 'Minh Anh', 'Khách hàng', 'Đang hoạt động', '4 đơn / 30 ngày'],
-  ['USR-4818', 'Hoàng Nam', 'Khách hàng', 'Theo dõi', '1 yêu cầu hoàn tiền'],
-  ['SEL-2162', 'ShopVN Seller', 'Seller', 'Đang hoạt động', '96,2% SLA'],
-  ['SEL-2148', 'Beauty Corner', 'Seller', 'Cần xem xét', '3 cảnh báo'],
-];
 
 const orders = [
   ['SPV-10291', 'Minh Anh', 'TechZone VN', '389.000đ', 'Cần xác nhận'],
@@ -391,24 +388,41 @@ export default function AdminDashboard() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [toast, setToast] = useState(null);
 
+  useEffect(() => {
+    if (session) {
+      authApi.getMe()
+        .then((res) => {
+          const profile = res.data.data;
+          if (profile.role !== 'admin') {
+            handleLogout();
+          }
+        })
+        .catch(() => {
+          handleLogout();
+        });
+    }
+  }, [session]);
+
   const pendingCount = vendors.filter((vendor) => !['Đã duyệt', 'Từ chối'].includes(vendor.status)).length;
 
-  const handleLogin = (admin) => {
+  function handleLogin(admin) {
     const nextSession = {
-      name: admin.email.split('@')[0] || 'admin',
+      name: admin.name || admin.email.split('@')[0] || 'admin',
       email: admin.email,
       role: 'Quản trị viên hệ thống',
       signedInAt: new Date().toISOString(),
     };
     localStorage.setItem('adminSession', JSON.stringify(nextSession));
     setSession(nextSession);
-  };
+  }
 
-  const handleLogout = () => {
+  function handleLogout() {
     localStorage.removeItem('adminSession');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     setSession(null);
     setActive('tong-quan');
-  };
+  }
 
   const handleNavigate = (id) => {
     setActive(id);
@@ -620,16 +634,56 @@ function AdminToast({ toast, onClose }) {
 function AdminLogin({ onLogin }) {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const canSubmit = form.email.trim() && form.password.trim();
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (!canSubmit) {
       setError('Vui lòng nhập email và mật khẩu quản trị.');
       return;
     }
     setError('');
-    onLogin({ email: form.email.trim() });
+    setLoading(true);
+    try {
+      // 1. Đăng nhập qua authApi
+      const loginResponse = await authApi.login({
+        identifier: form.email.trim(),
+        password: form.password,
+      });
+      const { accessToken, refreshToken } = loginResponse.data;
+
+      // 2. Lưu token vào localStorage tạm thời để gọi getMe
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+
+      // 3. Lấy thông tin cá nhân để check role
+      const meResponse = await authApi.getMe();
+      const profile = meResponse.data.data;
+
+      if (profile.role !== 'admin') {
+        // Nếu không phải admin thì xóa token và báo lỗi
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        setError('Tài khoản của bạn không có quyền truy cập quản trị.');
+        return;
+      }
+
+      // 4. Kích hoạt session admin
+      onLogin({ email: profile.email, name: profile.fullName });
+    } catch (err) {
+      // Xóa token nhỡ có lỗi xảy ra
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        'Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -683,6 +737,7 @@ function AdminLogin({ onLogin }) {
                 onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
                 className="admin-form-input mt-2 h-12 w-full px-4 text-sm"
                 placeholder="admin@shopvn.vn"
+                disabled={loading}
               />
             </label>
             <label className="mt-4 block">
@@ -693,6 +748,7 @@ function AdminLogin({ onLogin }) {
                 onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
                 className="admin-form-input mt-2 h-12 w-full px-4 text-sm"
                 placeholder="Nhập mật khẩu"
+                disabled={loading}
               />
             </label>
             {error && <p className="mt-3 text-sm font-semibold text-red-600">{error}</p>}
@@ -703,9 +759,9 @@ function AdminLogin({ onLogin }) {
               </label>
               <button type="button" className="font-bold text-admin-accent hover:text-indigo-700">Quên mật khẩu?</button>
             </div>
-            <button type="submit" className="admin-primary-button mt-6 h-12 w-full justify-center">
-              <LockKeyhole className="h-4 w-4" />
-              Đăng nhập
+            <button type="submit" className="admin-primary-button mt-6 h-12 w-full justify-center" disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LockKeyhole className="h-4 w-4" />}
+              {loading ? 'Đang xác thực...' : 'Đăng nhập'}
             </button>
             <p className="mt-6 text-center text-xs font-medium leading-5 text-slate-400">
               Khu vực nội bộ. Mọi thao tác nhạy cảm đều được ghi nhận trong audit log.
@@ -722,12 +778,188 @@ function AdminSection({ active, vendors, onNavigate, onToast, onVendorStatus }) 
   if (active === 'duyet-shop') return <VendorApprovalSection vendors={vendors} onToast={onToast} onVendorStatus={onVendorStatus} />;
   if (active === 'san-pham') return <ProductsSection onToast={onToast} />;
   if (active === 'nghien-cuu-thi-truong') return <MarketResearchSection onToast={onToast} />;
-  if (active === 'nguoi-dung') return <DataSection title="Quản lý người dùng" subtitle="Theo dõi buyer, seller, trạng thái tài khoản và rủi ro." columns={['Mã', 'Tên', 'Vai trò', 'Trạng thái', 'Ghi chú']} rows={users} onToast={onToast} />;
+  if (active === 'nguoi-dung') return <UserManagementSection onToast={onToast} />;
   if (active === 'don-hang') return <DataSection title="Giám sát đơn hàng" subtitle="Theo dõi trạng thái đơn, SLA xử lý, seller phụ trách và giá trị giao dịch." columns={['Mã đơn', 'Khách hàng', 'Shop', 'Giá trị', 'Trạng thái']} rows={orders} onToast={onToast} />;
   if (active === 'tai-chinh') return <DataSection title="Tài chính & đối soát" subtitle="Quản lý rút tiền, hoàn tiền, phí nền tảng và kỳ đối soát seller." columns={['Hạng mục', 'Giá trị', 'Trạng thái', 'Ghi chú']} rows={financeRows} onToast={onToast} />;
   if (active === 'kiem-duyet') return <DataSection title="Trung tâm kiểm duyệt" subtitle="Xử lý nội dung, khiếu nại, gian lận thanh toán và vi phạm seller." columns={['Hàng đợi', 'Số lượng', 'Mô tả']} rows={moderationItems} onToast={onToast} />;
   if (active === 'bao-cao') return <ReportsSection onToast={onToast} />;
   return <SettingsSection />;
+}
+
+function UserManagementSection({ onToast }) {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [query, setQuery] = useState('');
+  const [togglingId, setTogglingId] = useState(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminApi.getAllProfiles();
+      setUsers(response.data?.data || []);
+    } catch (err) {
+      console.error(err);
+      setError('Không thể tải danh sách người dùng. Vui lòng thử lại sau.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleToggleStatus = async (user) => {
+    setTogglingId(user.id);
+    try {
+      const response = await adminApi.toggleProfileStatus(user.id);
+      const updatedUser = response.data?.data;
+      if (updatedUser) {
+        setUsers((current) =>
+          current.map((u) => (u.id === user.id ? updatedUser : u))
+        );
+        onToast({
+          title: 'Đã cập nhật trạng thái',
+          message: `Tài khoản ${user.fullName} đã được ${updatedUser.isActive ? 'mở khóa' : 'khóa'}.`,
+          tone: 'green',
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      onToast({
+        title: 'Thao tác thất bại',
+        message: err?.response?.data?.message || 'Có lỗi xảy ra khi thay đổi trạng thái người dùng.',
+        tone: 'red',
+      });
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const filteredUsers = users.filter((u) => {
+    const q = query.toLowerCase().trim();
+    return (
+      (u.fullName || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q) ||
+      (u.phone || '').toLowerCase().includes(q) ||
+      (u.role || '').toLowerCase().includes(q)
+    );
+  });
+
+  const getRoleLabel = (role) => {
+    const r = (role || '').toLowerCase();
+    if (r === 'admin') return 'Quản trị viên';
+    if (r === 'vendor') return 'Người bán';
+    return 'Khách hàng';
+  };
+
+  const getRoleBadgeClass = (role) => {
+    const r = (role || '').toLowerCase();
+    if (r === 'admin') return 'bg-purple-50 text-purple-700 border border-purple-100';
+    if (r === 'vendor') return 'bg-indigo-50 text-indigo-700 border border-indigo-100';
+    return 'bg-emerald-50 text-emerald-700 border border-emerald-100';
+  };
+
+  const paginatedUsers = filteredUsers.slice((page - 1) * pageSize, page * pageSize);
+
+  return (
+    <div>
+      <PageHeader title="Quản lý người dùng" subtitle="Theo dõi danh sách khách hàng, người bán và quản lý trạng thái tài khoản." />
+      
+      <Toolbar query={query} searchPlaceholder="Tìm theo tên, email, số điện thoại..." onQueryChange={(q) => { setQuery(q); setPage(1); }} onReset={() => { setQuery(''); setPage(1); }} />
+      
+      <section className="admin-panel mt-5 overflow-hidden">
+        {loading ? (
+          <div className="flex h-64 items-center justify-center gap-2 text-slate-500">
+            <Loader2 className="h-6 w-6 animate-spin text-admin-accent" />
+            <span className="text-sm font-bold">Đang tải dữ liệu người dùng...</span>
+          </div>
+        ) : error ? (
+          <div className="flex h-64 flex-col items-center justify-center text-center p-5">
+            <AlertTriangle className="h-8 w-8 text-red-500" />
+            <p className="mt-3 text-sm font-extrabold text-slate-700">{error}</p>
+            <button type="button" onClick={fetchUsers} className="admin-secondary-button mt-4">Thử lại</button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="admin-table-head">
+                <tr>
+                  <th className="px-5 py-3.5">Mã người dùng</th>
+                  <th className="px-5 py-3.5">Họ tên & Email</th>
+                  <th className="px-5 py-3.5">Số điện thoại</th>
+                  <th className="px-5 py-3.5">Vai trò</th>
+                  <th className="px-5 py-3.5">Ngày tham gia</th>
+                  <th className="px-5 py-3.5">Trạng thái</th>
+                  <th className="px-5 py-3.5 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paginatedUsers.map((user) => (
+                  <tr key={user.id} className="admin-table-row">
+                    <td className="px-5 py-4 font-bold text-slate-800">
+                      {user.id.substring(0, 8).toUpperCase()}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div>
+                        <p className="font-bold text-slate-800">{user.fullName}</p>
+                        <p className="text-xs font-semibold text-slate-400">{user.email}</p>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-slate-600">
+                      {user.phone || 'N/A'}
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className={cn('admin-status-pill rounded px-2 py-1 text-xs font-bold', getRoleBadgeClass(user.role))}>
+                        {getRoleLabel(user.role)}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-slate-500">
+                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
+                    </td>
+                    <td className="px-5 py-4">
+                      {user.isActive ? (
+                        <span className="admin-status-pill bg-emerald-50 text-emerald-700">Đang hoạt động</span>
+                      ) : (
+                        <span className="admin-status-pill bg-red-50 text-red-600">Bị khóa</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      {user.role !== 'admin' && (
+                        <button
+                          type="button"
+                          disabled={togglingId === user.id}
+                          onClick={() => handleToggleStatus(user)}
+                          className={cn(
+                            'admin-link-button font-bold text-sm inline-flex items-center gap-1',
+                            user.isActive ? 'text-red-500 hover:text-red-700' : 'text-indigo-600 hover:text-indigo-800'
+                          )}
+                        >
+                          {togglingId === user.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : user.isActive ? (
+                            'Khóa tài khoản'
+                          ) : (
+                            'Mở khóa'
+                          )}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredUsers.length === 0 && <TableEmptyState />}
+            <TableFooter count={filteredUsers.length} page={page} pageSize={pageSize} onPageChange={setPage} />
+          </div>
+        )}
+      </section>
+    </div>
+  );
 }
 
 function PageHeader({ eyebrow, title, subtitle, children }) {
