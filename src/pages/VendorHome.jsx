@@ -16,6 +16,8 @@ import {
   Coins,
   CreditCard,
   Download,
+  Eye,
+  EyeOff,
   ImagePlus,
   LayoutDashboard,
   LogOut,
@@ -48,6 +50,7 @@ import {
 import { cn } from "../lib/utils";
 import { vendorMessageApi } from "../api/vendorMessageAPI";
 import { marketResearchApi } from "../api/marketResearchAPI";
+import { sellerApi } from "../api/sellerAPI";
 import {
   CategorySelectorField,
   ELECTRONICS_CATEGORIES,
@@ -4142,6 +4145,121 @@ function SettingsPage({ onToast }) {
     quickChatReply: true,
   });
 
+  const vendorInfo = getVendorInfo();
+  const profileId = vendorInfo?.profileId;
+
+  const [vendorData, setVendorData] = useState({
+    id: null,
+    shopName: "",
+    category: "",
+    email: "",
+    phone: "",
+    cccd: "",
+    taxCode: "",
+    status: "active",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showCccd, setShowCccd] = useState(false);
+  const [showTaxCode, setShowTaxCode] = useState(false);
+
+  useEffect(() => {
+    const fetchVendorProfile = async () => {
+      if (!profileId) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const data = await sellerApi.getVendorByProfileId(profileId);
+        if (data) {
+          setVendorData({
+            id: data.id,
+            shopName: data.shopName || "",
+            category: data.category || "",
+            email: data.email || "",
+            phone: data.phone || "",
+            cccd: data.cccd || "",
+            taxCode: data.taxCode || "",
+            status: data.status || "active",
+          });
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải thông tin shop:", err);
+        onToast({
+          title: "Lỗi tải dữ liệu",
+          message: "Không thể tải thông tin hồ sơ từ máy chủ.",
+          type: "error",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVendorProfile();
+  }, [profileId, onToast]);
+
+  const maskSensitive = (str, show) => {
+    if (!str) return "Chưa cập nhật";
+    if (show) return str;
+    if (str.length <= 6) return "*".repeat(str.length);
+    return str.slice(0, 3) + "*".repeat(str.length - 6) + str.slice(-3);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!vendorData.shopName.trim()) {
+      onToast({ title: "Thông tin không hợp lệ", message: "Vui lòng nhập tên shop.", type: "error" });
+      return;
+    }
+    if (!vendorData.email.trim()) {
+      onToast({ title: "Thông tin không hợp lệ", message: "Vui lòng nhập email hỗ trợ.", type: "error" });
+      return;
+    }
+    if (!vendorData.phone.trim()) {
+      onToast({ title: "Thông tin không hợp lệ", message: "Vui lòng nhập số điện thoại.", type: "error" });
+      return;
+    }
+
+    try {
+      const vendorId = vendorData.id || vendorInfo?.vendorId;
+      if (!vendorId) throw new Error("Không tìm thấy Vendor ID");
+
+      setSaving(true);
+      const response = await sellerApi.updateVendor(vendorId, {
+        shopName: vendorData.shopName.trim(),
+        description: vendorData.description || "",
+        logoUrl: vendorData.logoUrl || "",
+        email: vendorData.email.trim(),
+        phone: vendorData.phone.trim(),
+        category: vendorData.category,
+        status: vendorData.status,
+        cccd: vendorData.cccd.trim(),
+        taxCode: vendorData.taxCode.trim(),
+      });
+
+      if (response) {
+        onToast({
+          title: "Đã lưu thay đổi",
+          message: "Hồ sơ cửa hàng đã được cập nhật thành công.",
+          type: "success",
+        });
+        const updatedInfo = {
+          ...vendorInfo,
+          shopName: response.shopName,
+        };
+        localStorage.setItem("vendorInfo", JSON.stringify(updatedInfo));
+      }
+    } catch (err) {
+      console.error("Lỗi khi lưu thông tin shop:", err);
+      onToast({
+        title: "Lỗi cập nhật",
+        message: err?.response?.data?.message || err?.message || "Không thể lưu thay đổi.",
+        type: "error",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const updateOperationSetting = (settingId, enabled) => {
     setOperationSettings((current) => ({ ...current, [settingId]: enabled }));
     const setting = operationSettingDefaults.find(
@@ -4152,6 +4270,21 @@ function SettingsPage({ onToast }) {
       message: setting ? setting.label : "Cấu hình vận hành đã được cập nhật.",
     });
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-stone-200 border-t-orange-600" />
+      </div>
+    );
+  }
+
+  const SELLER_CATEGORIES = [
+    { id: "dt-do-dien-tu", name: "Điện tử & công nghệ" },
+    { id: "may-tinh-van-phong", name: "Máy tính & Văn phòng" },
+    { id: "thiet-bi-mang", name: "Thiết bị mạng" },
+    { id: "tv-giai-tri", name: "TV & Thiết bị giải trí" },
+  ];
 
   return (
     <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
@@ -4165,41 +4298,117 @@ function SettingsPage({ onToast }) {
             <Store className="h-7 w-7" />
           </span>
           <div>
-            <p className="font-extrabold text-stone-800">ShopVN Seller</p>
+            <p className="font-extrabold text-stone-800">{vendorData.shopName || "ShopVN Seller"}</p>
             <p className="mt-1 text-xs font-semibold text-stone-400">
-              Mã shop VND-2026-0412
+              Mã shop: VND-{vendorData.id || vendorInfo?.vendorId || "N/A"}
             </p>
-            <StatusBadge className="mt-2" status="Đang hoạt động" />
+            <StatusBadge className="mt-2" status={vendorData.status === "active" ? "Đang hoạt động" : vendorData.status} />
           </div>
         </div>
         <div className="mt-5 grid gap-3">
-          {[
-            ["Tên shop", "ShopVN Seller"],
-            ["Ngành hàng chính", "Thời trang & phụ kiện"],
-            ["Email hỗ trợ", "support@shopvn.local"],
-            ["Số điện thoại", "0922393339"],
-          ].map(([label, value]) => (
-            <label key={label}>
-              <span className="text-xs font-bold text-stone-500">{label}</span>
+          <label>
+            <span className="text-xs font-bold text-stone-500">Tên shop</span>
+            <input
+              className="vendor-input mt-1 h-11 w-full px-3 text-sm"
+              value={vendorData.shopName}
+              onChange={(e) => setVendorData(prev => ({ ...prev, shopName: e.target.value }))}
+            />
+          </label>
+
+          <label>
+            <span className="text-xs font-bold text-stone-500">Ngành hàng chính</span>
+            <select
+              className="vendor-input mt-1 h-11 w-full px-3 text-sm bg-white"
+              value={vendorData.category}
+              onChange={(e) => setVendorData(prev => ({ ...prev, category: e.target.value }))}
+            >
+              <option value="">Chọn ngành hàng chính</option>
+              {SELLER_CATEGORIES.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="text-xs font-bold text-stone-500">Email hỗ trợ</span>
+            <input
+              className="vendor-input mt-1 h-11 w-full px-3 text-sm"
+              value={vendorData.email}
+              onChange={(e) => setVendorData(prev => ({ ...prev, email: e.target.value }))}
+            />
+          </label>
+
+          <label>
+            <span className="text-xs font-bold text-stone-500">Số điện thoại</span>
+            <input
+              className="vendor-input mt-1 h-11 w-full px-3 text-sm"
+              value={vendorData.phone}
+              onChange={(e) => setVendorData(prev => ({ ...prev, phone: e.target.value }))}
+            />
+          </label>
+
+          <label className="relative block">
+            <span className="text-xs font-bold text-stone-500">Số CCCD chủ shop (Được bảo mật)</span>
+            <div className="relative mt-1">
               <input
-                className="vendor-input mt-1 h-11 w-full px-3 text-sm"
-                defaultValue={value}
+                type="text"
+                className={`vendor-input h-11 w-full pl-3 pr-10 text-sm ${!showCccd ? "bg-stone-50 text-stone-500 select-none" : ""}`}
+                value={showCccd ? vendorData.cccd : maskSensitive(vendorData.cccd, false)}
+                readOnly={!showCccd}
+                onChange={(e) => {
+                  if (showCccd) {
+                    setVendorData(prev => ({ ...prev, cccd: e.target.value }));
+                  }
+                }}
+                placeholder="Chưa cập nhật số CCCD"
               />
-            </label>
-          ))}
+              <button
+                type="button"
+                onClick={() => setShowCccd(!showCccd)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+              >
+                {showCccd ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+              </button>
+            </div>
+          </label>
+
+          <label className="relative block">
+            <span className="text-xs font-bold text-stone-500">Mã số thuế (Được bảo mật)</span>
+            <div className="relative mt-1">
+              <input
+                type="text"
+                className={`vendor-input h-11 w-full pl-3 pr-10 text-sm ${!showTaxCode ? "bg-stone-50 text-stone-500 select-none" : ""}`}
+                value={showTaxCode ? vendorData.taxCode : maskSensitive(vendorData.taxCode, false)}
+                readOnly={!showTaxCode}
+                onChange={(e) => {
+                  if (showTaxCode) {
+                    setVendorData(prev => ({ ...prev, taxCode: e.target.value }));
+                  }
+                }}
+                placeholder="Chưa cập nhật mã số thuế"
+              />
+              <button
+                type="button"
+                onClick={() => setShowTaxCode(!showTaxCode)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+              >
+                {showTaxCode ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+              </button>
+            </div>
+          </label>
         </div>
         <button
           type="button"
-          className="vendor-primary-button mt-4"
-          onClick={() =>
-            onToast({
-              title: "Đã lưu thay đổi",
-              message: "Hồ sơ cửa hàng đã được cập nhật thành công.",
-            })
-          }
+          className="vendor-primary-button mt-5 flex items-center justify-center gap-2"
+          onClick={handleSaveProfile}
+          disabled={saving}
         >
-          <CheckCircle2 className="h-4 w-4" />
-          Lưu thay đổi
+          {saving ? (
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-stone-200 border-t-white" />
+          ) : (
+            <CheckCircle2 className="h-4 w-4" />
+          )}
+          {saving ? "Đang lưu..." : "Lưu thay đổi"}
         </button>
       </Panel>
 
@@ -4211,7 +4420,7 @@ function SettingsPage({ onToast }) {
           />
           <div className="mt-4 space-y-2">
             {[
-              ["CCCD chủ shop", "Đã xác minh", ShieldCheck],
+              ["CCCD chủ shop", vendorData.cccd ? "Đã xác minh" : "Chưa cập nhật", ShieldCheck],
               ["Tài khoản ngân hàng", "Đã xác minh", Banknote],
               ["Xác thực 2 lớp", "Khuyến nghị bật", BadgeCheck],
             ].map(([label, value, Icon]) => (
