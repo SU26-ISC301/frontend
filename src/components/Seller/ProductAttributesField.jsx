@@ -6,12 +6,6 @@ import { getAttributeSchema } from '../../utils/attributeSchemas';
 export function ProductAttributesField({ categoryId, value = {}, onChange, errors = {} }) {
   const [showOptional, setShowOptional] = useState(false);
 
-  // Reset attributes when category changes
-  useEffect(() => {
-    onChange({});
-    setShowOptional(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryId]);
 
   if (!categoryId) {
     return (

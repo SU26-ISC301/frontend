@@ -31,6 +31,7 @@ function App() {
           element={<Navigate to="/vendor/trangchu" replace />}
         />
         <Route path="/vendor/products/add" element={<SellerAddProduct />} />
+        <Route path="/vendor/products/edit/:sku" element={<SellerAddProduct isEdit={true} />} />
         <Route path="/vendor/subscription/checkout" element={<VendorSubscriptionCheckout />} />
         <Route path="/vendor/:section/:action" element={<VendorHome />} />
         <Route path="/vendor/:section" element={<VendorHome />} />

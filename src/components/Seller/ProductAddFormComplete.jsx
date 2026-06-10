@@ -1,22 +1,25 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, Save, Send, AlertCircle, HelpCircle, ChevronDown } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ProductImageUploadV3 } from './ProductImageUploadV3';
 import { BrandSelectorField } from './BrandSelectorField';
-import { CategorySelectorField } from './CategorySelectorField';
+import { CategorySelectorField, ELECTRONICS_CATEGORIES } from './CategorySelectorField';
 import { ProductAttributesField } from './ProductAttributesField';
 import { ProductDescriptionEditor } from './ProductDescriptionEditor';
 import { ProductVariantsField } from './ProductVariantsField';
 import { cn } from '../../lib/utils';
 import { sellerApi } from '../../api/sellerAPI';
+import { marketResearchApi } from '../../api/marketResearchAPI';
 import { VENDOR_FEATURES } from '../../config/vendorFeatures';
+import { productStorage, mapBackendProductToLocal, mergeProductData } from '../../utils/productStorage';
 import SubscriptionPlanModal, {
   getVendorPlan,
   consumeOneSlot,
 } from './SubscriptionPlanModal';
 
-export function ProductAddFormComplete() {
+export function ProductAddFormComplete({ isEdit }) {
   const navigate = useNavigate();
+  const { sku } = useParams();
   const mainRef = useRef(null);
   const sectionRefs = {
     basic: useRef(null),
@@ -85,6 +88,75 @@ export function ProductAddFormComplete() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showWeightUnitMenu, setShowWeightUnitMenu] = useState(false);
   const [isBasicExpanded, setIsBasicExpanded] = useState(true);
+  const [categoriesList, setCategoriesList] = useState([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const list = await sellerApi.getProductCategories();
+        if (Array.isArray(list)) {
+          setCategoriesList(list);
+          return;
+        }
+      } catch (err) {
+        console.warn('Lỗi gọi getProductCategories, thử /vendors/market-research:', err);
+      }
+      
+      try {
+        const res = await marketResearchApi.getVendorMarketResearch();
+        if (res && Array.isArray(res.categories)) {
+          setCategoriesList(res.categories);
+        }
+      } catch (err) {
+        console.warn('Không thể tải danh mục từ cả hai API:', err);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  const getCategoryLeaves = (nodes) => {
+    const result = [];
+    const recurse = (list) => {
+      list.forEach(node => {
+        if (!node.children || node.children.length === 0) {
+          result.push(node);
+        } else {
+          recurse(node.children);
+        }
+      });
+    };
+    recurse(nodes);
+    return result;
+  };
+
+  const getBackendCategoryId = (categorySlug) => {
+    if (!categorySlug) return null;
+    const leaves = getCategoryLeaves(ELECTRONICS_CATEGORIES);
+    const localLeaf = leaves.find(l => l.id === categorySlug);
+    if (!localLeaf) {
+      if (!isNaN(categorySlug)) return parseInt(categorySlug, 10);
+      return null;
+    }
+
+    const localName = localLeaf.name.trim().toLowerCase();
+    const backendMatch = categoriesList.find(
+      c => c.name && c.name.trim().toLowerCase() === localName
+    );
+    
+    if (backendMatch) {
+      return parseInt(backendMatch.id, 10);
+    }
+
+    const backendMatchSlug = categoriesList.find(
+      c => c.id && c.id.toString().trim().toLowerCase() === categorySlug.trim().toLowerCase()
+    );
+    if (backendMatchSlug) {
+      return parseInt(backendMatchSlug.id, 10);
+    }
+
+    if (!isNaN(categorySlug)) return parseInt(categorySlug, 10);
+    return null;
+  };
 
   // Subscription plan quota
   const [showPlanModal, setShowPlanModal] = useState(false);
@@ -96,6 +168,90 @@ export function ProductAddFormComplete() {
 
   const isScrollingProgrammatically = useRef(false);
   const scrollTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    if (isEdit && sku) {
+      const loadProduct = async () => {
+        let product = productStorage.getProductBySku(sku);
+        try {
+          let categories = [];
+          try {
+            categories = await sellerApi.getProductCategories();
+          } catch (catErr) {
+            console.warn('Lỗi gọi getProductCategories, thử /vendors/market-research:', catErr);
+            try {
+              const res = await marketResearchApi.getVendorMarketResearch();
+              if (res && Array.isArray(res.categories)) {
+                categories = res.categories;
+              }
+            } catch (mrErr) {
+              console.warn('Không thể tải danh mục từ market-research:', mrErr);
+            }
+          }
+
+          const isNumericId = product && product.id && /^\d+$/.test(String(product.id));
+          if (product && product.id && isNumericId) {
+            const beProd = await sellerApi.getProductById(product.id);
+            if (beProd) {
+              const mapped = mapBackendProductToLocal(beProd, categories);
+              const merged = mergeProductData(product, mapped);
+              product = merged;
+              productStorage.updateProduct(sku, merged);
+            }
+          }
+        } catch (err) {
+          console.warn('Lỗi khi tải chi tiết sản phẩm từ BE:', err);
+        }
+
+        if (product) {
+          setFormData({
+            images: (product.images || []).map(img => ({
+              preview: img.preview || img,
+              file: null,
+              name: img.name || ''
+            })),
+            productName: product.name || '',
+            brand: product.brand || '',
+            category: product.category || '',
+            attributes: product.attributes || {},
+            description: product.description || '',
+            video: product.video || null,
+            hasVariant: !!product.hasVariant,
+            variants: product.variants ? (typeof product.variants === 'string' ? JSON.parse(product.variants) : product.variants) : [],
+            skus: product.skus ? (typeof product.skus === 'string' ? JSON.parse(product.skus) : product.skus) : [],
+            singlePrice: product.hasVariant ? '' : String(product.price || ''),
+            singleStock: product.hasVariant ? '0' : String(product.stock !== undefined ? product.stock : '0'),
+            singleDiscount: product.discount ? String(product.discount) : '',
+            singleSku: product.hasVariant ? '' : (product.sku || ''),
+            price: product.price || '',
+            stock: product.stock || '',
+            discount: product.discount || '',
+            sku: product.sku || '',
+            dangerousGoods: product.dangerousGoods || 'no',
+            weight: product.weight !== undefined ? String(product.weight) : '',
+            weightUnit: product.weightUnit || 'g',
+            length: product.length !== undefined ? String(product.length) : '',
+            width: product.width !== undefined ? String(product.width) : '',
+            height: product.height !== undefined ? String(product.height) : '',
+            shippingType: product.shippingType || 'default',
+            customPlatforms: product.customPlatforms || {
+              standard: true,
+              bulky: true,
+              express24h: true,
+              instant: true,
+            },
+            codEnabled: product.codEnabled !== undefined ? product.codEnabled : true,
+            shippingMethod: product.shippingMethod || 'standard',
+            shippingFee: product.shippingFee || '',
+          });
+        } else {
+          alert('Không tìm thấy sản phẩm cần chỉnh sửa!');
+          navigate('/vendor/san-pham');
+        }
+      };
+      loadProduct();
+    }
+  }, [isEdit, sku, navigate]);
 
   useEffect(() => {
     const checkWarehouse = () => {
@@ -232,15 +388,31 @@ export function ProductAddFormComplete() {
   const handleVideoUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 100 * 1024 * 1024) {
+      if (file.size > 5 * 1024 * 1024) {
         setErrors((prev) => ({
           ...prev,
-          video: 'Tối đa 100MB',
+          video: 'Dung lượng video không được vượt quá 5MB',
         }));
         return;
       }
       handleFieldChange('video', file);
     }
+  };
+
+  const getVideoSrc = (video) => {
+    if (!video) return '';
+    if (video instanceof File || video instanceof Blob) {
+      try {
+        return URL.createObjectURL(video);
+      } catch (e) {
+        console.error(e);
+        return '';
+      }
+    }
+    if (typeof video === 'string') {
+      return video;
+    }
+    return video.preview || video.url || '';
   };
 
   const validateForm = () => {
@@ -357,8 +529,239 @@ export function ProductAddFormComplete() {
     return Object.keys(next).length === 0;
   };
 
-  const handleSaveDraft = () => {
-    alert('Lưu nháp thành công!');
+  const buildBackendProductPayload = (uploadedImages, uploadedVideo, status) => {
+    const categoryId = getBackendCategoryId(formData.category) || 12;
+
+    const mediaList = [];
+    uploadedImages.forEach((imgUrl, index) => {
+      if (imgUrl) {
+        mediaList.push({
+          mediaUrl: imgUrl,
+          isMain: index === 0,
+          mediaType: 'image',
+          sortOrder: index
+        });
+      }
+    });
+    if (uploadedVideo) {
+      mediaList.push({
+        mediaUrl: uploadedVideo,
+        isMain: false,
+        mediaType: 'video',
+        sortOrder: mediaList.length
+      });
+    }
+
+    const attributeLabelMap = {
+      warrantyType: 'Loại bảo hành',
+      originCountry: 'Quốc gia xuất xứ',
+      responsibleName: 'Tổ chức chịu trách nhiệm',
+      responsibleAddress: 'Địa chỉ tổ chức chịu trách nhiệm'
+    };
+    const attributesPayload = Object.entries(formData.attributes || {}).map(([key, val], idx) => ({
+      name: attributeLabelMap[key] || key,
+      sortOrder: idx,
+      values: [
+        {
+          value: String(val),
+          sortOrder: 0
+        }
+      ]
+    }));
+
+    if (formData.hasVariant && Array.isArray(formData.variants)) {
+      formData.variants.forEach((v, idx) => {
+        if (v.name && v.name.trim()) {
+          attributesPayload.push({
+            name: v.name.trim(),
+            sortOrder: attributesPayload.length,
+            values: (v.options || [])
+              .filter(opt => opt.value && opt.value.trim())
+              .map((opt, oIdx) => ({
+                value: opt.value.trim(),
+                sortOrder: oIdx
+              }))
+          });
+        }
+      });
+    }
+
+
+    const variantsPayload = formData.hasVariant ? formData.skus.map((s, idx) => ({
+      sku: s.sku || `SKU-${Math.floor(100000 + Math.random() * 900000)}`,
+      sellerSku: s.sku || s.sellerSku || '',
+      price: parseFloat(s.price) || 0,
+      stock: parseInt(s.stock, 10) || 0,
+      discountPercent: parseInt(s.discount) || 0,
+      imageUrl: s.imageUrl || (uploadedImages[0] || ''),
+      attributeValueIds: []
+    })) : [
+      {
+        sku: formData.singleSku || `SKU-${Math.floor(100000 + Math.random() * 900000)}`,
+        sellerSku: formData.singleSku || '',
+        price: parseFloat(formData.singlePrice) || 0,
+        stock: parseInt(formData.singleStock, 10) || 0,
+        discountPercent: parseInt(formData.singleDiscount) || 0,
+        imageUrl: uploadedImages[0] || '',
+        attributeValueIds: []
+      }
+    ];
+
+    const weightG = (() => {
+      if (!formData.weight) return 0;
+      const parsed = parseFloat(formData.weight);
+      if (isNaN(parsed)) return 0;
+      return formData.weightUnit === 'kg' ? parsed * 1000 : parsed;
+    })();
+
+    return {
+      categoryId,
+      brandId: 1,
+      name: formData.productName,
+      description: formData.description,
+      status: status || 'pending',
+      condition: 'new',
+      originCountry: formData.attributes.originCountry || 'Việt Nam',
+      warrantyType: formData.attributes.warrantyType || 'Không bảo hành',
+      parcelWeightG: Math.round(weightG),
+      parcelWidth: formData.width ? parseInt(formData.width, 10) : 0,
+      parcelLength: formData.length ? parseInt(formData.length, 10) : 0,
+      parcelHeight: formData.height ? parseInt(formData.height, 10) : 0,
+      deliveryMethod: 'default',
+      mediaList,
+      attributes: attributesPayload,
+      variants: variantsPayload
+    };
+  };
+
+  const handleSaveDraft = async () => {
+    if (!formData.productName.trim()) {
+      alert('Vui lòng nhập ít nhất Tên sản phẩm để lưu bản nháp!');
+      return;
+    }
+
+    setIsSubmitting(true);
+    let uploadedImages = formData.images.map(img => img.preview || img);
+    let uploadedVideo = typeof formData.video === 'string' ? formData.video : (formData.video?.preview || formData.video?.url || null);
+
+    const imagesToUpload = formData.images.filter(img => img.file instanceof File).map(img => img.file);
+    const videoToUpload = formData.video instanceof File ? formData.video : null;
+    
+    const filesToUpload = [...imagesToUpload];
+    if (videoToUpload) {
+      filesToUpload.push(videoToUpload);
+    }
+
+    if (filesToUpload.length > 0) {
+      try {
+        const urlsList = await sellerApi.uploadProductMedia(filesToUpload);
+        let urlIdx = 0;
+        uploadedImages = formData.images.map(img => {
+          if (img.file instanceof File) {
+            return urlsList[urlIdx++];
+          }
+          return img.preview || img;
+        });
+        if (videoToUpload) {
+          uploadedVideo = urlsList[urlIdx++];
+        }
+      } catch (uploadError) {
+        console.warn('Lỗi tải media lên Backend, sử dụng dự phòng local URLs:', uploadError);
+        alert('Lưu ý: Không thể tải ảnh/video lên server Backend (Lỗi mạng hoặc server quá tải).\nHệ thống sẽ tạm thời dùng liên kết cục bộ để bạn tiếp tục lưu bản nháp.');
+        
+        uploadedImages = formData.images.map(img => {
+          if (img.file instanceof File) {
+            try {
+              return URL.createObjectURL(img.file);
+            } catch (e) {
+              return 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500';
+            }
+          }
+          return img.preview || img;
+        });
+        if (videoToUpload) {
+          try {
+            uploadedVideo = URL.createObjectURL(videoToUpload);
+          } catch (e) {
+            uploadedVideo = '';
+          }
+        }
+      }
+    }
+
+    let calculatedPrice = 0;
+    let calculatedStock = 0;
+    let calculatedSku = formData.singleSku || '';
+
+    if (!formData.hasVariant) {
+      calculatedPrice = formData.singlePrice ? parseFloat(formData.singlePrice) : 0;
+      calculatedStock = formData.singleStock ? parseInt(formData.singleStock, 10) : 0;
+    } else {
+      const prices = formData.skus.map(s => parseFloat(s.price)).filter(p => !isNaN(p));
+      calculatedPrice = prices.length > 0 ? Math.min(...prices) : 0;
+      calculatedStock = formData.skus.reduce((sum, s) => sum + (parseInt(s.stock, 10) || 0), 0);
+      calculatedSku = formData.skus.find(s => s.sku)?.sku || '';
+    }
+
+    const backendPayload = buildBackendProductPayload(uploadedImages, uploadedVideo, 'draft');
+
+    let beProduct = null;
+    try {
+      const productDetails = isEdit ? productStorage.getProductBySku(sku) : null;
+      const productId = productDetails?.id;
+      const isNumericId = productId && /^\d+$/.test(String(productId));
+
+      if (isEdit && sku && isNumericId) {
+        beProduct = await sellerApi.updateProduct(productId, backendPayload);
+      } else {
+        beProduct = await sellerApi.createProduct(backendPayload);
+      }
+    } catch (apiError) {
+      console.error('Lỗi lưu bản nháp lên Backend:', apiError);
+      alert('Không thể lưu bản nháp lên máy chủ Backend.\nChi tiết lỗi: ' + (apiError.response?.data?.message || apiError.response?.data?.error || apiError.message));
+      setIsSubmitting(false);
+      return;
+    }
+
+    const localPayload = {
+      id: beProduct?.id || (isEdit ? (productStorage.getProductBySku(sku)?.id) : undefined),
+      name: formData.productName,
+      brand: formData.brand,
+      category: formData.category,
+      description: formData.description,
+      price: calculatedPrice,
+      stock: calculatedStock,
+      discount: formData.singleDiscount ? parseFloat(formData.singleDiscount) : 0,
+      sku: calculatedSku || `SKU-DRAFT-${Math.floor(1000 + Math.random() * 9000)}`,
+      hasVariant: formData.hasVariant,
+      dangerousGoods: formData.dangerousGoods,
+      weight: formData.weight ? parseFloat(formData.weight) : 0,
+      weightUnit: formData.weightUnit,
+      length: formData.length ? parseFloat(formData.length) : '',
+      width: formData.width ? parseFloat(formData.width) : '',
+      height: formData.height ? parseFloat(formData.height) : '',
+      shippingType: formData.shippingType,
+      customPlatforms: formData.customPlatforms,
+      codEnabled: formData.codEnabled,
+      images: uploadedImages.map(url => ({ preview: url, name: url.split('/').pop() })),
+      attributes: formData.attributes,
+      video: uploadedVideo ? { name: formData.video?.name || 'video.mp4', preview: uploadedVideo } : null,
+      variants: formData.hasVariant ? formData.variants : [],
+      skus: formData.hasVariant ? formData.skus : [],
+      status: 'Nháp',
+      note: 'Bản nháp'
+    };
+
+    if (isEdit && sku) {
+      productStorage.updateProduct(sku, localPayload);
+      alert('Cập nhật bản nháp thành công!');
+    } else {
+      productStorage.addProduct(localPayload);
+      alert('Lưu bản nháp thành công!');
+    }
+
+    setIsSubmitting(false);
+    navigate('/vendor/san-pham');
   };
 
   const handleSubmit = async () => {
@@ -368,95 +771,137 @@ export function ProductAddFormComplete() {
     }
 
     setIsSubmitting(true);
+    let uploadedImages = formData.images.map(img => img.preview || img);
+    let uploadedVideo = typeof formData.video === 'string' ? formData.video : (formData.video?.preview || formData.video?.url || null);
 
-    try {
-      // Determine sales values based on hasVariant mode
-      let calculatedPrice = 0;
-      let calculatedStock = 0;
-      let calculatedDiscount = 0;
-      let calculatedSku = '';
+    const imagesToUpload = formData.images.filter(img => img.file instanceof File).map(img => img.file);
+    const videoToUpload = formData.video instanceof File ? formData.video : null;
+    
+    const filesToUpload = [...imagesToUpload];
+    if (videoToUpload) {
+      filesToUpload.push(videoToUpload);
+    }
 
-      if (!formData.hasVariant) {
-        calculatedPrice = parseFloat(formData.singlePrice);
-        calculatedStock = parseInt(formData.singleStock, 10);
-        calculatedDiscount = formData.singleDiscount ? parseFloat(formData.singleDiscount) : 0;
-        calculatedSku = formData.singleSku;
-      } else {
-        // Variant mode: calculate aggregations
-        const prices = formData.skus.map(s => parseFloat(s.price)).filter(p => !isNaN(p));
-        calculatedPrice = prices.length > 0 ? Math.min(...prices) : 0;
-
-        calculatedStock = formData.skus.reduce((sum, s) => sum + (parseInt(s.stock, 10) || 0), 0);
-
-        const discounts = formData.skus.map(s => parseFloat(s.discount)).filter(d => !isNaN(d));
-        calculatedDiscount = discounts.length > 0 ? Math.max(...discounts) : 0;
-
-        calculatedSku = formData.skus.find(s => s.sku)?.sku || '';
-      }
-
-      // Build a plain object payload since sellerApi.createProduct handles FormData serialization internally
-      const payload = {
-        productName: formData.productName,
-        brand: formData.brand,
-        category: formData.category,
-        description: formData.description,
-        price: calculatedPrice,
-        stock: calculatedStock,
-        discount: calculatedDiscount,
-        sku: calculatedSku,
-        hasVariant: formData.hasVariant ? 'true' : 'false',
-        dangerousGoods: formData.dangerousGoods,
-        weight: (() => {
-          if (!formData.weight) return undefined;
-          const parsed = parseFloat(formData.weight);
-          if (isNaN(parsed)) return undefined;
-          return formData.weightUnit === 'kg' ? parsed * 1000 : parsed;
-        })(),
-        length: formData.length ? parseFloat(formData.length) : undefined,
-        width: formData.width ? parseFloat(formData.width) : undefined,
-        height: formData.height ? parseFloat(formData.height) : undefined,
-        shippingMethod: (() => {
-          if (formData.shippingType === 'custom') {
-            if (formData.customPlatforms?.instant || formData.customPlatforms?.express24h) {
-              return 'express';
+    if (filesToUpload.length > 0) {
+      try {
+        const urlsList = await sellerApi.uploadProductMedia(filesToUpload);
+        let urlIdx = 0;
+        uploadedImages = formData.images.map(img => {
+          if (img.file instanceof File) {
+            return urlsList[urlIdx++];
+          }
+          return img.preview || img;
+        });
+        if (videoToUpload) {
+          uploadedVideo = urlsList[urlIdx++];
+        }
+      } catch (uploadError) {
+        console.warn('Lỗi tải media lên Backend, sử dụng dự phòng local URLs:', uploadError);
+        alert('Lưu ý: Không thể tải ảnh/video lên server Backend (Lỗi mạng hoặc server quá tải).\nHệ thống sẽ tạm thời dùng liên kết cục bộ để bạn tiếp tục gửi xét duyệt sản phẩm.');
+        
+        uploadedImages = formData.images.map(img => {
+          if (img.file instanceof File) {
+            try {
+              return URL.createObjectURL(img.file);
+            } catch (e) {
+              return 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500';
             }
           }
-          return 'standard';
-        })(),
-        images: formData.images.map((img) => img.file).filter(Boolean),
-        attributes: formData.attributes,
-      };
-
-      if (formData.hasVariant) {
-        payload.variants = JSON.stringify(formData.variants);
-        payload.skus = JSON.stringify(formData.skus);
+          return img.preview || img;
+        });
+        if (videoToUpload) {
+          try {
+            uploadedVideo = URL.createObjectURL(videoToUpload);
+          } catch (e) {
+            uploadedVideo = '';
+          }
+        }
       }
+    }
 
-      if (formData.video) {
-        payload.video = formData.video;
+    let calculatedPrice = 0;
+    let calculatedStock = 0;
+    let calculatedDiscount = 0;
+    let calculatedSku = '';
+
+    if (!formData.hasVariant) {
+      calculatedPrice = parseFloat(formData.singlePrice);
+      calculatedStock = parseInt(formData.singleStock, 10);
+      calculatedDiscount = formData.singleDiscount ? parseFloat(formData.singleDiscount) : 0;
+      calculatedSku = formData.singleSku;
+    } else {
+      const prices = formData.skus.map(s => parseFloat(s.price)).filter(p => !isNaN(p));
+      calculatedPrice = prices.length > 0 ? Math.min(...prices) : 0;
+
+      calculatedStock = formData.skus.reduce((sum, s) => sum + (parseInt(s.stock, 10) || 0), 0);
+
+      const discounts = formData.skus.map(s => parseFloat(s.discount)).filter(d => !isNaN(d));
+      calculatedDiscount = discounts.length > 0 ? Math.max(...discounts) : 0;
+
+      calculatedSku = formData.skus.find(s => s.sku)?.sku || '';
+    }
+
+    const backendPayload = buildBackendProductPayload(uploadedImages, uploadedVideo, 'pending');
+
+    let beProduct = null;
+    try {
+      const productDetails = isEdit ? productStorage.getProductBySku(sku) : null;
+      const productId = productDetails?.id;
+      const isNumericId = productId && /^\d+$/.test(String(productId));
+
+      if (isEdit && sku && isNumericId) {
+        beProduct = await sellerApi.updateProduct(productId, backendPayload);
+      } else {
+        beProduct = await sellerApi.createProduct(backendPayload);
       }
+    } catch (apiError) {
+      console.error('Lỗi khi gửi sản phẩm lên Backend:', apiError);
+      alert('Không thể gửi xét duyệt sản phẩm lên Backend.\nChi tiết lỗi: ' + (apiError.response?.data?.message || apiError.response?.data?.error || apiError.message));
+      setIsSubmitting(false);
+      return;
+    }
 
-      await sellerApi.createProduct(payload);
+    const localProductPayload = {
+      id: beProduct?.id || (isEdit ? (productStorage.getProductBySku(sku)?.id) : undefined),
+      name: formData.productName,
+      brand: formData.brand,
+      category: formData.category,
+      description: formData.description,
+      price: calculatedPrice,
+      stock: calculatedStock,
+      discount: calculatedDiscount,
+      sku: calculatedSku || `SKU-REVIEW-${Math.floor(1000 + Math.random() * 9000)}`,
+      hasVariant: formData.hasVariant,
+      dangerousGoods: formData.dangerousGoods,
+      weight: formData.weight ? parseFloat(formData.weight) : 0,
+      weightUnit: formData.weightUnit,
+      length: formData.length ? parseFloat(formData.length) : '',
+      width: formData.width ? parseFloat(formData.width) : '',
+      height: formData.height ? parseFloat(formData.height) : '',
+      shippingType: formData.shippingType,
+      customPlatforms: formData.customPlatforms,
+      codEnabled: formData.codEnabled,
+      images: uploadedImages.map(url => ({ preview: url, name: url.split('/').pop() })),
+      attributes: formData.attributes,
+      video: uploadedVideo ? { name: formData.video?.name || 'video.mp4', preview: uploadedVideo } : null,
+      variants: formData.hasVariant ? formData.variants : [],
+      skus: formData.hasVariant ? formData.skus : [],
+      status: 'Chờ duyệt',
+      note: 'Đang chờ Admin duyệt'
+    };
 
-      // Deduct one posting slot from the plan
+    if (isEdit && sku) {
+      productStorage.updateProduct(sku, localProductPayload);
+      alert('Cập nhật sản phẩm và gửi xét duyệt thành công!');
+    } else {
+      productStorage.addProduct(localProductPayload);
       const updated = consumeOneSlot();
       setPlanData(updated);
-
       alert('Gửi xét duyệt thành công! Đang chờ Admin duyệt.');
-      setTimeout(() => {
-        navigate('/vendor/san-pham');
-      }, 2000);
-    } catch (error) {
-      console.error('Submit error:', error);
-      const errorMsg =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
-        error?.message ||
-        'Không thể thêm sản phẩm. Vui lòng thử lại.';
-      alert('Lỗi: ' + errorMsg);
-    } finally {
-      setIsSubmitting(false);
     }
+
+    setIsSubmitting(false);
+    navigate('/vendor/san-pham');
   };
 
   const sections = [
@@ -699,7 +1144,7 @@ export function ProductAddFormComplete() {
               <ChevronLeft className="h-5 w-5 text-slate-500" />
             </button>
             <div>
-              <h1 className="text-lg font-bold text-slate-800">Thêm sản phẩm mới</h1>
+              <h1 className="text-lg font-bold text-slate-800">{isEdit ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</h1>
               <p className="text-xs font-medium text-slate-400">Thiết bị điện tử & Phụ kiện công nghệ</p>
             </div>
           </div>
@@ -800,7 +1245,14 @@ export function ProductAddFormComplete() {
               </label>
               <CategorySelectorField
                 value={formData.category}
-                onChange={(cat) => handleFieldChange('category', cat)}
+                onChange={(cat) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    category: cat,
+                    attributes: {}
+                  }));
+                  setErrors((prev) => ({ ...prev, category: '', attributes: {} }));
+                }}
                 error={errors.category}
               />
             </div>
@@ -868,8 +1320,8 @@ export function ProductAddFormComplete() {
                     e.currentTarget.classList.remove('border-orange-400', 'bg-orange-50/10');
                     const file = e.dataTransfer.files?.[0];
                     if (file && file.type.startsWith('video/')) {
-                      if (file.size > 100 * 1024 * 1024) {
-                        setErrors((prev) => ({ ...prev, video: 'File vượt quá 100MB' }));
+                      if (file.size > 5 * 1024 * 1024) {
+                        setErrors((prev) => ({ ...prev, video: 'Dung lượng video không được vượt quá 5MB' }));
                       } else {
                         handleFieldChange('video', file);
                         setErrors((prev) => ({ ...prev, video: '' }));
@@ -895,7 +1347,7 @@ export function ProductAddFormComplete() {
                       </div>
                     </div>
                     <p className="text-sm font-bold text-slate-700 mb-1">Kéo thả hoặc nhấn để chọn video</p>
-                    <p className="text-xs text-slate-400 font-medium">MP4, MOV, MKV, AVI · Tối đa 100MB · Tỷ lệ khuyên dùng 16:9</p>
+                    <p className="text-xs text-slate-400 font-medium">MP4, MOV, MKV, AVI · Tối đa 5MB · Tỷ lệ khuyên dùng 16:9</p>
                   </label>
                 </div>
               ) : (
@@ -903,10 +1355,10 @@ export function ProductAddFormComplete() {
                   {/* Video player */}
                   <div className="relative bg-black" style={{ aspectRatio: '16/9' }}>
                     <video
-                      key={formData.video.name}
+                      key={formData.video.name || (typeof formData.video === 'string' ? formData.video : 'stored-video')}
                       className="w-full h-full object-contain"
                       controls
-                      src={URL.createObjectURL(formData.video)}
+                      src={getVideoSrc(formData.video)}
                       onLoadedMetadata={(e) => {
                         e.currentTarget.dataset.duration = e.currentTarget.duration;
                       }}
@@ -920,9 +1372,9 @@ export function ProductAddFormComplete() {
                       </svg>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-700 truncate">{formData.video.name}</p>
+                      <p className="text-sm font-bold text-slate-700 truncate">{formData.video.name || 'video_gioi_thieu.mp4'}</p>
                       <p className="text-xs text-slate-400 font-medium">
-                        {(formData.video.size / (1024 * 1024)).toFixed(2)} MB
+                        {formData.video.size ? `${(formData.video.size / (1024 * 1024)).toFixed(2)} MB` : '15 MB'}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
