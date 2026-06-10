@@ -323,7 +323,8 @@ const notificationItems = [
 
 function readAdminSession() {
   try {
-    return JSON.parse(localStorage.getItem('adminSession') || 'null');
+    const sessionStr = localStorage.getItem('adminSession') || sessionStorage.getItem('adminSession');
+    return JSON.parse(sessionStr || 'null');
   } catch {
     return null;
   }
@@ -405,14 +406,15 @@ export default function AdminDashboard() {
 
   const pendingCount = vendors.filter((vendor) => !['Đã duyệt', 'Từ chối'].includes(vendor.status)).length;
 
-  function handleLogin(admin) {
+  function handleLogin(admin, remember) {
     const nextSession = {
       name: admin.name || admin.email.split('@')[0] || 'admin',
       email: admin.email,
       role: 'Quản trị viên hệ thống',
       signedInAt: new Date().toISOString(),
     };
-    localStorage.setItem('adminSession', JSON.stringify(nextSession));
+    const storage = remember ? localStorage : sessionStorage;
+    storage.setItem('adminSession', JSON.stringify(nextSession));
     setSession(nextSession);
   }
 
@@ -420,6 +422,9 @@ export default function AdminDashboard() {
     localStorage.removeItem('adminSession');
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('adminSession');
+    sessionStorage.removeItem('accessToken');
+    sessionStorage.removeItem('refreshToken');
     setSession(null);
     setActive('tong-quan');
   }
@@ -633,6 +638,7 @@ function AdminToast({ toast, onClose }) {
 
 function AdminLogin({ onLogin }) {
   const [form, setForm] = useState({ email: '', password: '' });
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const canSubmit = form.email.trim() && form.password.trim();
@@ -645,6 +651,7 @@ function AdminLogin({ onLogin }) {
     }
     setError('');
     setLoading(true);
+    const storage = rememberMe ? localStorage : sessionStorage;
     try {
       // 1. Đăng nhập qua authApi
       const loginResponse = await authApi.login({
@@ -653,9 +660,9 @@ function AdminLogin({ onLogin }) {
       });
       const { accessToken, refreshToken } = loginResponse.data;
 
-      // 2. Lưu token vào localStorage tạm thời để gọi getMe
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
+      // 2. Lưu token vào storage tạm thời để gọi getMe
+      storage.setItem('accessToken', accessToken);
+      storage.setItem('refreshToken', refreshToken);
 
       // 3. Lấy thông tin cá nhân để check role
       const meResponse = await authApi.getMe();
@@ -663,18 +670,18 @@ function AdminLogin({ onLogin }) {
 
       if (profile.role !== 'admin') {
         // Nếu không phải admin thì xóa token và báo lỗi
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
+        storage.removeItem('accessToken');
+        storage.removeItem('refreshToken');
         setError('Tài khoản của bạn không có quyền truy cập quản trị.');
         return;
       }
 
       // 4. Kích hoạt session admin
-      onLogin({ email: profile.email, name: profile.fullName });
+      onLogin({ email: profile.email, name: profile.fullName }, rememberMe);
     } catch (err) {
       // Xóa token nhỡ có lỗi xảy ra
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
+      storage.removeItem('accessToken');
+      storage.removeItem('refreshToken');
       const msg =
         err?.response?.data?.message ||
         err?.response?.data?.error ||
@@ -729,10 +736,13 @@ function AdminLogin({ onLogin }) {
               Sử dụng tài khoản nội bộ đã được cấp quyền truy cập.
             </p>
 
-            <label className="mt-7 block">
+            <label className="mt-7 block" htmlFor="admin-email">
               <span className="text-sm font-bold text-slate-700">Email quản trị</span>
               <input
+                id="admin-email"
+                name="email"
                 type="email"
+                autoComplete="username"
                 value={form.email}
                 onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
                 className="admin-form-input mt-2 h-12 w-full px-4 text-sm"
@@ -740,10 +750,13 @@ function AdminLogin({ onLogin }) {
                 disabled={loading}
               />
             </label>
-            <label className="mt-4 block">
+            <label className="mt-4 block" htmlFor="admin-password">
               <span className="text-sm font-bold text-slate-700">Mật khẩu</span>
               <input
+                id="admin-password"
+                name="password"
                 type="password"
+                autoComplete="current-password"
                 value={form.password}
                 onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
                 className="admin-form-input mt-2 h-12 w-full px-4 text-sm"
@@ -753,11 +766,15 @@ function AdminLogin({ onLogin }) {
             </label>
             {error && <p className="mt-3 text-sm font-semibold text-red-600">{error}</p>}
             <div className="mt-4 flex items-center justify-between gap-3 text-sm">
-              <label className="flex items-center gap-2 font-semibold text-slate-600">
-                <input type="checkbox" className="h-4 w-4 accent-indigo-600" />
+              <label className="flex items-center gap-2 font-semibold text-slate-600 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={rememberMe} 
+                  onChange={(e) => setRememberMe(e.target.checked)} 
+                  className="h-4 w-4 accent-indigo-600 rounded cursor-pointer" 
+                />
                 Ghi nhớ đăng nhập
               </label>
-              <button type="button" className="font-bold text-admin-accent hover:text-indigo-700">Quên mật khẩu?</button>
             </div>
             <button type="submit" className="admin-primary-button mt-6 h-12 w-full justify-center" disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LockKeyhole className="h-4 w-4" />}
