@@ -6,7 +6,16 @@ import axiosClient from './axiosClient';
  */
 export async function getSubscriptionStatus() {
   const response = await axiosClient.get('/api/subscription/status');
-  return response.data.data;
+  const planData = response.data.data;
+  if (planData) {
+    const localData = {
+      planId: planData.planType || 'free',
+      usedSlots: planData.usedSlots || 0,
+      totalSlots: planData.totalSlots
+    };
+    localStorage.setItem('vendorPlan', JSON.stringify(localData));
+  }
+  return planData;
 }
 
 /**

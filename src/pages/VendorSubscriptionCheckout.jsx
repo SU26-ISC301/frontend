@@ -14,7 +14,7 @@ import {
   ExternalLink,
   AlertCircle
 } from 'lucide-react';
-import { createPaymentLink, checkPaymentStatus } from '../api/subscriptionApi';
+import { createPaymentLink, checkPaymentStatus, getSubscriptionStatus } from '../api/subscriptionApi';
 import { VENDOR_PLANS } from '../components/Seller/SubscriptionPlanModal';
 import { cn } from '../lib/utils';
 
@@ -522,6 +522,7 @@ export default function VendorSubscriptionCheckout() {
   }, []);
 
   const handleSuccess = useCallback(() => {
+    getSubscriptionStatus().catch(() => {});
     setStep('success');
   }, []);
 
