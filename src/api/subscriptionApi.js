@@ -1,21 +1,21 @@
-import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
-
-function getAuthHeaders() {
-  const token = localStorage.getItem('accessToken');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+import axiosClient from './axiosClient';
 
 /**
  * Lấy trạng thái gói subscription hiện tại
  * @returns {{ planType, totalSlots, usedSlots, remainingSlots, expiresAt, canPost }}
  */
 export async function getSubscriptionStatus() {
-  const response = await axios.get(`${API_URL}/api/subscription/status`, {
-    headers: getAuthHeaders(),
-  });
-  return response.data.data;
+  const response = await axiosClient.get('/api/subscription/status');
+  const planData = response.data.data;
+  if (planData) {
+    const localData = {
+      planId: planData.planType || 'free',
+      usedSlots: planData.usedSlots || 0,
+      totalSlots: planData.totalSlots
+    };
+    localStorage.setItem('vendorPlan', JSON.stringify(localData));
+  }
+  return planData;
 }
 
 /**
@@ -25,11 +25,10 @@ export async function getSubscriptionStatus() {
  * @returns {{ paymentUrl, orderCode, amount, planType, transactionId }}
  */
 export async function createPaymentLink(planType, paymentMethod = 'payos') {
-  const response = await axios.post(
-    `${API_URL}/api/subscription/upgrade`,
-    { planType, paymentMethod },
-    { headers: getAuthHeaders() }
-  );
+  const response = await axiosClient.post('/api/subscription/upgrade', {
+    planType,
+    paymentMethod
+  });
   return response.data.data;
 }
 
@@ -39,13 +38,9 @@ export async function createPaymentLink(planType, paymentMethod = 'payos') {
  * @returns {'pending' | 'paid' | 'cancelled' | 'failed'}
  */
 export async function checkPaymentStatus(orderCode) {
-  const response = await axios.get(
-    `${API_URL}/api/subscription/check-payment`,
-    {
-      params: { orderCode },
-      headers: getAuthHeaders(),
-    }
-  );
+  const response = await axiosClient.get('/api/subscription/check-payment', {
+    params: { orderCode }
+  });
   return response.data.data?.status || 'pending';
 }
 
@@ -53,10 +48,6 @@ export async function checkPaymentStatus(orderCode) {
  * Trừ 1 lượt đăng tin sau khi post thành công
  */
 export async function useSubscriptionSlot() {
-  const response = await axios.post(
-    `${API_URL}/api/subscription/use-slot`,
-    {},
-    { headers: getAuthHeaders() }
-  );
+  const response = await axiosClient.post('/api/subscription/use-slot', {});
   return response.data;
 }

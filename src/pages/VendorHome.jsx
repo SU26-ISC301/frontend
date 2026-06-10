@@ -13,6 +13,7 @@ import {
   ChevronRight,
   CircleHelp,
   Clock3,
+  History,
   Coins,
   CreditCard,
   Download,
@@ -79,6 +80,7 @@ const navItems = [
   },
   { slug: "marketing", label: "Marketing", icon: TicketPercent },
   { slug: "tai-chinh", label: "Tài chính", icon: WalletCards },
+  { slug: "nhat-ky-hoat-dong", label: "Nhật ký hoạt động", icon: History },
   { slug: "cai-dat-shop", label: "Cài đặt shop", icon: Settings },
 ];
 
@@ -122,6 +124,10 @@ const pageTitles = {
   "tai-chinh": [
     "Tài chính",
     "Kiểm soát dòng tiền, đối soát và tài khoản nhận thanh toán.",
+  ],
+  "nhat-ky-hoat-dong": [
+    "Nhật ký hoạt động cửa hàng",
+    "Giám sát chi tiết các sự kiện đăng nhập, cập nhật sản phẩm và nâng cấp gói của shop bạn.",
   ],
   "cai-dat-shop": [
     "Cài đặt shop",
@@ -4874,6 +4880,396 @@ function SettingsPage({ onToast }) {
   );
 }
 
+// ==========================================
+// AUDIT LOGGING SECTION FOR VENDOR DASHBOARD
+// ==========================================
+function AuditLogPage({ onToast }) {
+  const [logs, setLogs] = useState([]);
+  const [actions, setActions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [query, setQuery] = useState("");
+  const [selectedAction, setSelectedAction] = useState("");
+  const [page, setPage] = useState(0); // 0-indexed for backend
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [selectedPayload, setSelectedPayload] = useState(null);
+  const pageSize = 10;
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await sellerApi.getAuditLogs(page, pageSize, query, selectedAction);
+      if (data) {
+        setLogs(data.content || []);
+        setTotalPages(data.totalPages || 0);
+        setTotalElements(data.totalElements || 0);
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Không thể tải nhật ký hoạt động. Vui lòng thử lại sau.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchActions = async () => {
+    try {
+      const data = await sellerApi.getDistinctActions();
+      setActions(data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, selectedAction]);
+
+  useEffect(() => {
+    fetchActions();
+  }, []);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setPage(0);
+    fetchLogs();
+  };
+
+  const formatTime = (timeStr) => {
+    if (!timeStr) return "";
+    try {
+      const date = new Date(timeStr);
+      return date.toLocaleString("vi-VN");
+    } catch (e) {
+      return timeStr;
+    }
+  };
+
+  const getActionBadgeClass = (action) => {
+    const act = (action || "").toUpperCase();
+    if (act.includes("SUCCESS") || act.includes("VERIFY_CCCD_SUCCESS")) return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+    if (act.includes("FAILED") || act.includes("VERIFY_CCCD_FAILED")) return "bg-red-50 text-red-700 border border-red-200";
+    if (act.includes("REGISTER") || act.includes("ONBOARDING")) return "bg-purple-50 text-purple-700 border border-purple-200";
+    if (act.includes("UPGRADE") || act.includes("SUBSCRIPTION")) return "bg-indigo-50 text-indigo-700 border border-indigo-200";
+    if (act.includes("PRODUCT")) return "bg-blue-50 text-blue-700 border border-blue-200";
+    return "bg-slate-50 text-slate-700 border border-slate-200";
+  };
+
+  const parseUserAgent = (ua) => {
+    if (!ua) return "Không rõ";
+    if (ua.includes("Mobile") || ua.includes("Android") || ua.includes("iPhone")) {
+      let os = "Mobile";
+      if (ua.includes("iPhone")) os = "iPhone";
+      else if (ua.includes("Android")) os = "Android";
+      
+      let browser = "Browser";
+      if (ua.includes("Chrome")) browser = "Chrome";
+      else if (ua.includes("Safari")) browser = "Safari";
+      else if (ua.includes("Firefox")) browser = "Firefox";
+      return `${browser} (${os})`;
+    }
+    let os = "Desktop";
+    if (ua.includes("Windows")) os = "Windows";
+    else if (ua.includes("Macintosh")) os = "Mac";
+    else if (ua.includes("Linux")) os = "Linux";
+    
+    let browser = "Browser";
+    if (ua.includes("Chrome")) browser = "Chrome";
+    else if (ua.includes("Safari") && !ua.includes('Chrome')) browser = "Safari";
+    else if (ua.includes("Firefox")) browser = "Firefox";
+    return `${browser} (${os})`;
+  };
+
+  return (
+    <Panel className="space-y-6">
+      <PanelHeader
+        title="Nhật ký hoạt động của Shop"
+        subtitle="Giám sát lịch sử đăng nhập, thay đổi thông tin cửa hàng, thêm/sửa sản phẩm và trạng thái nâng cấp gói."
+      >
+        <button
+          onClick={() => { setPage(0); fetchLogs(); fetchActions(); }}
+          className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition-colors shadow-sm"
+        >
+          <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+          Làm mới
+        </button>
+      </PanelHeader>
+
+      {/* Filter bar */}
+      <div className="rounded-xl border border-stone-100 bg-white p-4 shadow-sm">
+        <form onSubmit={handleSearchSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-stone-400" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo IP, Hành động hoặc Payload..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full rounded-lg border border-stone-200 py-2 pl-9 pr-4 text-xs outline-none focus:border-stone-500 focus:ring-1 focus:ring-stone-500 transition-shadow"
+            />
+          </div>
+          <div className="w-full sm:w-64">
+            <select
+              value={selectedAction}
+              onChange={(e) => { setSelectedAction(e.target.value); setPage(0); }}
+              className="w-full rounded-lg border border-stone-200 py-2 px-3 text-xs outline-none focus:border-stone-500 focus:ring-1 focus:ring-stone-500 transition-shadow"
+            >
+              <option value="">Tất cả loại hành động</option>
+              {actions.map((act) => (
+                <option key={act} value={act}>{act}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="submit"
+            className="w-full sm:w-auto rounded-lg bg-stone-900 px-4 py-2 text-xs font-semibold text-white hover:bg-stone-800 transition-colors"
+          >
+            Tìm kiếm
+          </button>
+        </form>
+      </div>
+
+      {/* Logs Table */}
+      <div className="overflow-hidden rounded-xl border border-stone-100 bg-white shadow-sm">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <RefreshCw className="h-6 w-6 animate-spin text-stone-600" />
+            <p className="text-xs font-semibold text-stone-500">Đang tải nhật ký...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center px-4">
+            <AlertTriangle className="h-6 w-6 text-red-600 mb-4" />
+            <h3 className="text-xs font-extrabold text-stone-900">Lỗi tải dữ liệu</h3>
+            <p className="mt-2 text-xs font-semibold text-stone-400">{error}</p>
+            <button
+              onClick={fetchLogs}
+              className="mt-4 rounded-lg bg-stone-900 px-4 py-2 text-xs font-semibold text-white hover:bg-stone-800 transition-colors"
+            >
+              Thử lại
+            </button>
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center px-4">
+            <History className="h-6 w-6 text-stone-400 mb-4" />
+            <h3 className="text-xs font-extrabold text-stone-900">Không có hoạt động nào</h3>
+            <p className="mt-2 text-xs font-semibold text-stone-400">
+              Chưa ghi nhận hoạt động nào khớp với bộ lọc hiện tại của shop bạn.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-xs text-stone-600">
+              <thead className="bg-stone-50 text-[10px] font-extrabold uppercase text-stone-500 border-b border-stone-100">
+                <tr>
+                  <th className="px-6 py-3">Thời gian</th>
+                  <th className="px-6 py-3">Hành động</th>
+                  <th className="px-6 py-3">Địa chỉ IP</th>
+                  <th className="px-6 py-3">Thiết bị</th>
+                  <th className="px-6 py-3 text-right">Chi tiết</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {logs.map((log) => (
+                  <tr key={log.id} className="hover:bg-stone-50 transition-colors">
+                    <td className="whitespace-nowrap px-6 py-4 font-semibold text-stone-800">
+                      {formatTime(log.createdAt)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", getActionBadgeClass(log.action))}>
+                        {log.action}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 font-mono text-stone-500">
+                      {log.ipAddress}
+                    </td>
+                    <td className="px-6 py-4 text-stone-500 max-w-[200px] truncate" title={log.userAgent}>
+                      {parseUserAgent(log.userAgent)}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-right">
+                      {log.payloadSnapshot ? (
+                        <button
+                          onClick={() => setSelectedPayload(log)}
+                          className="inline-flex items-center gap-1 text-stone-900 hover:text-stone-600 transition-colors font-bold"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          Xem chi tiết
+                        </button>
+                      ) : (
+                        <span className="text-stone-400 font-semibold">Không có dữ liệu</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && logs.length > 0 && (
+          <div className="flex items-center justify-between border-t border-stone-100 bg-white px-6 py-4">
+            <div className="flex flex-1 justify-between sm:hidden">
+              <button
+                disabled={page === 0}
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                className="relative inline-flex items-center rounded-md border border-stone-300 bg-white px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-50 transition-opacity"
+              >
+                Trước
+              </button>
+              <button
+                disabled={page >= totalPages - 1}
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                className="relative ml-3 inline-flex items-center rounded-md border border-stone-300 bg-white px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-50 transition-opacity"
+              >
+                Sau
+              </button>
+            </div>
+            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs text-stone-600 font-semibold">
+                  Hiển thị <span className="font-extrabold text-stone-800">{page * pageSize + 1}</span> đến{" "}
+                  <span className="font-extrabold text-stone-800">{Math.min((page + 1) * pageSize, totalElements)}</span> trong số{" "}
+                  <span className="font-extrabold text-stone-800">{totalElements}</span> bản ghi
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                  <button
+                    disabled={page === 0}
+                    onClick={() => setPage(0)}
+                    className="relative inline-flex items-center rounded-l-md border border-stone-300 bg-white px-2 py-1 text-xs font-semibold text-stone-500 hover:bg-stone-50 disabled:opacity-50"
+                  >
+                    «
+                  </button>
+                  <button
+                    disabled={page === 0}
+                    onClick={() => setPage(p => Math.max(0, p - 1))}
+                    className="relative inline-flex items-center border border-stone-300 bg-white px-2.5 py-1 text-xs font-semibold text-stone-500 hover:bg-stone-50 disabled:opacity-50"
+                  >
+                    ‹
+                  </button>
+                  
+                  {/* Page Numbers */}
+                  {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                    let pageNum = page;
+                    if (page < 2) pageNum = i;
+                    else if (page >= totalPages - 2) pageNum = totalPages - 5 + i;
+                    else pageNum = page - 2 + i;
+                    
+                    if (pageNum < 0 || pageNum >= totalPages) return null;
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPage(pageNum)}
+                        className={cn(
+                          "relative inline-flex items-center border px-3 py-1 text-xs font-semibold focus:z-10",
+                          page === pageNum
+                            ? "z-10 border-stone-900 bg-stone-50 text-stone-900"
+                            : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
+                        )}
+                      >
+                        {pageNum + 1}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    disabled={page >= totalPages - 1}
+                    onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                    className="relative inline-flex items-center border border-stone-300 bg-white px-2.5 py-1 text-xs font-semibold text-stone-500 hover:bg-stone-50 disabled:opacity-50"
+                  >
+                    ›
+                  </button>
+                  <button
+                    disabled={page >= totalPages - 1}
+                    onClick={() => setPage(totalPages - 1)}
+                    className="relative inline-flex items-center rounded-r-md border border-stone-300 bg-white px-2 py-1 text-xs font-semibold text-stone-500 hover:bg-stone-50 disabled:opacity-50"
+                  >
+                    »
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Payload Modal */}
+      {selectedPayload && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm transition-opacity">
+          <div className="relative w-full max-w-xl rounded-xl bg-white shadow-xl border border-stone-100 flex flex-col max-h-[80vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-stone-100 px-6 py-4">
+              <div className="flex items-center gap-2">
+                <History className="h-5 w-5 text-stone-900" />
+                <h3 className="text-sm font-bold text-stone-900">Chi tiết dữ liệu hoạt động</h3>
+              </div>
+              <button
+                onClick={() => setSelectedPayload(null)}
+                className="rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-xs border-b border-stone-100 pb-4">
+                <div>
+                  <span className="text-stone-400 block mb-0.5 font-semibold">Thời gian</span>
+                  <span className="font-bold text-stone-800">{formatTime(selectedPayload.createdAt)}</span>
+                </div>
+                <div>
+                  <span className="text-stone-400 block mb-0.5 font-semibold">Hành động</span>
+                  <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase", getActionBadgeClass(selectedPayload.action))}>
+                    {selectedPayload.action}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-stone-400 block mb-0.5 font-semibold">Địa chỉ IP</span>
+                  <span className="font-mono text-stone-800">{selectedPayload.ipAddress}</span>
+                </div>
+                <div>
+                  <span className="text-stone-400 block mb-0.5 font-semibold">Thiết bị</span>
+                  <span className="font-bold text-stone-800">{parseUserAgent(selectedPayload.userAgent)}</span>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-stone-400 text-xs block mb-2 font-bold">Chi tiết Payload (Dữ liệu chuyển giao)</span>
+                <pre className="overflow-x-auto rounded-lg bg-stone-950 p-4 font-mono text-[10px] text-stone-400 border border-stone-900 leading-relaxed max-h-[250px]">
+                  {(() => {
+                    try {
+                      const parsed = JSON.parse(selectedPayload.payloadSnapshot);
+                      return JSON.stringify(parsed, null, 2);
+                    } catch (e) {
+                      return selectedPayload.payloadSnapshot;
+                    }
+                  })()}
+                </pre>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end border-t border-stone-100 px-6 py-4 bg-stone-50 rounded-b-xl">
+              <button
+                onClick={() => setSelectedPayload(null)}
+                className="rounded-lg bg-stone-100 px-4 py-2 text-xs font-bold text-stone-700 hover:bg-stone-200 transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 const pageComponents = {
   trangchu: OverviewPage,
   "don-hang": OrdersPage,
@@ -4884,6 +5280,7 @@ const pageComponents = {
   "nghien-cuu-thi-truong": MarketResearchPage,
   marketing: MarketingPage,
   "tai-chinh": FinancePage,
+  "nhat-ky-hoat-dong": AuditLogPage,
   "cai-dat-shop": SettingsPage,
 };
 

@@ -21,6 +21,14 @@ axiosClient.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  let deviceToken = localStorage.getItem('deviceToken');
+  if (!deviceToken) {
+    deviceToken = 'dev-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('deviceToken', deviceToken);
+  }
+  config.headers['X-Device-Token'] = deviceToken;
+
   return config;
 });
 
