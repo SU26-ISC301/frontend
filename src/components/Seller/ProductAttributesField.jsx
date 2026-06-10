@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ChevronDown, Sparkles, HelpCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getAttributeSchema } from '../../utils/attributeSchemas';

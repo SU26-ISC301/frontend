@@ -22,7 +22,6 @@ import {
   LogOut,
   Mail,
   Menu,
-  MoreHorizontal,
   PackageCheck,
   PackageSearch,
   Plus,
@@ -66,18 +65,7 @@ const initialVendors = [
   { id: 'VND-1011', shop: 'Beauty Corner', owner: 'Phạm Thu Dung', email: 'dung.pham@beautycorner.vn', phone: '0934567890', category: 'Làm đẹp', risk: 'Cao', status: 'Cần xem xét' },
 ];
 
-const products = [
-  { id: 'PRD-9012', name: 'Áo khoác chống nắng UV', sku: 'AK-UV-021', category: 'Thời trang', price: '389.000đ', stock: 12, status: 'Đang bán', note: 'Điểm nội dung 92' },
-  { id: 'PRD-8871', name: 'Tai nghe bluetooth mini', sku: 'AUDIO-MINI-09', category: 'Điện tử', price: '499.000đ', stock: 24, status: 'Chờ duyệt', note: 'Cần kiểm tra ảnh' },
-  { id: 'PRD-8730', name: 'Set son tint 3 màu', sku: 'SON-T3-118', category: 'Làm đẹp', price: '259.000đ', stock: 86, status: 'Đang bán', note: 'Không vi phạm' },
-  { id: 'PRD-8611', name: 'Bình giữ nhiệt 750ml', sku: 'BN-750-4C', category: 'Gia dụng', price: '189.000đ', stock: 7, status: 'Cảnh báo', note: 'Giá biến động cao' },
-  { id: 'PRD-8594', name: 'Máy xay sinh tố mini', sku: 'BLD-MINI-11', category: 'Gia dụng', price: '329.000đ', stock: 42, status: 'Đang bán', note: 'Điểm nội dung 88' },
-  { id: 'PRD-8470', name: 'Kem chống nắng SPF50+', sku: 'SKIN-SPF-50', category: 'Làm đẹp', price: '219.000đ', stock: 68, status: 'Đang bán', note: 'Không vi phạm' },
-  { id: 'PRD-8352', name: 'Bàn phím cơ không dây', sku: 'KEY-WL-87', category: 'Điện tử', price: '899.000đ', stock: 5, status: 'Cảnh báo', note: 'Tồn kho thấp' },
-  { id: 'PRD-8214', name: 'Túi tote canvas basic', sku: 'BAG-TOTE-04', category: 'Thời trang', price: '149.000đ', stock: 0, status: 'Tạm ẩn', note: 'Hết hàng' },
-  { id: 'PRD-8188', name: 'Nồi chiên không dầu 5L', sku: 'AF-5L-2026', category: 'Gia dụng', price: '1.290.000đ', stock: 19, status: 'Chờ duyệt', note: 'Đang xác minh chứng từ' },
-  { id: 'PRD-8061', name: 'Áo sơ mi linen form rộng', sku: 'SM-LINEN-12', category: 'Thời trang', price: '279.000đ', stock: 34, status: 'Đang bán', note: 'Điểm nội dung 95' },
-];
+
 
 const marketCategories = [
   {
