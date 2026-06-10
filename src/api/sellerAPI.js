@@ -116,5 +116,17 @@ export const sellerApi = {
     const response = await axiosClient.put(`/vendors/${vendorId}`, payload);
     return unwrap(response);
   },
+
+  getAuditLogs: async (page, size, query, action) => {
+    const response = await axiosClient.get('/vendors/audit-logs', {
+      params: { page, size, query, action }
+    });
+    return unwrap(response);
+  },
+
+  getDistinctActions: async () => {
+    const response = await axiosClient.get('/vendors/audit-logs/actions');
+    return unwrap(response);
+  },
 };
 
