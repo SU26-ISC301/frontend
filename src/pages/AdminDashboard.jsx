@@ -16,6 +16,7 @@ import {
   Eye,
   FileText,
   Gauge,
+  History,
   LayoutDashboard,
   LockKeyhole,
   LogOut,
@@ -51,6 +52,7 @@ const adminNavItems = [
   { id: 'don-hang', label: 'Đơn hàng', icon: ShoppingBag },
   { id: 'tai-chinh', label: 'Tài chính', icon: CreditCard },
   { id: 'kiem-duyet', label: 'Kiểm duyệt', icon: ShieldCheck },
+  { id: 'nhat-ky-van-hanh', label: 'Nhật ký vận hành', icon: History },
   { id: 'bao-cao', label: 'Báo cáo', icon: FileText },
   { id: 'cai-dat', label: 'Cài đặt', icon: Settings },
 ];
@@ -796,6 +798,7 @@ function AdminSection({ active, vendors, onNavigate, onToast, onVendorStatus }) 
   if (active === 'san-pham') return <ProductsSection onToast={onToast} />;
   if (active === 'nghien-cuu-thi-truong') return <MarketResearchSection onToast={onToast} />;
   if (active === 'nguoi-dung') return <UserManagementSection onToast={onToast} />;
+  if (active === 'nhat-ky-van-hanh') return <AuditLogSection onToast={onToast} />;
   if (active === 'don-hang') return <DataSection title="Giám sát đơn hàng" subtitle="Theo dõi trạng thái đơn, SLA xử lý, seller phụ trách và giá trị giao dịch." columns={['Mã đơn', 'Khách hàng', 'Shop', 'Giá trị', 'Trạng thái']} rows={orders} onToast={onToast} />;
   if (active === 'tai-chinh') return <DataSection title="Tài chính & đối soát" subtitle="Quản lý rút tiền, hoàn tiền, phí nền tảng và kỳ đối soát seller." columns={['Hạng mục', 'Giá trị', 'Trạng thái', 'Ghi chú']} rows={financeRows} onToast={onToast} />;
   if (active === 'kiem-duyet') return <DataSection title="Trung tâm kiểm duyệt" subtitle="Xử lý nội dung, khiếu nại, gian lận thanh toán và vi phạm seller." columns={['Hàng đợi', 'Số lượng', 'Mô tả']} rows={moderationItems} onToast={onToast} />;
@@ -2231,4 +2234,434 @@ function StatusPill({ status }) {
     'Từ chối': 'bg-red-50 text-red-700',
   }[status] || 'bg-slate-100 text-slate-600';
   return <span className={cn('admin-status-pill', tone)}>{status}</span>;
+}
+
+// ==========================================
+// AUDIT LOGGING SECTION FOR ADMIN DASHBOARD
+// ==========================================
+export function AuditLogSection({ onToast }) {
+  const [logs, setLogs] = useState([]);
+  const [actions, setActions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [query, setQuery] = useState('');
+  const [selectedAction, setSelectedAction] = useState('');
+  const [page, setPage] = useState(0); // 0-indexed
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [selectedPayload, setSelectedPayload] = useState(null);
+  const pageSize = 10;
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminApi.getAuditLogs(page, pageSize, query, selectedAction);
+      const data = response.data?.data;
+      if (data) {
+        setLogs(data.content || []);
+        setTotalPages(data.totalPages || 0);
+        setTotalElements(data.totalElements || 0);
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Không thể tải nhật ký hệ thống. Vui lòng kiểm tra kết nối.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchActions = async () => {
+    try {
+      const response = await adminApi.getDistinctActions();
+      setActions(response.data?.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, selectedAction]);
+
+  useEffect(() => {
+    fetchActions();
+  }, []);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setPage(0);
+    fetchLogs();
+  };
+
+  const formatTime = (timeStr) => {
+    if (!timeStr) return '';
+    try {
+      const date = new Date(timeStr);
+      return date.toLocaleString('vi-VN');
+    } catch (e) {
+      return timeStr;
+    }
+  };
+
+  const getActionBadgeClass = (action) => {
+    const act = (action || '').toUpperCase();
+    if (act.includes('SUCCESS') || act.includes('VERIFY_CCCD_SUCCESS')) return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+    if (act.includes('FAILED') || act.includes('VERIFY_CCCD_FAILED')) return 'bg-red-50 text-red-700 border border-red-200';
+    if (act.includes('TOGGLE_USER') || act.includes('LOCK')) return 'bg-orange-50 text-orange-700 border border-orange-200';
+    if (act.includes('REGISTER') || act.includes('ONBOARDING')) return 'bg-purple-50 text-purple-700 border border-purple-200';
+    if (act.includes('UPGRADE') || act.includes('SUBSCRIPTION')) return 'bg-indigo-50 text-indigo-700 border border-indigo-200';
+    if (act.includes('PRODUCT')) return 'bg-blue-50 text-blue-700 border border-blue-200';
+    return 'bg-slate-50 text-slate-700 border border-slate-200';
+  };
+
+  const getRoleBadgeClass = (role) => {
+    const r = (role || '').toLowerCase();
+    if (r === 'admin') return 'bg-purple-100 text-purple-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase';
+    if (r === 'vendor') return 'bg-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase';
+    return 'bg-slate-100 text-slate-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase';
+  };
+
+  const parseUserAgent = (ua) => {
+    if (!ua) return 'Không rõ';
+    if (ua.includes('Mobile') || ua.includes('Android') || ua.includes('iPhone')) {
+      let os = 'Mobile';
+      if (ua.includes('iPhone')) os = 'iPhone';
+      else if (ua.includes('Android')) os = 'Android';
+      
+      let browser = 'Browser';
+      if (ua.includes('Chrome')) browser = 'Chrome';
+      else if (ua.includes('Safari')) browser = 'Safari';
+      else if (ua.includes('Firefox')) browser = 'Firefox';
+      return `${browser} (${os})`;
+    }
+    let os = 'Desktop';
+    if (ua.includes('Windows')) os = 'Windows';
+    else if (ua.includes('Macintosh')) os = 'Mac';
+    else if (ua.includes('Linux')) os = 'Linux';
+    
+    let browser = 'Browser';
+    if (ua.includes('Chrome')) browser = 'Chrome';
+    else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
+    else if (ua.includes('Firefox')) browser = 'Firefox';
+    return `${browser} (${os})`;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
+            <History className="h-5 w-5 text-indigo-600" />
+            Nhật ký vận hành hệ thống
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Giám sát thời gian thực mọi hoạt động đăng nhập, cập nhật tài khoản, cccd, sản phẩm và nâng cấp của Customer, Vendor và Admin.
+          </p>
+        </div>
+        <button
+          onClick={() => { setPage(0); fetchLogs(); fetchActions(); }}
+          className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
+        >
+          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+          Làm mới
+        </button>
+      </div>
+
+      {/* Filter panel */}
+      <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <form onSubmit={handleSearchSubmit} className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo Email, IP, Hành động hoặc Payload..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-shadow"
+            />
+          </div>
+          <div className="w-full sm:w-64">
+            <select
+              value={selectedAction}
+              onChange={(e) => { setSelectedAction(e.target.value); setPage(0); }}
+              className="w-full rounded-lg border border-slate-200 py-2 px-3 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-shadow"
+            >
+              <option value="">Tất cả loại hành động</option>
+              {actions.map((act) => (
+                <option key={act} value={act}>{act}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="submit"
+            className="w-full sm:w-auto rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
+          >
+            Tìm kiếm
+          </button>
+        </form>
+      </div>
+
+      {/* Logs Table */}
+      <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+            <p className="text-sm font-medium text-slate-500">Đang tải dữ liệu nhật ký...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center px-4">
+            <div className="rounded-full bg-red-50 p-3 text-red-600">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <h3 className="mt-4 text-sm font-semibold text-slate-900">Lỗi tải dữ liệu</h3>
+            <p className="mt-2 text-sm text-slate-500 max-w-md">{error}</p>
+            <button
+              onClick={fetchLogs}
+              className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 transition-colors"
+            >
+              Thử lại
+            </button>
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center px-4">
+            <div className="rounded-full bg-slate-50 p-3 text-slate-400">
+              <History className="h-6 w-6" />
+            </div>
+            <h3 className="mt-4 text-sm font-semibold text-slate-900">Không có bản ghi nào</h3>
+            <p className="mt-2 text-sm text-slate-500">
+              Không tìm thấy nhật ký vận hành nào khớp với tiêu chí tìm kiếm của bạn.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm text-slate-600">
+              <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500 border-b border-slate-100">
+                <tr>
+                  <th className="px-6 py-3.5">Thời gian</th>
+                  <th className="px-6 py-3.5">Người thực hiện</th>
+                  <th className="px-6 py-3.5">Hành động</th>
+                  <th className="px-6 py-3.5">Địa chỉ IP</th>
+                  <th className="px-6 py-3.5">Thiết bị</th>
+                  <th className="px-6 py-3.5 text-right">Chi tiết</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {logs.map((log) => (
+                  <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-900">
+                      {formatTime(log.createdAt)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-semibold text-slate-800 break-all">{log.userEmail || 'Khách vãng lai'}</span>
+                        {log.userRole && (
+                          <div>
+                            <span className={getRoleBadgeClass(log.userRole)}>
+                              {log.userRole}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={cn("inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide", getActionBadgeClass(log.action))}>
+                        {log.action}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 font-mono text-xs text-slate-500">
+                      {log.ipAddress}
+                    </td>
+                    <td className="px-6 py-4 text-xs text-slate-500 max-w-[200px] truncate" title={log.userAgent}>
+                      {parseUserAgent(log.userAgent)}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-right">
+                      {log.payloadSnapshot ? (
+                        <button
+                          onClick={() => setSelectedPayload(log)}
+                          className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          Xem chi tiết
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-400 font-medium">Không có dữ liệu</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && logs.length > 0 && (
+          <div className="flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4">
+            <div className="flex flex-1 justify-between sm:hidden">
+              <button
+                disabled={page === 0}
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-opacity"
+              >
+                Trước
+              </button>
+              <button
+                disabled={page >= totalPages - 1}
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-opacity"
+              >
+                Sau
+              </button>
+            </div>
+            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-slate-700">
+                  Hiển thị <span className="font-semibold">{page * pageSize + 1}</span> đến{' '}
+                  <span className="font-semibold">{Math.min((page + 1) * pageSize, totalElements)}</span> trong số{' '}
+                  <span className="font-semibold">{totalElements}</span> bản ghi
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                  <button
+                    disabled={page === 0}
+                    onClick={() => setPage(0)}
+                    className="relative inline-flex items-center rounded-l-md border border-slate-300 bg-white px-2 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    «
+                  </button>
+                  <button
+                    disabled={page === 0}
+                    onClick={() => setPage(p => Math.max(0, p - 1))}
+                    className="relative inline-flex items-center border border-slate-300 bg-white px-2.5 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    ‹
+                  </button>
+                  
+                  {/* Page Numbers */}
+                  {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                    let pageNum = page;
+                    if (page < 2) pageNum = i;
+                    else if (page >= totalPages - 2) pageNum = totalPages - 5 + i;
+                    else pageNum = page - 2 + i;
+                    
+                    if (pageNum < 0 || pageNum >= totalPages) return null;
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPage(pageNum)}
+                        className={cn(
+                          "relative inline-flex items-center border px-3.5 py-2 text-sm font-medium focus:z-10",
+                          page === pageNum
+                            ? "z-10 border-indigo-600 bg-indigo-50 text-indigo-600"
+                            : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                        )}
+                      >
+                        {pageNum + 1}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    disabled={page >= totalPages - 1}
+                    onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                    className="relative inline-flex items-center border border-slate-300 bg-white px-2.5 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    ›
+                  </button>
+                  <button
+                    disabled={page >= totalPages - 1}
+                    onClick={() => setPage(totalPages - 1)}
+                    className="relative inline-flex items-center rounded-r-md border border-slate-300 bg-white px-2 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    »
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Payload Modal */}
+      {selectedPayload && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <div className="flex items-center gap-2">
+                <History className="h-5 w-5 text-indigo-600" />
+                <h3 className="text-lg font-semibold text-slate-900">Chi tiết dữ liệu hoạt động</h3>
+              </div>
+              <button
+                onClick={() => setSelectedPayload(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm border-b border-slate-100 pb-4">
+                <div>
+                  <span className="text-slate-400 block mb-0.5">Thời gian</span>
+                  <span className="font-semibold text-slate-800">{formatTime(selectedPayload.createdAt)}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block mb-0.5">Hành động</span>
+                  <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold uppercase", getActionBadgeClass(selectedPayload.action))}>
+                    {selectedPayload.action}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block mb-0.5">Người thực hiện</span>
+                  <span className="font-semibold text-slate-800">{selectedPayload.userEmail || 'Khách vãng lai'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block mb-0.5">Vai trò</span>
+                  <span className="font-semibold text-slate-800 uppercase text-xs">{selectedPayload.userRole || 'Chưa định danh'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block mb-0.5">Địa chỉ IP</span>
+                  <span className="font-mono text-xs text-slate-800">{selectedPayload.ipAddress}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block mb-0.5">Hệ điều hành / Thiết bị</span>
+                  <span className="font-semibold text-slate-800">{parseUserAgent(selectedPayload.userAgent)}</span>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-slate-400 text-sm block mb-2 font-medium">Chi tiết Payload (Dữ liệu chuyển giao)</span>
+                <pre className="overflow-x-auto rounded-lg bg-slate-950 p-4 font-mono text-xs text-indigo-400 border border-slate-900 leading-relaxed max-h-[300px]">
+                  {(() => {
+                    try {
+                      const parsed = JSON.parse(selectedPayload.payloadSnapshot);
+                      return JSON.stringify(parsed, null, 2);
+                    } catch (e) {
+                      return selectedPayload.payloadSnapshot;
+                    }
+                  })()}
+                </pre>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end border-t border-slate-100 px-6 py-4 bg-slate-50 rounded-b-2xl">
+              <button
+                onClick={() => setSelectedPayload(null)}
+                className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
