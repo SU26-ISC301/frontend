@@ -1013,6 +1013,7 @@ function UserManagementSection({ onToast }) {
                   <th className="px-5 py-3.5 font-extrabold text-slate-700">Số điện thoại</th>
                   <th className="px-5 py-3.5 font-extrabold text-slate-700">Vai trò</th>
                   <th className="px-5 py-3.5 font-extrabold text-slate-700">Ngày tham gia</th>
+                  <th className="px-5 py-3.5 font-extrabold text-slate-700">Đăng nhập cuối</th>
                   <th className="px-5 py-3.5 font-extrabold text-slate-700">Trạng thái</th>
                   <th className="px-5 py-3.5 text-right font-extrabold text-slate-700">Thao tác</th>
                 </tr>
@@ -1047,6 +1048,9 @@ function UserManagementSection({ onToast }) {
                     </td>
                     <td className="px-5 py-4 font-semibold text-slate-500">
                       {user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-slate-500 text-xs">
+                      {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString('vi-VN') : 'Chưa đăng nhập'}
                     </td>
                     <td className="px-5 py-4">
                       {user.isActive ? (
