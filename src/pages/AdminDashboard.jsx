@@ -22,7 +22,6 @@ import {
   LogOut,
   Mail,
   Menu,
-  MoreHorizontal,
   PackageCheck,
   PackageSearch,
   Plus,
@@ -42,6 +41,8 @@ import { cn } from '../lib/utils';
 import { ELECTRONICS_CATEGORIES } from '../components/Seller/CategorySelectorField';
 import { authApi } from '../api/authAPI';
 import { adminApi } from '../api/adminAPI';
+import { productStorage, buildBackendPayloadFromLocal } from '../utils/productStorage';
+import { sellerApi } from '../api/sellerAPI';
 
 const adminNavItems = [
   { id: 'tong-quan', label: 'Tổng quan', icon: LayoutDashboard },
@@ -64,18 +65,7 @@ const initialVendors = [
   { id: 'VND-1011', shop: 'Beauty Corner', owner: 'Phạm Thu Dung', email: 'dung.pham@beautycorner.vn', phone: '0934567890', category: 'Làm đẹp', risk: 'Cao', status: 'Cần xem xét' },
 ];
 
-const products = [
-  { id: 'PRD-9012', name: 'Áo khoác chống nắng UV', sku: 'AK-UV-021', category: 'Thời trang', price: '389.000đ', stock: 12, status: 'Đang bán', note: 'Điểm nội dung 92' },
-  { id: 'PRD-8871', name: 'Tai nghe bluetooth mini', sku: 'AUDIO-MINI-09', category: 'Điện tử', price: '499.000đ', stock: 24, status: 'Chờ duyệt', note: 'Cần kiểm tra ảnh' },
-  { id: 'PRD-8730', name: 'Set son tint 3 màu', sku: 'SON-T3-118', category: 'Làm đẹp', price: '259.000đ', stock: 86, status: 'Đang bán', note: 'Không vi phạm' },
-  { id: 'PRD-8611', name: 'Bình giữ nhiệt 750ml', sku: 'BN-750-4C', category: 'Gia dụng', price: '189.000đ', stock: 7, status: 'Cảnh báo', note: 'Giá biến động cao' },
-  { id: 'PRD-8594', name: 'Máy xay sinh tố mini', sku: 'BLD-MINI-11', category: 'Gia dụng', price: '329.000đ', stock: 42, status: 'Đang bán', note: 'Điểm nội dung 88' },
-  { id: 'PRD-8470', name: 'Kem chống nắng SPF50+', sku: 'SKIN-SPF-50', category: 'Làm đẹp', price: '219.000đ', stock: 68, status: 'Đang bán', note: 'Không vi phạm' },
-  { id: 'PRD-8352', name: 'Bàn phím cơ không dây', sku: 'KEY-WL-87', category: 'Điện tử', price: '899.000đ', stock: 5, status: 'Cảnh báo', note: 'Tồn kho thấp' },
-  { id: 'PRD-8214', name: 'Túi tote canvas basic', sku: 'BAG-TOTE-04', category: 'Thời trang', price: '149.000đ', stock: 0, status: 'Tạm ẩn', note: 'Hết hàng' },
-  { id: 'PRD-8188', name: 'Nồi chiên không dầu 5L', sku: 'AF-5L-2026', category: 'Gia dụng', price: '1.290.000đ', stock: 19, status: 'Chờ duyệt', note: 'Đang xác minh chứng từ' },
-  { id: 'PRD-8061', name: 'Áo sơ mi linen form rộng', sku: 'SM-LINEN-12', category: 'Thời trang', price: '279.000đ', stock: 34, status: 'Đang bán', note: 'Điểm nội dung 95' },
-];
+
 
 const marketCategories = [
   {
@@ -391,6 +381,33 @@ export default function AdminDashboard() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [toast, setToast] = useState(null);
 
+  const fetchVendors = async () => {
+    try {
+      const response = await adminApi.getAllVendors();
+      const backendVendors = response.data?.data || response.data || [];
+      if (Array.isArray(backendVendors) && backendVendors.length > 0) {
+        const mapped = backendVendors.map(v => ({
+          id: String(v.id),
+          shop: v.shopName || 'N/A',
+          owner: v.profile?.fullName || v.ownerFullName || 'Chưa cập nhật',
+          email: v.email || 'N/A',
+          phone: v.phone || 'N/A',
+          category: v.category || 'N/A',
+          risk: 'Thấp',
+          status: v.status === 'approved' ? 'Đã duyệt' : v.status === 'rejected' ? 'Từ chối' : 'Chờ duyệt',
+          cccd: v.cccd || '',
+          taxCode: v.taxCode || '',
+          cccdFrontImageUrl: v.cccdFrontImageUrl || '',
+          cccdBackImageUrl: v.cccdBackImageUrl || '',
+          faceImageUrl: v.faceImageUrl || '',
+        }));
+        setVendors(mapped);
+      }
+    } catch (err) {
+      console.warn('Lỗi khi tải danh sách vendor từ Backend:', err);
+    }
+  };
+
   useEffect(() => {
     if (session) {
       authApi.getMe()
@@ -398,6 +415,8 @@ export default function AdminDashboard() {
           const profile = res.data.data;
           if (profile.role !== 'admin') {
             handleLogout();
+          } else {
+            fetchVendors();
           }
         })
         .catch(() => {
@@ -436,10 +455,21 @@ export default function AdminDashboard() {
     setMobileOpen(false);
   };
 
-  const updateVendorStatus = (id, status) => {
-    setVendors((current) => current.map((vendor) => (vendor.id === id ? { ...vendor, status } : vendor)));
-    const shop = vendors.find((vendor) => vendor.id === id)?.shop;
-    setToast({ title: 'Đã cập nhật gian hàng', message: `${shop || id}: ${status}.`, tone: status === 'Từ chối' ? 'red' : 'green' });
+  const updateVendorStatus = async (id, status) => {
+    const beStatus = status === 'Đã duyệt' ? 'approved' : status === 'Từ chối' ? 'rejected' : 'pending';
+    const isNumericId = /^\d+$/.test(String(id));
+
+    try {
+      if (isNumericId) {
+        await sellerApi.updateVendor(id, { status: beStatus });
+      }
+      setVendors((current) => current.map((vendor) => (vendor.id === id ? { ...vendor, status } : vendor)));
+      const shop = vendors.find((vendor) => vendor.id === id)?.shop;
+      setToast({ title: 'Đã cập nhật gian hàng', message: `${shop || id}: ${status}.`, tone: status === 'Từ chối' ? 'red' : 'green' });
+    } catch (err) {
+      console.error('Lỗi khi cập nhật trạng thái vendor lên Backend:', err);
+      alert('Không thể cập nhật trạng thái shop lên Backend.\nChi tiết lỗi: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   if (!session) return <AdminLogin onLogin={handleLogin} />;
@@ -532,7 +562,7 @@ function AdminTopbar({ active, session, onNavigate, onOpenMenu }) {
     if (!normalizedQuery) return [];
     return [
       ...adminNavItems.map((item) => ({ id: item.id, title: item.label, meta: 'Chức năng quản trị', icon: item.icon })),
-      ...products.map((product) => ({ id: 'san-pham', title: product.name, meta: product.sku, icon: Boxes })),
+      ...productStorage.getStoredProducts().map((product) => ({ id: 'san-pham', title: product.name, meta: product.sku, icon: Boxes })),
       ...initialVendors.map((vendor) => ({ id: 'duyet-shop', title: vendor.shop, meta: vendor.owner, icon: Store })),
     ].filter((item) => `${item.title} ${item.meta}`.toLowerCase().includes(normalizedQuery)).slice(0, 5);
   }, [query]);
@@ -1215,12 +1245,118 @@ function ProductsSection({ onToast }) {
   const [category, setCategory] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
+  const [productsList, setProductsList] = useState(() => productStorage.getStoredProducts());
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReasonText, setRejectReasonText] = useState('');
+  
+  const [showWarnModal, setShowWarnModal] = useState(false);
+  const [warnReasonText, setWarnReasonText] = useState('');
+
   const pageSize = 4;
-  const filteredProducts = useMemo(() => products.filter((product) => {
+
+  const refreshList = () => {
+    setProductsList(productStorage.getStoredProducts());
+  };
+
+  const handleApprove = async (sku) => {
+    const product = productStorage.getProductBySku(sku);
+    productStorage.updateProduct(sku, { status: 'Đang bán', note: 'Đã phê duyệt bởi Admin' });
+    onToast({
+      title: 'Đã phê duyệt sản phẩm',
+      message: 'Sản phẩm đã được chuyển sang trạng thái Đang bán trên cửa hàng.',
+      tone: 'green',
+    });
+    setSelectedProduct(null);
+    refreshList();
+
+    if (product && product.id) {
+      try {
+        const categories = await sellerApi.getProductCategories().catch(() => []);
+        const backendPayload = buildBackendPayloadFromLocal(product, 'approved', categories);
+        await sellerApi.updateProduct(product.id, backendPayload);
+      } catch (err) {
+        console.warn("Lỗi đồng bộ duyệt sản phẩm lên BE:", err);
+      }
+    }
+  };
+
+  const handleRejectSubmit = async (e) => {
+    e.preventDefault();
+    if (!rejectReasonText.trim()) {
+      alert('Vui lòng nhập lý do từ chối!');
+      return;
+    }
+    const product = selectedProduct;
+    productStorage.updateProduct(product.sku, {
+      status: 'Bị từ chối',
+      rejectReason: rejectReasonText,
+      note: 'Từ chối: ' + rejectReasonText,
+    });
+    onToast({
+      title: 'Đã từ chối sản phẩm',
+      message: `Sản phẩm đã bị từ chối với lý do: ${rejectReasonText}`,
+      tone: 'red',
+    });
+    setShowRejectModal(false);
+    setRejectReasonText('');
+    setSelectedProduct(null);
+    refreshList();
+
+    if (product && product.id) {
+      try {
+        const categories = await sellerApi.getProductCategories().catch(() => []);
+        const backendPayload = buildBackendPayloadFromLocal(product, 'rejected', categories);
+        backendPayload.note = 'Từ chối: ' + rejectReasonText;
+        await sellerApi.updateProduct(product.id, backendPayload);
+      } catch (err) {
+        console.warn("Lỗi đồng bộ từ chối lên BE:", err);
+      }
+    }
+  };
+
+  const handleWarnSubmit = async (e) => {
+    e.preventDefault();
+    if (!warnReasonText.trim()) {
+      alert('Vui lòng nhập nội dung cảnh báo!');
+      return;
+    }
+    const product = selectedProduct;
+    productStorage.updateProduct(product.sku, {
+      status: 'Cảnh báo',
+      rejectReason: warnReasonText,
+      note: 'Cảnh báo: ' + warnReasonText,
+    });
+    onToast({
+      title: 'Đã gửi cảnh báo',
+      message: `Đã chuyển sản phẩm sang trạng thái cảnh báo vi phạm.`,
+      tone: 'red',
+    });
+    setShowWarnModal(false);
+    setWarnReasonText('');
+    setSelectedProduct(null);
+    refreshList();
+
+    if (product && product.id) {
+      try {
+        const categories = await sellerApi.getProductCategories().catch(() => []);
+        const backendPayload = buildBackendPayloadFromLocal(product, 'warning', categories);
+        backendPayload.note = 'Cảnh báo: ' + warnReasonText;
+        await sellerApi.updateProduct(product.id, backendPayload);
+      } catch (err) {
+        console.warn("Lỗi đồng bộ cảnh báo lên BE:", err);
+      }
+    }
+  };
+
+  const filteredProducts = useMemo(() => productsList.filter((product) => {
     const matchesQuery = `${product.name} ${product.sku}`.toLowerCase().includes(query.trim().toLowerCase());
     return matchesQuery && (!category || product.category === category) && (!status || product.status === status);
-  }), [category, query, status]);
+  }), [productsList, category, query, status]);
+
   const visibleProducts = filteredProducts.slice((page - 1) * pageSize, page * pageSize);
+
   const resetFilters = () => {
     setQuery('');
     setCategory('');
@@ -1238,7 +1374,7 @@ function ProductsSection({ onToast }) {
       </PageHeader>
       <Toolbar query={query} searchPlaceholder="Tìm theo tên hoặc SKU" onQueryChange={(value) => { setQuery(value); setPage(1); }} onReset={resetFilters}>
         <ToolbarSelect value={category} onChange={(value) => { setCategory(value); setPage(1); }} placeholder="Tất cả ngành hàng" options={['Thời trang', 'Điện tử', 'Làm đẹp', 'Gia dụng']} />
-        <ToolbarSelect value={status} onChange={(value) => { setStatus(value); setPage(1); }} placeholder="Trạng thái sản phẩm" options={['Đang bán', 'Chờ duyệt', 'Cảnh báo', 'Tạm ẩn']} />
+        <ToolbarSelect value={status} onChange={(value) => { setStatus(value); setPage(1); }} placeholder="Trạng thái sản phẩm" options={['Đang bán', 'Chờ duyệt', 'Cảnh báo', 'Tạm ẩn', 'Bị từ chối', 'Nháp']} />
       </Toolbar>
       <section className="admin-panel mt-5 overflow-hidden">
         <div className="overflow-x-auto">
@@ -1252,21 +1388,29 @@ function ProductsSection({ onToast }) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {visibleProducts.map((product) => (
-                <tr key={product.id} className="admin-table-row">
+                <tr key={product.id || product.sku} className="admin-table-row hover:bg-slate-50/40 cursor-pointer" onClick={() => setSelectedProduct(product)}>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-admin-accent">
-                        <Boxes className="h-5 w-5" />
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-admin-accent overflow-hidden">
+                        {product.images && product.images.length > 0 ? (
+                          <img src={product.images[0].preview || product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Boxes className="h-5 w-5" />
+                        )}
                       </span>
                       <div>
                         <p className="font-bold text-slate-900">{product.name}</p>
-                        <p className="mt-1 text-xs font-medium text-slate-400">{product.note}</p>
+                        <p className="mt-1 text-xs font-medium text-slate-400">{product.note || 'Không có ghi chú'}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-5 py-4 font-semibold text-slate-500">{product.sku}</td>
-                  <td className="px-5 py-4 font-semibold text-slate-600">{product.category}</td>
-                  <td className="px-5 py-4 font-bold text-slate-800">{product.price}</td>
+                  <td className="px-5 py-4 font-semibold text-slate-600">
+                    {product.category}
+                  </td>
+                  <td className="px-5 py-4 font-bold text-slate-800">
+                    {typeof product.price === 'number' ? formatVnd(product.price) : product.price}
+                  </td>
                   <td className="px-5 py-4">
                     <span className={cn('font-bold', product.stock <= 12 ? 'text-orange-600' : 'text-slate-700')}>
                       {product.stock <= 12 && <AlertTriangle className="mr-1 inline h-4 w-4" />}
@@ -1274,9 +1418,9 @@ function ProductsSection({ onToast }) {
                     </span>
                   </td>
                   <td className="px-5 py-4"><StatusPill status={product.status} /></td>
-                  <td className="px-5 py-4">
-                    <button type="button" aria-label={`Thao tác ${product.name}`} className="admin-icon-button" onClick={() => onToast({ title: product.name, message: 'Đã mở menu thao tác nhanh cho sản phẩm.', tone: 'green' })}>
-                      <MoreHorizontal className="h-5 w-5" />
+                  <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
+                    <button type="button" aria-label={`Thao tác ${product.name}`} className="admin-icon-button" onClick={() => setSelectedProduct(product)}>
+                      <Eye className="h-5 w-5 text-indigo-600 hover:text-indigo-800" />
                     </button>
                   </td>
                 </tr>
@@ -1287,6 +1431,266 @@ function ProductsSection({ onToast }) {
         {visibleProducts.length === 0 && <TableEmptyState />}
         <TableFooter count={filteredProducts.length} page={page} pageSize={pageSize} onPageChange={setPage} />
       </section>
+
+      {/* Product Review Detail Modal */}
+      {selectedProduct && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-4xl w-full border border-slate-100 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-250 text-slate-800">
+            {/* Header */}
+            <div className="px-8 py-5 bg-gradient-to-r from-slate-550 to-slate-50 border-b border-slate-100 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3">
+                <span className="w-1.5 h-5 rounded-sm bg-indigo-600 flex-shrink-0" />
+                <h3 className="text-lg font-extrabold text-slate-950">Chi tiết sản phẩm kiểm duyệt</h3>
+              </div>
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="text-slate-400 hover:text-slate-700 transition-colors p-1 hover:bg-slate-100 rounded-full"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Body */}
+            <div className="p-8 overflow-y-auto space-y-6 flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Images Gallery */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hình ảnh sản phẩm</h4>
+                  {selectedProduct.images && selectedProduct.images.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      {selectedProduct.images.map((img, idx) => (
+                        <div key={idx} className={cn("aspect-square rounded-xl overflow-hidden border border-slate-100 shadow-sm", idx === 0 && "col-span-3 aspect-[4/3]")}>
+                          <img src={img.preview || img} alt={`Product ${idx}`} className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="aspect-[4/3] rounded-2xl bg-slate-50 border border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400">
+                      <Boxes className="h-10 w-10 mb-2" />
+                      <p className="text-xs font-semibold">Chưa có hình ảnh</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Details list */}
+                <div className="space-y-6">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
+                      {selectedProduct.category}
+                    </span>
+                    <h2 className="text-xl font-extrabold text-slate-950 mt-3 mb-1.5 leading-snug">{selectedProduct.name}</h2>
+                    <p className="text-xs font-semibold text-slate-400">SKU: <strong className="text-slate-600">{selectedProduct.sku}</strong></p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 border-y border-slate-100 py-4 bg-slate-50/50 rounded-2xl px-4">
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Giá bán niêm yết</p>
+                      <p className="text-lg font-black text-indigo-700 mt-0.5">
+                        {typeof selectedProduct.price === 'number' ? formatVnd(selectedProduct.price) : selectedProduct.price}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tồn kho hiện có</p>
+                      <p className="text-lg font-black text-slate-800 mt-0.5">{selectedProduct.stock} sản phẩm</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Thông số kỹ thuật & thuộc tính</h4>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <span className="text-slate-400 font-semibold block text-[10px] uppercase">Thương hiệu</span>
+                        <span className="font-extrabold text-slate-700 mt-0.5 block">{selectedProduct.brand || 'No Brand'}</span>
+                      </div>
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <span className="text-slate-400 font-semibold block text-[10px] uppercase">Trọng lượng</span>
+                        <span className="font-extrabold text-slate-700 mt-0.5 block">{selectedProduct.weight ? `${selectedProduct.weight} ${selectedProduct.weightUnit || 'g'}` : 'N/A'}</span>
+                      </div>
+                      {selectedProduct.attributes && Object.entries(selectedProduct.attributes).map(([key, val]) => (
+                        <div key={key} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <span className="text-slate-400 font-semibold block text-[10px] uppercase truncate">{key}</span>
+                          <span className="font-extrabold text-slate-700 mt-0.5 block truncate">{val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description & specs */}
+              <div className="border-t border-slate-100 pt-6 space-y-3">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mô tả sản phẩm</h4>
+                <div
+                  className="text-sm font-semibold leading-relaxed text-slate-600 bg-slate-50/30 p-5 rounded-2xl border border-slate-100 max-h-[160px] overflow-y-auto"
+                  dangerouslySetInnerHTML={{ __html: selectedProduct.description }}
+                />
+              </div>
+
+              {/* Shipping info */}
+              <div className="grid grid-cols-3 gap-4 border-t border-slate-100 pt-6">
+                <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                  <span className="text-slate-400 font-bold block text-[10px] uppercase">Chiều cao</span>
+                  <span className="font-extrabold text-slate-700 block mt-0.5">{selectedProduct.height ? `${selectedProduct.height} cm` : 'N/A'}</span>
+                </div>
+                <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                  <span className="text-slate-400 font-bold block text-[10px] uppercase">Chiều rộng</span>
+                  <span className="font-extrabold text-slate-700 block mt-0.5">{selectedProduct.width ? `${selectedProduct.width} cm` : 'N/A'}</span>
+                </div>
+                <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                  <span className="text-slate-400 font-bold block text-[10px] uppercase">Chiều dài</span>
+                  <span className="font-extrabold text-slate-700 block mt-0.5">{selectedProduct.length ? `${selectedProduct.length} cm` : 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions Footer */}
+            <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/70 flex justify-end gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setSelectedProduct(null)}
+                className="admin-secondary-button justify-center font-bold px-5 h-10 text-xs border-slate-300"
+              >
+                Đóng
+              </button>
+              
+              {selectedProduct.status === 'Chờ duyệt' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRejectModal(true);
+                    }}
+                    className="admin-secondary-button justify-center font-bold px-5 h-10 text-xs bg-red-50 text-red-600 hover:bg-red-100 border-red-200"
+                  >
+                    Từ chối duyệt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApprove(selectedProduct.sku)}
+                    className="admin-primary-button justify-center font-bold px-5 h-10 text-xs shadow-md shadow-indigo-600/10"
+                  >
+                    Phê duyệt sản phẩm
+                  </button>
+                </>
+              )}
+
+              {selectedProduct.status === 'Đang bán' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowWarnModal(true);
+                  }}
+                  className="admin-secondary-button justify-center font-bold px-5 h-10 text-xs bg-red-50 text-red-600 hover:bg-red-100 border-red-200"
+                >
+                  Cảnh báo vi phạm
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Reason input Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
+          <form onSubmit={handleRejectSubmit} className="bg-white rounded-2xl max-w-md w-full border border-slate-200 p-6 shadow-2xl animate-in fade-in zoom-in duration-200 text-slate-800">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-base font-extrabold text-slate-950 flex items-center gap-2">
+                <span className="w-1.5 h-4 rounded-sm bg-red-600 flex-shrink-0" />
+                Lý do từ chối phê duyệt
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowRejectModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-2">Nhập lý do từ chối sản phẩm:</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={rejectReasonText}
+                  onChange={(e) => setRejectReasonText(e.target.value)}
+                  placeholder="Ví dụ: Mô tả sản phẩm chứa từ khóa bị cấm / Hình ảnh tải lên bị nhòe và không rõ chi tiết..."
+                  className="admin-form-input w-full p-3 text-sm rounded-xl focus:border-red-500 focus:ring-4 focus:ring-red-500/10 transition-all border border-slate-200 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 mt-6">
+              <button
+                type="button"
+                className="admin-secondary-button flex-1 justify-center"
+                onClick={() => setShowRejectModal(false)}
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="admin-primary-button flex-1 justify-center bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/10"
+              >
+                Từ chối ngay
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Warn Reason input Modal */}
+      {showWarnModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
+          <form onSubmit={handleWarnSubmit} className="bg-white rounded-2xl max-w-md w-full border border-slate-200 p-6 shadow-2xl animate-in fade-in zoom-in duration-200 text-slate-800">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-base font-extrabold text-slate-950 flex items-center gap-2">
+                <span className="w-1.5 h-4 rounded-sm bg-red-600 flex-shrink-0" />
+                Cảnh báo vi phạm chính sách
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowWarnModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-2">Nhập nội dung/lý do cảnh báo vi phạm:</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={warnReasonText}
+                  onChange={(e) => setWarnReasonText(e.target.value)}
+                  placeholder="Ví dụ: Giá bán biến động bất thường so với thị trường chung. Vui lòng cập nhật lại..."
+                  className="admin-form-input w-full p-3 text-sm rounded-xl focus:border-red-500 focus:ring-4 focus:ring-red-500/10 transition-all border border-slate-200 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 mt-6">
+              <button
+                type="button"
+                className="admin-secondary-button flex-1 justify-center"
+                onClick={() => setShowWarnModal(false)}
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="admin-primary-button flex-1 justify-center bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/10"
+              >
+                Gửi cảnh báo
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
@@ -2230,7 +2634,10 @@ function StatusPill({ status }) {
     'Cần kiểm tra': 'bg-orange-50 text-orange-700',
     'Theo dõi': 'bg-orange-50 text-orange-700',
     'Cảnh báo': 'bg-red-50 text-red-700',
+    'Bị từ chối': 'bg-red-50 text-red-700',
     'Tạm ẩn': 'bg-slate-100 text-slate-600',
+    'Nháp': 'bg-slate-100 text-slate-600',
+    'Bản nháp': 'bg-slate-100 text-slate-600',
     'Từ chối': 'bg-red-50 text-red-700',
   }[status] || 'bg-slate-100 text-slate-600';
   return <span className={cn('admin-status-pill', tone)}>{status}</span>;

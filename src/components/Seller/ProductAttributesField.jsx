@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ChevronDown, Sparkles, HelpCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getAttributeSchema } from '../../utils/attributeSchemas';
@@ -6,12 +6,6 @@ import { getAttributeSchema } from '../../utils/attributeSchemas';
 export function ProductAttributesField({ categoryId, value = {}, onChange, errors = {} }) {
   const [showOptional, setShowOptional] = useState(false);
 
-  // Reset attributes when category changes
-  useEffect(() => {
-    onChange({});
-    setShowOptional(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryId]);
 
   if (!categoryId) {
     return (
