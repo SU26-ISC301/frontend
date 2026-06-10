@@ -793,6 +793,7 @@ function UserManagementSection({ onToast }) {
   const [query, setQuery] = useState('');
   const [togglingId, setTogglingId] = useState(null);
   const [page, setPage] = useState(1);
+  const [selectedRoleTab, setSelectedRoleTab] = useState('all'); // 'all', 'customer', 'vendor', 'admin'
   const pageSize = 8;
 
   const fetchUsers = async () => {
@@ -840,13 +841,41 @@ function UserManagementSection({ onToast }) {
     }
   };
 
+  // 1. Calculate count statistics
+  const countAll = users.length;
+  const countCustomers = users.filter(u => (u.role || '').toLowerCase() === 'customer').length;
+  const countVendors = users.filter(u => (u.role || '').toLowerCase() === 'vendor').length;
+  const countAdmins = users.filter(u => (u.role || '').toLowerCase() === 'admin').length;
+
+  const metrics = [
+    { label: 'Tổng người dùng', value: countAll, icon: Users, tone: 'blue' },
+    { label: 'Khách hàng', value: countCustomers, icon: ShoppingBag, tone: 'emerald' },
+    { label: 'Người bán', value: countVendors, icon: Store, tone: 'indigo' },
+    { label: 'Quản trị viên', value: countAdmins, icon: ShieldCheck, tone: 'purple' },
+  ];
+
+  const tabs = [
+    { id: 'all', label: 'Tất cả', count: countAll },
+    { id: 'customer', label: 'Khách hàng', count: countCustomers },
+    { id: 'vendor', label: 'Người bán', count: countVendors },
+    { id: 'admin', label: 'Quản trị viên', count: countAdmins }
+  ];
+
+  // 2. Filter users based on query AND role tab
   const filteredUsers = users.filter((u) => {
+    const r = (u.role || '').toLowerCase();
+    if (selectedRoleTab !== 'all' && r !== selectedRoleTab) {
+      return false;
+    }
+
     const q = query.toLowerCase().trim();
+    if (!q) return true;
+
     return (
       (u.fullName || '').toLowerCase().includes(q) ||
       (u.email || '').toLowerCase().includes(q) ||
       (u.phone || '').toLowerCase().includes(q) ||
-      (u.role || '').toLowerCase().includes(q)
+      (u.id || '').toLowerCase().includes(q)
     );
   });
 
@@ -864,57 +893,155 @@ function UserManagementSection({ onToast }) {
     return 'bg-emerald-50 text-emerald-700 border border-emerald-100';
   };
 
+  const getAvatarGradient = (role) => {
+    const r = (role || '').toLowerCase();
+    if (r === 'admin') return 'from-purple-500 to-indigo-500';
+    if (r === 'vendor') return 'from-indigo-500 to-blue-500';
+    return 'from-emerald-500 to-teal-500';
+  };
+
   const paginatedUsers = filteredUsers.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div>
       <PageHeader title="Quản lý người dùng" subtitle="Theo dõi danh sách khách hàng, người bán và quản lý trạng thái tài khoản." />
-      
-      <Toolbar query={query} searchPlaceholder="Tìm theo tên, email, số điện thoại..." onQueryChange={(q) => { setQuery(q); setPage(1); }} onReset={() => { setQuery(''); setPage(1); }} />
-      
-      <section className="admin-panel mt-5 overflow-hidden">
+
+      {/* Metrics Grid */}
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+        {metrics.map(({ label, value, icon: Icon, tone }) => (
+          <div key={label} className="admin-panel p-5 flex items-center justify-between border border-slate-100 shadow-sm hover:shadow-md transition-all duration-200">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">{label}</p>
+              <h3 className="mt-2 text-2xl font-extrabold text-slate-800">{value}</h3>
+            </div>
+            <span className={cn('flex h-11 w-11 items-center justify-center rounded-xl shadow-sm border', {
+              'bg-blue-50 text-blue-600 border-blue-100': tone === 'blue',
+              'bg-emerald-50 text-emerald-600 border-emerald-100': tone === 'emerald',
+              'bg-indigo-50 text-indigo-600 border-indigo-100': tone === 'indigo',
+              'bg-purple-50 text-purple-600 border-purple-100': tone === 'purple',
+            })}>
+              <Icon className="h-5 w-5" />
+            </span>
+          </div>
+        ))}
+      </section>
+
+      {/* Main Table Section */}
+      <section className="admin-panel overflow-hidden border border-slate-100 bg-white">
+        {/* Toolbar & Search */}
+        <div className="p-5 border-b border-slate-100 bg-slate-50/20">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            {/* Custom Tabs */}
+            <div className="flex flex-wrap border border-slate-200 bg-slate-100/50 p-1 rounded-xl gap-1">
+              {tabs.map((tab) => {
+                const isActive = selectedRoleTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedRoleTab(tab.id);
+                      setPage(1);
+                    }}
+                    className={cn(
+                      'flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all',
+                      isActive
+                        ? 'bg-white text-indigo-700 shadow-sm shadow-slate-900/5'
+                        : 'text-slate-500 hover:text-slate-950 hover:bg-slate-200/50'
+                    )}
+                  >
+                    {tab.label}
+                    <span
+                      className={cn(
+                        'px-1.5 py-0.5 rounded-full text-[10px] font-extrabold',
+                        isActive ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-200 text-slate-600'
+                      )}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search Input */}
+            <div className="relative w-full md:w-80">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPage(1);
+                }}
+                className="admin-search h-10 w-full pl-9 pr-8 text-sm"
+                placeholder="Tìm theo tên, email, sđt..."
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery('');
+                    setPage(1);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         {loading ? (
           <div className="flex h-64 items-center justify-center gap-2 text-slate-500">
             <Loader2 className="h-6 w-6 animate-spin text-admin-accent" />
-            <span className="text-sm font-bold">Đang tải dữ liệu người dùng...</span>
+            <span className="text-sm font-bold animate-pulse">Đang tải dữ liệu người dùng...</span>
           </div>
         ) : error ? (
           <div className="flex h-64 flex-col items-center justify-center text-center p-5">
-            <AlertTriangle className="h-8 w-8 text-red-500" />
+            <AlertTriangle className="h-8 w-8 text-red-500 animate-bounce" />
             <p className="mt-3 text-sm font-extrabold text-slate-700">{error}</p>
             <button type="button" onClick={fetchUsers} className="admin-secondary-button mt-4">Thử lại</button>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="admin-table-head">
+              <thead className="admin-table-head bg-slate-50/50">
                 <tr>
-                  <th className="px-5 py-3.5">Mã người dùng</th>
-                  <th className="px-5 py-3.5">Họ tên & Email</th>
-                  <th className="px-5 py-3.5">Số điện thoại</th>
-                  <th className="px-5 py-3.5">Vai trò</th>
-                  <th className="px-5 py-3.5">Ngày tham gia</th>
-                  <th className="px-5 py-3.5">Trạng thái</th>
-                  <th className="px-5 py-3.5 text-right">Thao tác</th>
+                  <th className="px-5 py-3.5 font-extrabold text-slate-700">Mã người dùng</th>
+                  <th className="px-5 py-3.5 font-extrabold text-slate-700">Họ tên & Email</th>
+                  <th className="px-5 py-3.5 font-extrabold text-slate-700">Số điện thoại</th>
+                  <th className="px-5 py-3.5 font-extrabold text-slate-700">Vai trò</th>
+                  <th className="px-5 py-3.5 font-extrabold text-slate-700">Ngày tham gia</th>
+                  <th className="px-5 py-3.5 font-extrabold text-slate-700">Trạng thái</th>
+                  <th className="px-5 py-3.5 text-right font-extrabold text-slate-700">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {paginatedUsers.map((user) => (
-                  <tr key={user.id} className="admin-table-row">
+                  <tr key={user.id} className="admin-table-row transition-colors hover:bg-slate-50/50">
                     <td className="px-5 py-4 font-bold text-slate-800">
-                      {user.id.substring(0, 8).toUpperCase()}
+                      #{user.id.substring(0, 8).toUpperCase()}
                     </td>
                     <td className="px-5 py-4">
-                      <div>
-                        <p className="font-bold text-slate-800">{user.fullName}</p>
-                        <p className="text-xs font-semibold text-slate-400">{user.email}</p>
+                      <div className="flex items-center gap-3">
+                        <span className={cn(
+                          'flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr text-xs font-black text-white shadow-sm',
+                          getAvatarGradient(user.role)
+                        )}>
+                          {getInitials(user.fullName)}
+                        </span>
+                        <div>
+                          <p className="font-extrabold text-slate-800">{user.fullName}</p>
+                          <p className="text-xs font-semibold text-slate-400">{user.email}</p>
+                        </div>
                       </div>
                     </td>
                     <td className="px-5 py-4 font-semibold text-slate-600">
-                      {user.phone || 'N/A'}
+                      {user.phone || 'Chưa cung cấp'}
                     </td>
                     <td className="px-5 py-4">
-                      <span className={cn('admin-status-pill rounded px-2 py-1 text-xs font-bold', getRoleBadgeClass(user.role))}>
+                      <span className={cn('admin-status-pill rounded px-2 py-0.5 text-xs font-extrabold border', getRoleBadgeClass(user.role))}>
                         {getRoleLabel(user.role)}
                       </span>
                     </td>
@@ -923,9 +1050,13 @@ function UserManagementSection({ onToast }) {
                     </td>
                     <td className="px-5 py-4">
                       {user.isActive ? (
-                        <span className="admin-status-pill bg-emerald-50 text-emerald-700">Đang hoạt động</span>
+                        <span className="admin-status-pill bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded text-xs font-bold">
+                          Đang hoạt động
+                        </span>
                       ) : (
-                        <span className="admin-status-pill bg-red-50 text-red-600">Bị khóa</span>
+                        <span className="admin-status-pill bg-red-50 text-red-600 border border-red-100 px-2 py-0.5 rounded text-xs font-bold">
+                          Bị khóa
+                        </span>
                       )}
                     </td>
                     <td className="px-5 py-4 text-right">
@@ -935,12 +1066,14 @@ function UserManagementSection({ onToast }) {
                           disabled={togglingId === user.id}
                           onClick={() => handleToggleStatus(user)}
                           className={cn(
-                            'admin-link-button font-bold text-sm inline-flex items-center gap-1',
-                            user.isActive ? 'text-red-500 hover:text-red-700' : 'text-indigo-600 hover:text-indigo-800'
+                            'admin-link-button font-bold text-xs inline-flex items-center gap-1.5 transition-colors px-3 py-1.5 rounded-lg border',
+                            user.isActive 
+                              ? 'text-red-500 hover:text-red-700 hover:bg-red-50/50 border-red-100' 
+                              : 'text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50/50 border-indigo-100'
                           )}
                         >
                           {togglingId === user.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <Loader2 className="h-3 w-3 animate-spin" />
                           ) : user.isActive ? (
                             'Khóa tài khoản'
                           ) : (
