@@ -106,4 +106,15 @@ export const sellerApi = {
     });
     return unwrap(response);
   },
+
+  getVendorByProfileId: async (profileId) => {
+    const response = await axiosClient.get(`/vendors/profile/${profileId}`);
+    return unwrap(response);
+  },
+
+  updateVendor: async (vendorId, payload) => {
+    const response = await axiosClient.put(`/vendors/${vendorId}`, payload);
+    return unwrap(response);
+  },
 };
+
