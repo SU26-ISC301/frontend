@@ -100,6 +100,23 @@ export const sellerApi = {
     return unwrap(response);
   },
 
+  getVendorById: async (vendorId) => {
+    const response = await axiosClient.get(`/vendors/${vendorId}`);
+    return unwrap(response);
+  },
+
+  recordVisit: async (vendorId, productId = null) => {
+    const response = await axiosClient.post('/api/visits/record', { vendorId, productId });
+    return unwrap(response);
+  },
+
+  getVisitsStats: async (vendorId, range = 30, startDate = null, endDate = null) => {
+    const response = await axiosClient.get(`/vendors/${vendorId}/visits-stats`, {
+      params: { range, startDate, endDate }
+    });
+    return unwrap(response);
+  },
+
   getAuditLogs: async (page, size, query, action) => {
     const response = await axiosClient.get('/vendors/audit-logs', {
       params: { page, size, query, action }

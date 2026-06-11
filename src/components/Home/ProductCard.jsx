@@ -14,7 +14,7 @@ function hasBuyerSession() {
   );
 }
 
-export function ProductCard({ id, index, title, price, oldPrice, sold, rating, image, badge, isPremiumHighlighted, initialFavorite = false }) {
+export function ProductCard({ id, index, title, price, oldPrice, sold, rating, image, badge, isPremiumHighlighted, initialFavorite = false, vendorId }) {
   const [authOpen, setAuthOpen] = useState(false);
   const [favorite, setFavorite] = useState(initialFavorite);
   const [pendingFavorite, setPendingFavorite] = useState(false);
@@ -105,7 +105,15 @@ export function ProductCard({ id, index, title, price, oldPrice, sold, rating, i
         >
           <Heart className={cn('h-4 w-4', favorite && 'fill-current')} />
         </button>
-        <span className="pill absolute left-2 top-2 bg-white/92 text-[#ff4d2e] shadow-sm backdrop-blur">
+        <span 
+          className="pill absolute left-2 top-2 bg-white/92 text-[#ff4d2e] shadow-sm backdrop-blur hover:bg-[#ff4d2e] hover:text-white transition-colors cursor-pointer z-20"
+          onClick={(event) => {
+            event.stopPropagation();
+            if (vendorId) {
+              window.open(`/shop/${vendorId}`, '_blank', 'noopener,noreferrer');
+            }
+          }}
+        >
           {badge}
         </span>
         {isPremiumHighlighted && (
