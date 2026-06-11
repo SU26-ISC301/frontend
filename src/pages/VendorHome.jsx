@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Navigate, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowUpRight,
@@ -8,6 +8,7 @@ import {
   BarChart3,
   Bell,
   Boxes,
+  Calendar,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -59,6 +60,7 @@ import {
   ELECTRONICS_CATEGORIES,
 } from "../components/Seller/CategorySelectorField";
 import AddWarehouseModal from "../components/Seller/Warehouse/AddWarehouseModal";
+import { DatePickerCalendar } from "../components/ui/date-picker-calendar";
 import { VIETNAM_PROVINCES } from "../data/vietnamAdministrativeUnits";
 import { VENDOR_FEATURES } from "../config/vendorFeatures";
 import SubscriptionPlanModal, {
@@ -1044,6 +1046,21 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
     return 7; // Premium defaults to 7 days
   });
 
+  // Calendar popup open states
+  const [startCalendarOpen, setStartCalendarOpen] = useState(false);
+  const [endCalendarOpen, setEndCalendarOpen] = useState(false);
+
+  // Calendar anchor refs
+  const startRef = useRef(null);
+  const endRef = useRef(null);
+
+  // Formatter for display
+  const formatDisplayDate = (iso) => {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  };
+
   const trend = useMemo(() => {
     // If premium and in custom date mode
     if (planId === 'premium' && isCustomMode) {
@@ -1205,30 +1222,70 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
 
               {/* Custom Range Selector */}
               {planId === 'premium' ? (
-                <div className="flex items-center gap-1 bg-stone-50 px-2 py-0.5 rounded-lg border border-stone-200/50">
-                  <input
-                    type="date"
-                    value={customStartDate}
-                    min="2026-01-01"
-                    max={customEndDate}
-                    onChange={(e) => {
-                      setCustomStartDate(e.target.value);
-                      setIsCustomMode(true);
-                    }}
-                    className="bg-transparent border-none p-0 text-[11px] font-extrabold text-stone-700 w-[110px] focus:ring-0 cursor-pointer"
-                  />
-                  <span className="text-[10px] font-extrabold text-stone-400">đến</span>
-                  <input
-                    type="date"
-                    value={customEndDate}
-                    min={customStartDate}
-                    max={new Date().toISOString().split('T')[0]}
-                    onChange={(e) => {
-                      setCustomEndDate(e.target.value);
-                      setIsCustomMode(true);
-                    }}
-                    className="bg-transparent border-none p-0 text-[11px] font-extrabold text-stone-700 w-[110px] focus:ring-0 cursor-pointer"
-                  />
+                <div className="flex items-center bg-white px-3 py-1.5 rounded-full border border-stone-200 shadow-sm gap-2">
+                  {/* Start Date */}
+                  <div className="relative flex items-center gap-2" ref={startRef}>
+                    <button
+                      type="button"
+                      onClick={() => setStartCalendarOpen((prev) => !prev)}
+                      className="text-xs font-bold text-stone-700 hover:text-orange-600 transition"
+                    >
+                      {formatDisplayDate(customStartDate)}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStartCalendarOpen((prev) => !prev)}
+                      className="text-stone-400 hover:text-stone-600 focus:outline-none"
+                    >
+                      <Calendar className="h-3.5 w-3.5" />
+                    </button>
+                    <DatePickerCalendar
+                      open={startCalendarOpen}
+                      anchorRef={startRef}
+                      value={customStartDate}
+                      minDate={undefined}
+                      maxDate={new Date(customEndDate)}
+                      onSelect={(iso) => {
+                        setCustomStartDate(iso);
+                        setIsCustomMode(true);
+                        setStartCalendarOpen(false);
+                      }}
+                      onClose={() => setStartCalendarOpen(false)}
+                    />
+                  </div>
+
+                  <span className="text-[11px] font-semibold text-stone-400">đến</span>
+
+                  {/* End Date */}
+                  <div className="relative flex items-center gap-2" ref={endRef}>
+                    <button
+                      type="button"
+                      onClick={() => setEndCalendarOpen((prev) => !prev)}
+                      className="text-xs font-bold text-stone-700 hover:text-orange-600 transition"
+                    >
+                      {formatDisplayDate(customEndDate)}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEndCalendarOpen((prev) => !prev)}
+                      className="text-stone-400 hover:text-stone-600 focus:outline-none"
+                    >
+                      <Calendar className="h-3.5 w-3.5" />
+                    </button>
+                    <DatePickerCalendar
+                      open={endCalendarOpen}
+                      anchorRef={endRef}
+                      value={customEndDate}
+                      minDate={new Date(customStartDate)}
+                      maxDate={new Date()}
+                      onSelect={(iso) => {
+                        setCustomEndDate(iso);
+                        setIsCustomMode(true);
+                        setEndCalendarOpen(false);
+                      }}
+                      onClose={() => setEndCalendarOpen(false)}
+                    />
+                  </div>
                 </div>
               ) : (
                 <button
@@ -1240,9 +1297,9 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
                     });
                     onOpenPlanModal();
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1 bg-stone-100/50 border border-stone-200/30 rounded-lg text-[11px] font-bold text-stone-400 hover:text-stone-600 transition"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100/50 border border-stone-200/30 rounded-full text-[11px] font-bold text-stone-400 hover:text-stone-600 transition"
                 >
-                  <Lock className="h-3 w-3" />
+                  <Lock className="h-3.5 w-3.5" />
                   <span>Chọn khoảng thời gian</span>
                 </button>
               )}
