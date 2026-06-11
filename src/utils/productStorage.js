@@ -634,6 +634,7 @@ export function mapBackendProductToLocal(beProd, categoriesList = []) {
     variants,
     skus,
     status: uiStatus,
+    rejectReason: beProd.rejectReason || beProd.reject_reason || '',
     note: beProd.note || (uiStatus === 'Chờ duyệt' ? 'Đang chờ Admin duyệt' : uiStatus === 'Bị từ chối' ? 'Bị từ chối bởi Admin' : 'Đang hoạt động')
   };
 }
@@ -800,5 +801,6 @@ export function mergeProductData(local, remote) {
     shippingType: remote.shippingType === 'default' && local.shippingType ? local.shippingType : remote.shippingType,
     customPlatforms: remote.customPlatforms || local.customPlatforms,
     codEnabled: remote.codEnabled !== undefined ? remote.codEnabled : local.codEnabled,
+    rejectReason: remote.rejectReason !== undefined ? remote.rejectReason : local.rejectReason,
   };
 }

@@ -86,6 +86,7 @@ export function ProductAddFormComplete({ isEdit }) {
   const [activeSection, setActiveSection] = useState('basic');
   const [activeSubSection, setActiveSubSection] = useState('images');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitNotice, setSubmitNotice] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
   const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
   const [showWeightUnitMenu, setShowWeightUnitMenu] = useState(false);
@@ -855,11 +856,17 @@ export function ProductAddFormComplete({ isEdit }) {
 
   const handleSubmit = async () => {
     if (!validateForm()) {
-      alert('Vui lòng điền đầy đủ thông tin bắt buộc!');
+      setSubmitNotice({
+        tone: 'red',
+        title: 'Chưa thể gửi xét duyệt',
+        message: 'Vui lòng điền đầy đủ thông tin bắt buộc trước khi gửi sản phẩm.',
+      });
+      mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     setIsSubmitting(true);
+    setSubmitNotice(null);
     let uploadedImages = formData.images.map(img => img.preview || img);
     let uploadedVideo = typeof formData.video === 'string' ? formData.video : (formData.video?.preview || formData.video?.url || null);
 
@@ -886,7 +893,11 @@ export function ProductAddFormComplete({ isEdit }) {
         }
       } catch (uploadError) {
         console.warn('Lỗi tải media lên Backend, sử dụng dự phòng local URLs:', uploadError);
-        alert('Lưu ý: Không thể tải ảnh/video lên server Backend (Lỗi mạng hoặc server quá tải).\nHệ thống sẽ tạm thời dùng liên kết cục bộ để bạn tiếp tục gửi xét duyệt sản phẩm.');
+        setSubmitNotice({
+          tone: 'orange',
+          title: 'Media chưa được tải lên máy chủ',
+          message: 'Hệ thống tạm dùng liên kết cục bộ để bạn tiếp tục gửi xét duyệt sản phẩm.',
+        });
 
         uploadedImages = formData.images.map(img => {
           if (img.file instanceof File) {
@@ -945,7 +956,12 @@ export function ProductAddFormComplete({ isEdit }) {
       }
     } catch (apiError) {
       console.error('Lỗi khi gửi sản phẩm lên Backend:', apiError);
-      alert('Không thể gửi xét duyệt sản phẩm lên Backend.\nChi tiết lỗi: ' + (apiError.response?.data?.message || apiError.response?.data?.error || apiError.message));
+      setSubmitNotice({
+        tone: 'red',
+        title: 'Không thể gửi xét duyệt',
+        message: apiError.response?.data?.message || apiError.response?.data?.error || apiError.message,
+      });
+      mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       setIsSubmitting(false);
       return;
     }
@@ -981,16 +997,29 @@ export function ProductAddFormComplete({ isEdit }) {
 
     if (isEdit && sku) {
       productStorage.updateProduct(sku, localProductPayload);
-      alert('Cập nhật sản phẩm và gửi xét duyệt thành công!');
+      navigate('/vendor/san-pham', {
+        state: {
+          toast: {
+            title: 'Cập nhật và gửi xét duyệt thành công',
+            message: 'Sản phẩm đã được chuyển sang hàng chờ Admin phê duyệt.',
+          },
+        },
+      });
     } else {
       productStorage.addProduct(localProductPayload);
       const updated = consumeOneSlot();
       setPlanData(updated);
-      alert('Gửi xét duyệt thành công! Đang chờ Admin duyệt.');
+      navigate('/vendor/san-pham', {
+        state: {
+          toast: {
+            title: 'Gửi xét duyệt thành công',
+            message: 'Sản phẩm đã được chuyển sang hàng chờ Admin phê duyệt.',
+          },
+        },
+      });
     }
 
     setIsSubmitting(false);
-    navigate('/vendor/san-pham');
   };
 
   const sections = [
@@ -1274,6 +1303,31 @@ export function ProductAddFormComplete({ isEdit }) {
 
         {/* Content Area */}
         <div className="max-w-7xl mx-auto px-8 py-8 space-y-8 w-full">
+          {submitNotice && (
+            <div
+              className={cn(
+                'flex items-start gap-3 rounded-2xl border px-5 py-4 shadow-sm',
+                submitNotice.tone === 'red'
+                  ? 'border-red-100 bg-red-50 text-red-800'
+                  : 'border-orange-100 bg-orange-50 text-orange-800'
+              )}
+            >
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+              <div>
+                <p className="text-sm font-extrabold">{submitNotice.title}</p>
+                <p className="mt-1 text-xs font-semibold leading-5">{submitNotice.message}</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Đóng thông báo"
+                onClick={() => setSubmitNotice(null)}
+                className="ml-auto rounded-full p-1 opacity-70 transition hover:bg-white/60 hover:opacity-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
           {/* SECTION 1: THÔNG TIN CƠ BẢN */}
           <section ref={sectionRefs.basic} className="vendor-panel p-8 bg-white space-y-6">
             <div className="relative pl-4 py-0.5 bg-gradient-to-r from-slate-50 to-transparent rounded-r-lg">
