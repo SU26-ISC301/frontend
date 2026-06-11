@@ -479,6 +479,10 @@ function SuccessStep({ planName, navigate }) {
                 <Check className="h-4 w-4 text-teal-600 bg-teal-50 p-0.5 rounded-full shrink-0" />
                 <span>Tính năng nghiên cứu thị trường</span>
               </div>
+              <div className="flex items-center gap-2.5 text-xs font-bold text-stone-600">
+                <Check className="h-4 w-4 text-teal-600 bg-teal-50 p-0.5 rounded-full shrink-0" />
+                <span>Gợi ý giá bán tối ưu</span>
+              </div>
             </>
           ) : (
             <>
@@ -656,4 +660,3 @@ export default function VendorSubscriptionCheckout() {
     </div>
   );
 }
-

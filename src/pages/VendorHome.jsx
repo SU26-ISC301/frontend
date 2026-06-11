@@ -1713,7 +1713,7 @@ function OrdersPage({ onToast }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
-  const pageSize = 4;
+  const pageSize = 10;
   const filtered = orders.filter(
     (order) =>
       `${order.id} ${order.buyer} ${order.item}`

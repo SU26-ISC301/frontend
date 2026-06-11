@@ -1,8 +1,49 @@
 import { useState, useEffect } from 'react';
-import { Trash2, Plus, HelpCircle, Maximize2, Minimize2, ChevronDown, GripVertical } from 'lucide-react';
+import { Trash2, Plus, HelpCircle, Maximize2, Minimize2, ChevronDown, GripVertical, Loader2, Sparkles, TrendingUp } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { marketResearchApi } from '../../api/marketResearchAPI';
 
 const SUGGESTED_VARIANTS = ['Màu sắc', 'Kích thước', 'Dung lượng', 'RAM', 'Bộ nhớ trong', 'Loại bảo hành'];
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+}
+
+function buildPriceInsight(marketResearch) {
+  const sources = (marketResearch?.sources || []).filter(
+    (source) => source.status === 'OK' && Number(source.min) > 0 && Number(source.max) > 0
+  );
+  if (!sources.length) return null;
+
+  const productPrices = sources.flatMap((source) =>
+    (source.products || [])
+      .map((product) => Number(product.price))
+      .filter((price) => Number.isFinite(price) && price > 0)
+  );
+  const sourceMins = sources.map((source) => Number(source.min)).filter((price) => price > 0);
+  const sourceMaxs = sources.map((source) => Number(source.max)).filter((price) => price > 0);
+  const min = Math.min(...sourceMins);
+  const max = Math.max(...sourceMaxs);
+  const average = productPrices.length
+    ? productPrices.reduce((sum, price) => sum + price, 0) / productPrices.length
+    : Number(marketResearch?.selectedCategory?.marketAverage || (min + max) / 2);
+  const suggestedRaw = Math.min(max, Math.max(min, average * 0.98));
+  const suggested = Math.max(1000, Math.round(suggestedRaw / 1000) * 1000);
+
+  return {
+    min,
+    max,
+    average,
+    suggested,
+    sourceCount: sources.length,
+    sampleCount: productPrices.length || sources.reduce((sum, source) => sum + Number(source.productCount || 0), 0),
+    sourceNames: sources.map((source) => source.source).slice(0, 5),
+  };
+}
 
 export function ProductVariantsField({
   hasVariant = false,
@@ -13,9 +54,15 @@ export function ProductVariantsField({
   singleDiscount = '',
   singleSku = '',
   errors = {},
+  productName = '',
+  categoryName = '',
+  isPremiumPlan = false,
   onChange, // parent callback to change state
 }) {
   const [showBrandSuggestions, setShowBrandSuggestions] = useState(null); // variant index for dropdown
+  const [priceInsight, setPriceInsight] = useState(null);
+  const [isLoadingInsight, setIsLoadingInsight] = useState(false);
+  const [insightError, setInsightError] = useState('');
 
   // Initial setup for variants if enabled but empty
   useEffect(() => {
@@ -104,6 +151,46 @@ export function ProductVariantsField({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [variants, hasVariant]);
 
+  useEffect(() => {
+    const query = productName.trim();
+    if (!isPremiumPlan || query.length < 3) {
+      setPriceInsight(null);
+      setInsightError('');
+      setIsLoadingInsight(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setIsLoadingInsight(true);
+    setInsightError('');
+
+    const timer = setTimeout(() => {
+      marketResearchApi.getPublicProductMarketResearch({
+        query,
+        categoryName,
+      })
+        .then((data) => {
+          if (cancelled) return;
+          const insight = buildPriceInsight(data);
+          setPriceInsight(insight);
+          setInsightError(insight ? '' : 'Chưa đủ dữ liệu thị trường để gợi ý giá cho sản phẩm này.');
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setPriceInsight(null);
+          setInsightError('Chưa thể lấy dữ liệu thị trường. Bạn vẫn có thể tự nhập giá bán.');
+        })
+        .finally(() => {
+          if (!cancelled) setIsLoadingInsight(false);
+        });
+    }, 650);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [productName, categoryName, isPremiumPlan]);
+
   // Fullscreen and Apply highlights
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
@@ -159,6 +246,96 @@ export function ProductVariantsField({
   // Toggle variant mode
   const handleToggleVariant = (checked) => {
     onChange({ hasVariant: checked });
+  };
+
+  const handleApplySuggestedPrice = () => {
+    if (!priceInsight?.suggested) return;
+    const suggested = String(priceInsight.suggested);
+    if (hasVariant) {
+      onChange({
+        skus: skus.map((sku) => ({
+          ...sku,
+          price: suggested,
+        })),
+      });
+      return;
+    }
+    onChange({ singlePrice: suggested });
+  };
+
+  const renderPriceInsightPanel = () => {
+    if (!isPremiumPlan) return null;
+
+    return (
+      <div className="rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-orange-50 p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="inline-flex items-center gap-2 text-sm font-black text-slate-900">
+              <Sparkles className="h-4 w-4 text-violet-600" />
+              Gợi ý giá bán tối ưu
+            </p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">
+              Dành riêng cho gói Premium, lấy giá thật từ CellPhoneS, FPT Shop, Điện Máy Xanh, Di Động Việt và TopZone.
+            </p>
+          </div>
+          {isLoadingInsight && (
+            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-violet-700 shadow-sm">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Đang phân tích thị trường
+            </span>
+          )}
+        </div>
+
+        {!productName.trim() && (
+          <p className="mt-3 rounded-xl bg-white/70 px-3 py-2 text-xs font-semibold text-slate-500">
+            Nhập tên sản phẩm ở phần Thông tin cơ bản, hệ thống sẽ tự phân tích khi bạn tới bước giá bán.
+          </p>
+        )}
+
+        {insightError && !isLoadingInsight && (
+          <p className="mt-3 rounded-xl bg-white/80 px-3 py-2 text-xs font-bold text-slate-500">
+            {insightError}
+          </p>
+        )}
+
+        {priceInsight && !isLoadingInsight && (
+          <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div className="rounded-xl bg-white p-3 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Giá thấp nhất</p>
+                <p className="mt-1 text-sm font-black text-slate-800">{formatCurrency(priceInsight.min)}</p>
+              </div>
+              <div className="rounded-xl bg-white p-3 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Giá trung bình</p>
+                <p className="mt-1 text-sm font-black text-slate-800">{formatCurrency(priceInsight.average)}</p>
+              </div>
+              <div className="rounded-xl bg-white p-3 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Giá cao nhất</p>
+                <p className="mt-1 text-sm font-black text-slate-800">{formatCurrency(priceInsight.max)}</p>
+              </div>
+              <div className="rounded-xl bg-violet-600 p-3 text-white shadow-sm shadow-violet-300">
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/70">Nên niêm yết</p>
+                <p className="mt-1 text-sm font-black">{formatCurrency(priceInsight.suggested)}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleApplySuggestedPrice}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#ea580c] px-4 py-3 text-xs font-black text-white shadow-sm transition-colors hover:bg-[#c2410c]"
+            >
+              <TrendingUp className="h-4 w-4" />
+              Áp dụng giá gợi ý
+            </button>
+          </div>
+        )}
+
+        {priceInsight && !isLoadingInsight && (
+          <p className="mt-3 text-[11px] font-semibold text-slate-500">
+            Dựa trên {priceInsight.sampleCount} mức giá từ {priceInsight.sourceCount} nguồn: {priceInsight.sourceNames.join(', ')}. Đây chỉ là gợi ý, bạn vẫn có thể nhập giá khác.
+          </p>
+        )}
+      </div>
+    );
   };
 
   // Add a variant group
@@ -609,6 +786,8 @@ export function ProductVariantsField({
           </button>
         </div>
       </div>
+
+      {renderPriceInsightPanel()}
 
       {/* SINGLE PRODUCT MODE */}
       {!hasVariant ? (

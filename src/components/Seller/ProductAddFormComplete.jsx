@@ -163,6 +163,28 @@ export function ProductAddFormComplete({ isEdit }) {
     return null;
   };
 
+  const getCategoryDisplayName = (categorySlug) => {
+    if (!categorySlug) return '';
+    const findNode = (nodes) => {
+      for (const node of nodes) {
+        if (node.id === categorySlug) return node;
+        if (node.children) {
+          const found = findNode(node.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const staticNode = findNode(ELECTRONICS_CATEGORIES);
+    if (staticNode?.name) return staticNode.name;
+
+    const backendMatch = categoriesList.find(
+      (category) => String(category.id) === String(categorySlug) || category.slug === categorySlug
+    );
+    return backendMatch?.name || '';
+  };
+
   // Subscription plan quota
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planData, setPlanData] = useState(() => getVendorPlan());
@@ -170,6 +192,7 @@ export function ProductAddFormComplete({ isEdit }) {
     ? Infinity
     : Math.max(0, (planData.totalSlots || 3) - (planData.usedSlots || 0));
   const isQuotaExhausted = planData.canPost === false || remainingSlots <= 0;
+  const isPremiumPlan = String(planData.planId || '').toLowerCase() === 'premium';
 
   const syncPlanStatus = async () => {
     try {
@@ -1612,6 +1635,9 @@ export function ProductAddFormComplete({ isEdit }) {
               singleDiscount={formData.singleDiscount}
               singleSku={formData.singleSku}
               errors={errors}
+              productName={formData.productName}
+              categoryName={getCategoryDisplayName(formData.category)}
+              isPremiumPlan={isPremiumPlan}
               onChange={(updatedFields) => {
                 setFormData((prev) => ({
                   ...prev,
