@@ -465,14 +465,37 @@ function SuccessStep({ planName, navigate }) {
 
         {/* Small details check box */}
         <div className="bg-stone-50 rounded-2xl p-5 my-6 border border-stone-100 space-y-3 text-left">
-          <div className="flex items-center gap-2.5 text-xs font-bold text-stone-600">
-            <Check className="h-4 w-4 text-teal-600 bg-teal-50 p-0.5 rounded-full shrink-0" />
-            <span>Khởi động 20 lượt đăng tin</span>
-          </div>
-          <div className="flex items-center gap-2.5 text-xs font-bold text-stone-600">
-            <Check className="h-4 w-4 text-teal-600 bg-teal-50 p-0.5 rounded-full shrink-0" />
-            <span>Áp dụng ưu tiên hiển thị tin đăng</span>
-          </div>
+          {planName?.toLowerCase() === 'premium' ? (
+            <>
+              <div className="flex items-center gap-2.5 text-xs font-bold text-stone-600">
+                <Check className="h-4 w-4 text-teal-600 bg-teal-50 p-0.5 rounded-full shrink-0" />
+                <span>Không giới hạn lượt đăng tin</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-xs font-bold text-stone-600">
+                <Check className="h-4 w-4 text-teal-600 bg-teal-50 p-0.5 rounded-full shrink-0" />
+                <span>Thông tin tổng quan cập nhật liên tục</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-xs font-bold text-stone-600">
+                <Check className="h-4 w-4 text-teal-600 bg-teal-50 p-0.5 rounded-full shrink-0" />
+                <span>Tính năng nghiên cứu thị trường</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2.5 text-xs font-bold text-stone-600">
+                <Check className="h-4 w-4 text-teal-600 bg-teal-50 p-0.5 rounded-full shrink-0" />
+                <span>Khởi động 20 lượt đăng tin</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-xs font-bold text-stone-600">
+                <Check className="h-4 w-4 text-teal-600 bg-teal-50 p-0.5 rounded-full shrink-0" />
+                <span>Thông tin tổng quan cập nhật 30 ngày gần nhất</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-xs font-bold text-stone-600">
+                <Check className="h-4 w-4 text-teal-600 bg-teal-50 p-0.5 rounded-full shrink-0" />
+                <span>Tính năng nghiên cứu thị trường</span>
+              </div>
+            </>
+          )}
           <div className="flex items-center gap-2.5 text-xs font-bold text-stone-600">
             <Check className="h-4 w-4 text-teal-600 bg-teal-50 p-0.5 rounded-full shrink-0" />
             <span>Gửi hóa đơn điện tử về Email</span>
