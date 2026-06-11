@@ -62,162 +62,42 @@ export const STATIC_CATEGORY_SLUG_MAP = Object.entries(STATIC_CATEGORY_ID_MAP).r
 
 const STORAGE_KEY = 'sellerProducts';
 
-const defaultProducts = [
-  {
-    id: 'PRD-9012',
-    name: 'Áo khoác chống nắng UV',
-    sku: 'AK-UV-021',
-    category: 'Thời trang',
-    price: 389000,
-    stock: 12,
-    sold: 428,
-    status: 'Đang bán',
-    quality: 92,
-    note: 'Điểm nội dung 92',
-    description: '<p>Áo khoác chống nắng UV cao cấp, cản tia cực tím 99%, thoáng mát thấm hút mồ hôi.</p>',
-    images: []
-  },
-  {
-    id: 'PRD-8871',
-    name: 'Tai nghe bluetooth mini',
-    sku: 'AUDIO-MINI-09',
-    category: 'Điện tử',
-    price: 499000,
-    stock: 24,
-    sold: 205,
-    status: 'Chờ duyệt',
-    quality: 88,
-    note: 'Cần kiểm tra ảnh',
-    description: '<p>Tai nghe không dây siêu nhỏ gọn, âm thanh bass ấm, pin trâu 6 tiếng liên tục.</p>',
-    images: []
-  },
-  {
-    id: 'PRD-8730',
-    name: 'Set son tint 3 màu',
-    sku: 'SON-T3-118',
-    category: 'Làm đẹp',
-    price: 259000,
-    stock: 86,
-    sold: 312,
-    status: 'Đang bán',
-    quality: 96,
-    note: 'Không vi phạm',
-    description: '<p>Set son tint lì 3 tông màu hot trend, không trôi, dưỡng ẩm mướt môi.</p>',
-    images: []
-  },
-  {
-    id: 'PRD-8611',
-    name: 'Bình giữ nhiệt 750ml',
-    sku: 'BN-750-4C',
-    category: 'Gia dụng',
-    price: 189000,
-    stock: 7,
-    sold: 188,
-    status: 'Cảnh báo',
-    quality: 90,
-    note: 'Giá biến động cao',
-    description: '<p>Bình giữ nhiệt chất liệu inox 316 an toàn, giữ nóng lạnh lên tới 24 tiếng.</p>',
-    images: []
-  },
-  {
-    id: 'PRD-8594',
-    name: 'Máy xay sinh tố mini',
-    sku: 'BLD-MINI-11',
-    category: 'Gia dụng',
-    price: 329000,
-    stock: 42,
-    sold: 176,
-    status: 'Đang bán',
-    quality: 86,
-    note: 'Điểm nội dung 88',
-    description: '<p>Máy xay cầm tay sạc USB tiện lợi, lưỡi dao thép không gỉ xay nhuyễn đá và trái cây nhanh chóng.</p>',
-    images: []
-  },
-  {
-    id: 'PRD-8470',
-    name: 'Kem chống nắng SPF50+',
-    sku: 'SKIN-SPF-50',
-    category: 'Làm đẹp',
-    price: 219000,
-    stock: 68,
-    sold: 164,
-    status: 'Đang bán',
-    quality: 94,
-    note: 'Không vi phạm',
-    description: '<p>Kem chống nắng nâng tông nhẹ nhàng, kiềm dầu tốt, bảo vệ da hiệu quả trước tia UVA/UVB.</p>',
-    images: []
-  },
-  {
-    id: 'PRD-8352',
-    name: 'Bàn phím cơ không dây',
-    sku: 'KEY-WL-87',
-    category: 'Điện tử',
-    price: 899000,
-    stock: 5,
-    sold: 128,
-    status: 'Cảnh báo',
-    quality: 84,
-    note: 'Tồn kho thấp',
-    description: '<p>Bàn phím cơ layout 87 phím, switch êm ái, kết nối bluetooth/2.4Ghz đa thiết bị.</p>',
-    images: []
-  },
-  {
-    id: 'PRD-8214',
-    name: 'Túi tote canvas basic',
-    sku: 'BAG-TOTE-04',
-    category: 'Thời trang',
-    price: 149000,
-    stock: 0,
-    sold: 121,
-    status: 'Tạm ẩn',
-    quality: 89,
-    note: 'Hết hàng',
-    description: '<p>Túi tote canvas dày dặn phù hợp đi học đi làm, đựng vừa laptop 14 inch.</p>',
-    images: []
-  },
-  {
-    id: 'PRD-8188',
-    name: 'Nồi chiên không dầu 5L',
-    sku: 'AF-5L-2026',
-    category: 'Gia dụng',
-    price: 1290000,
-    stock: 19,
-    sold: 52,
-    status: 'Chờ duyệt',
-    quality: 91,
-    note: 'Đang xác minh chứng từ',
-    description: '<p>Nồi chiên không dầu dung tích lớn, công nghệ nhiệt đối lưu làm chín thức ăn đều không dầu mỡ.</p>',
-    images: []
-  },
-  {
-    id: 'PRD-8061',
-    name: 'Áo sơ mi linen form rộng',
-    sku: 'SM-LINEN-12',
-    category: 'Thời trang',
-    price: 279000,
-    stock: 34,
-    sold: 95,
-    status: 'Đang bán',
-    quality: 95,
-    note: 'Điểm nội dung 95',
-    description: '<p>Áo sơ mi linen dáng suông rộng rãi, phong cách tối giản lịch sự cho mùa hè.</p>',
-    images: []
-  }
-];
+const LEGACY_MOCK_PRODUCT_IDS = new Set([
+  'PRD-9012',
+  'PRD-8871',
+  'PRD-8730',
+  'PRD-8611',
+  'PRD-8594',
+  'PRD-8470',
+  'PRD-8352',
+  'PRD-8214',
+  'PRD-8188',
+  'PRD-8061',
+]);
+
+const removeLegacyMockProducts = (products) => (
+  Array.isArray(products)
+    ? products.filter((product) => !LEGACY_MOCK_PRODUCT_IDS.has(String(product.id)))
+    : []
+);
 
 export const productStorage = {
   getStoredProducts: () => {
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultProducts));
-      return defaultProducts;
+      return [];
     }
     try {
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      const cleaned = removeLegacyMockProducts(parsed);
+      if (cleaned.length !== parsed.length) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+      }
+      return cleaned;
     } catch (e) {
-      console.error('Lỗi phân tích cú pháp sản phẩm từ localStorage, khôi phục mặc định.', e);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultProducts));
-      return defaultProducts;
+      console.error('Lỗi phân tích cú pháp sản phẩm từ localStorage, xóa dữ liệu hỏng.', e);
+      localStorage.removeItem(STORAGE_KEY);
+      return [];
     }
   },
 
@@ -238,7 +118,7 @@ export const productStorage = {
   addProduct: (product) => {
     const products = productStorage.getStoredProducts();
     const newProduct = {
-      id: product.id || `PRD-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: product.id || `LOCAL-${Math.floor(1000 + Math.random() * 9000)}`,
       sold: product.sold || 0,
       quality: product.quality || 90,
       note: product.note || 'Mới tạo',
