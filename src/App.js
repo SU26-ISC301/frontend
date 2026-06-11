@@ -8,12 +8,14 @@ import BuyerHome from "./pages/BuyerHome";
 import WarehouseManagement from "./components/Seller/Warehouse/WarehouseManagement";
 import VendorSubscriptionCheckout from "./pages/VendorSubscriptionCheckout";
 import { ThemeToggle } from "./components/ThemeToggle";
+import ProductDetail from "./pages/ProductDetail";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/products/:id" element={<ProductDetail />} />
 
         {/* Nhóm Route của Seller */}
         <Route path="/seller" element={<SellerCenter />} />

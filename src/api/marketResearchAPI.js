@@ -13,4 +13,14 @@ export const marketResearchApi = {
     });
     return unwrap(response);
   },
+
+  getPublicProductMarketResearch: async ({ query, categoryName } = {}) => {
+    const response = await axiosClient.get('/api/market-research/product', {
+      params: {
+        query: query || undefined,
+        categoryName: categoryName || undefined,
+      },
+    });
+    return unwrap(response);
+  },
 };

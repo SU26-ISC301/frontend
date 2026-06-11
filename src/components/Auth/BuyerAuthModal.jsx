@@ -17,7 +17,7 @@ const VIEWS = {
   FORGOT_PASSWORD: 'forgot-password',
 };
 
-export function BuyerAuthModal({ open, onClose }) {
+export function BuyerAuthModal({ open, onClose, onAuthenticated }) {
   const [view, setView] = useState(VIEWS.LOGIN);
   const [registerData, setRegisterData] = useState(null);
   const [otpError, setOtpError] = useState('');
@@ -119,7 +119,8 @@ export function BuyerAuthModal({ open, onClose }) {
           <>
             {/* 1. ĐỔI onSubmit THÀNH onSuccess VÀ ĐÓNG MODAL KHI ĐĂNG NHẬP XONG */}
             <BuyerLoginForm
-              onSuccess={() => {
+              onSuccess={(data) => {
+                onAuthenticated?.(data);
                 handleClose();
               }}
               onForgotPassword={() => setView(VIEWS.FORGOT_PASSWORD)}

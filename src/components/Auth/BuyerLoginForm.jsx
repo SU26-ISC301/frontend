@@ -69,9 +69,7 @@ export function BuyerLoginForm({ onSuccess, onForgotPassword }) {
         removeRememberedLogin('buyer', form.identifier);
       }
 
-      // // Báo cho component cha biết là đăng nhập thành công để đóng Modal/chuyển trang
-      // if (onSuccess) onSuccess(response.data);
-      window.location.href = '/';
+      if (onSuccess) onSuccess(response.data);
 
     } catch (error) {
       // Lấy câu báo lỗi từ backend trả về (nếu có)
