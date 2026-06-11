@@ -18,6 +18,11 @@ export const adminApi = {
     getDistinctActions: () => {
         return axiosClient.get('/api/admin/audit-logs/actions');
     },
+    getProducts: (status) => {
+        return axiosClient.get('/api/admin/products', {
+            params: status ? { status } : {}
+        });
+    },
     approveProduct: (id) => {
         return axiosClient.post(`/api/admin/products/${id}/approve`);
     },

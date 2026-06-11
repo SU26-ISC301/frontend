@@ -5,12 +5,18 @@ export function ProductCard({ index, title, price, oldPrice, sold, rating, image
   return (
     <Card className="product-card group overflow-hidden rounded-[1rem] border-white/80 bg-white">
       <div className="relative aspect-square overflow-hidden bg-slate-100">
-        <img
-          src={image}
-          alt={title}
-          className="h-full w-full object-cover transition duration-700 group-hover:scale-110"
-          loading={index > 4 ? 'lazy' : 'eager'}
-        />
+        {image ? (
+          <img
+            src={image}
+            alt={title}
+            className="h-full w-full object-cover transition duration-700 group-hover:scale-110"
+            loading={index > 4 ? 'lazy' : 'eager'}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-slate-100 text-xs font-bold text-slate-400">
+            Chưa có ảnh
+          </div>
+        )}
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/35 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         <button
           type="button"
@@ -41,7 +47,7 @@ export function ProductCard({ index, title, price, oldPrice, sold, rating, image
         </div>
         <div className="mt-2 flex flex-wrap items-baseline gap-1.5">
           <p className="text-base font-extrabold text-[#ff4d2e]">₫{price}</p>
-          <p className="text-xs text-slate-400 line-through">₫{oldPrice}</p>
+          {oldPrice && <p className="text-xs text-slate-400 line-through">₫{oldPrice}</p>}
         </div>
       </CardContent>
     </Card>

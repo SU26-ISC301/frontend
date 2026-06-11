@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Header } from '../components/Home/Header';
 import { HeroBanner } from '../components/Home/HeroBanner';
 import { CategoryStrip } from '../components/Home/CategoryStrip';
@@ -5,6 +6,7 @@ import { ProductCard } from '../components/Home/ProductCard';
 import { Footer } from '../components/layout/Footer';
 import { Card, CardContent } from '../components/ui/card';
 import { Clock3, Flame, Percent, ShieldCheck, Truck } from 'lucide-react';
+import { productApi } from '../api/productAPI';
 
 const highlights = [
   {
@@ -27,100 +29,54 @@ const highlights = [
   },
 ];
 
-const products = [
-  {
-    title: 'Tai nghe chống ồn Urban Pro, pin 42h',
-    price: '699.000',
-    oldPrice: '1.290.000',
-    sold: '12,8k',
-    rating: '4.9',
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=900&q=80',
-    badge: 'Mall',
-  },
-  {
-    title: 'Áo sơ mi linen thoáng mát form regular',
-    price: '239.000',
-    oldPrice: '399.000',
-    sold: '8,4k',
-    rating: '4.8',
-    image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80',
-    badge: 'Freeship',
-  },
-  {
-    title: 'Sneaker trắng đế êm đi học đi làm',
-    price: '489.000',
-    oldPrice: '780.000',
-    sold: '21k',
-    rating: '4.9',
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80',
-    badge: 'Hot',
-  },
-  {
-    title: 'Bình giữ nhiệt thép 750ml giữ lạnh 18h',
-    price: '179.000',
-    oldPrice: '299.000',
-    sold: '6,1k',
-    rating: '4.7',
-    image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=900&q=80',
-    badge: 'Xịn',
-  },
-  {
-    title: 'Serum phục hồi da sáng mịn 30ml',
-    price: '329.000',
-    oldPrice: '520.000',
-    sold: '15,2k',
-    rating: '4.9',
-    image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=900&q=80',
-    badge: 'Beauty',
-  },
-  {
-    title: 'Đồng hồ tối giản dây thép chống nước',
-    price: '549.000',
-    oldPrice: '890.000',
-    sold: '4,7k',
-    rating: '4.8',
-    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=900&q=80',
-    badge: 'Deal',
-  },
-  {
-    title: 'Bàn phím cơ low profile kết nối 3 thiết bị',
-    price: '859.000',
-    oldPrice: '1.190.000',
-    sold: '3,9k',
-    rating: '4.8',
-    image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=900&q=80',
-    badge: 'Tech',
-  },
-  {
-    title: 'Ghế thư giãn vải bouclé cho phòng khách',
-    price: '1.990.000',
-    oldPrice: '2.890.000',
-    sold: '1,6k',
-    rating: '4.7',
-    image: 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=900&q=80',
-    badge: 'Home',
-  },
-  {
-    title: 'Máy pha cà phê mini cho góc làm việc',
-    price: '1.249.000',
-    oldPrice: '1.890.000',
-    sold: '2,2k',
-    rating: '4.9',
-    image: 'https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?auto=format&fit=crop&w=900&q=80',
-    badge: 'Cafe',
-  },
-  {
-    title: 'Set nến thơm thư giãn hương gỗ sạch',
-    price: '199.000',
-    oldPrice: '330.000',
-    sold: '5,8k',
-    rating: '4.8',
-    image: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=900&q=80',
-    badge: 'Gift',
-  },
-];
+function formatPrice(value) {
+  return new Intl.NumberFormat('vi-VN').format(Number(value || 0));
+}
+
+function mapProductCard(product) {
+  const images = (product.mediaList || [])
+    .filter((media) => (media.mediaType || media.media_type) === 'image')
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  const variants = product.variants || [];
+  const prices = variants.map((variant) => Number(variant.price)).filter((price) => Number.isFinite(price) && price > 0);
+  const lowestPrice = prices.length ? Math.min(...prices) : 0;
+
+  return {
+    title: product.name,
+    price: formatPrice(lowestPrice),
+    oldPrice: null,
+    sold: formatPrice(product.soldCount || 0),
+    rating: product.avgRating ? Number(product.avgRating).toFixed(1) : '0.0',
+    image: images[0]?.mediaUrl || variants.find((variant) => variant.imageUrl)?.imageUrl || '',
+    badge: product.vendorName || product.categoryName || 'ShopVN',
+  };
+}
 
 export default function Home() {
+  const [products, setProducts] = useState([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    productApi.getPublicProducts()
+      .then((data) => {
+        if (!isMounted) return;
+        setProducts(Array.isArray(data) ? data.map(mapProductCard) : []);
+      })
+      .catch((error) => {
+        console.warn('Không thể tải sản phẩm thật:', error);
+        if (isMounted) setProducts([]);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingProducts(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <div className="shop-home min-h-screen bg-[#f6f4ef] text-[#16202a]">
       <Header />
@@ -163,11 +119,22 @@ export default function Home() {
               Cập nhật trực tiếp
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {products.map((product, i) => (
-              <ProductCard key={i} index={i} {...product} />
-            ))}
-          </div>
+          {isLoadingProducts ? (
+            <div className="rounded-2xl border border-white/80 bg-white/80 px-5 py-10 text-center text-sm font-semibold text-slate-500 shadow-sm">
+              Đang tải sản phẩm thật...
+            </div>
+          ) : products.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              {products.map((product, i) => (
+                <ProductCard key={`${product.title}-${i}`} index={i} {...product} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-white/80 bg-white/80 px-5 py-10 text-center shadow-sm">
+              <p className="text-base font-extrabold text-slate-700">Chưa có sản phẩm thật đang bán</p>
+              <p className="mt-2 text-sm font-semibold text-slate-500">Sản phẩm sẽ xuất hiện ở đây sau khi Admin phê duyệt.</p>
+            </div>
+          )}
         </section>
       </main>
 

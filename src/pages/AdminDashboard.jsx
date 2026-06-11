@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
@@ -42,7 +42,7 @@ import { cn } from '../lib/utils';
 import { ELECTRONICS_CATEGORIES } from '../components/Seller/CategorySelectorField';
 import { authApi } from '../api/authAPI';
 import { adminApi } from '../api/adminAPI';
-import { productStorage } from '../utils/productStorage';
+import { mapBackendProductToLocal } from '../utils/productStorage';
 import { sellerApi } from '../api/sellerAPI';
 
 const adminNavItems = [
@@ -202,6 +202,12 @@ function flattenMarketCategoryLeaves(nodes, prefix = '') {
     if (!node.children || node.children.length === 0) return [{ id: node.id, name: node.name, fullName }];
     return flattenMarketCategoryLeaves(node.children, fullName);
   });
+}
+
+function getProductCategoryLabel(category) {
+  if (!category) return 'Chưa phân loại';
+  const node = findMarketCategoryNode(ELECTRONICS_CATEGORIES, category);
+  return node?.name || String(category);
 }
 
 function buildFallbackMarketCategory(categoryId) {
@@ -567,7 +573,6 @@ function AdminTopbar({ active, session, onNavigate, onOpenMenu }) {
     if (!normalizedQuery) return [];
     return [
       ...adminNavItems.map((item) => ({ id: item.id, title: item.label, meta: 'Chức năng quản trị', icon: item.icon })),
-      ...productStorage.getStoredProducts().map((product) => ({ id: 'san-pham', title: product.name, meta: product.sku, icon: Boxes })),
       ...initialVendors.map((vendor) => ({ id: 'duyet-shop', title: vendor.shop, meta: vendor.owner, icon: Store })),
     ].filter((item) => `${item.title} ${item.meta}`.toLowerCase().includes(normalizedQuery)).slice(0, 5);
   }, [query]);
@@ -1256,7 +1261,9 @@ function ProductsSection({ onToast }) {
   const [category, setCategory] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
-  const [productsList, setProductsList] = useState(() => productStorage.getStoredProducts());
+  const [productsList, setProductsList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
   
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -1269,61 +1276,60 @@ function ProductsSection({ onToast }) {
 
   const pageSize = 4;
 
-  const refreshList = () => {
-    setProductsList(productStorage.getStoredProducts());
-  };
+  const loadProducts = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError('');
+    try {
+      let categories = [];
+      try {
+        categories = await sellerApi.getProductCategories({ headers: { 'X-Role-Token': 'admin' } });
+      } catch (categoryError) {
+        console.warn('Không thể tải danh mục để map sản phẩm:', categoryError);
+      }
+
+      const response = await adminApi.getProducts();
+      const backendProducts = response.data?.data || response.data || [];
+      const mappedProducts = Array.isArray(backendProducts)
+        ? backendProducts.map((beProduct) => {
+            const mapped = mapBackendProductToLocal(beProduct, categories);
+            return {
+              ...mapped,
+              vendorName: beProduct.vendorName || 'Chưa cập nhật',
+              categoryLabel: getProductCategoryLabel(mapped.category || beProduct.categoryName),
+              rejectReason: beProduct.rejectReason || mapped.rejectReason,
+            };
+          })
+        : [];
+
+      setProductsList(mappedProducts);
+    } catch (err) {
+      console.error('Lỗi khi tải danh sách sản phẩm từ Backend:', err);
+      setLoadError(err.response?.data?.message || err.response?.data?.error || err.message || 'Không thể tải danh sách sản phẩm.');
+      setProductsList([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key === 'sellerProducts') {
-        const updatedList = productStorage.getStoredProducts();
-        setProductsList(updatedList);
-        if (selectedProduct) {
-          const updatedSelected = updatedList.find(p => p.sku === selectedProduct.sku || (p.id && String(p.id) === String(selectedProduct.id)));
-          if (updatedSelected) {
-            setSelectedProduct(updatedSelected);
-          }
-        }
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [selectedProduct]);
+    loadProducts();
+  }, [loadProducts]);
 
-  const handleApprove = async (sku) => {
-    const product = productStorage.getProductBySku(sku);
-    if (!product) return;
+  const handleApprove = async (product) => {
+    if (!product?.id) return;
 
-    const originalStatus = product.status;
-    const originalNote = product.note;
-    const isNumericId = product.id && /^\d+$/.test(String(product.id));
-
-    // Optimistically update local state & close modal
-    productStorage.updateProduct(sku, { status: 'Đang bán', note: 'Đã phê duyệt bởi Admin' });
-    setSelectedProduct(null);
-    refreshList();
-
-    if (isNumericId) {
-      try {
-        await adminApi.approveProduct(product.id);
-
-        onToast({
-          title: 'Đã phê duyệt sản phẩm',
-          message: 'Sản phẩm đã được duyệt bán thành công trên hệ thống.',
-          tone: 'green',
-        });
-      } catch (err) {
-        console.error("Lỗi đồng bộ duyệt sản phẩm lên BE:", err);
-        productStorage.updateProduct(sku, { status: originalStatus, note: originalNote });
-        refreshList();
-        alert("Không thể duyệt sản phẩm trên hệ thống.\nChi tiết lỗi: " + (err.response?.data?.message || err.response?.data?.error || err.message));
-      }
-    } else {
+    try {
+      await adminApi.approveProduct(product.id);
+      setSelectedProduct(null);
+      await loadProducts();
       onToast({
         title: 'Đã phê duyệt sản phẩm',
-        message: 'Sản phẩm local đã được chuyển sang trạng thái Đang bán.',
+        message: 'Sản phẩm đã được duyệt bán thành công trên hệ thống.',
         tone: 'green',
       });
+    } catch (err) {
+      console.error("Lỗi duyệt sản phẩm trên BE:", err);
+      alert("Không thể duyệt sản phẩm trên hệ thống.\nChi tiết lỗi: " + (err.response?.data?.message || err.response?.data?.error || err.message));
     }
   };
 
@@ -1335,48 +1341,22 @@ function ProductsSection({ onToast }) {
     }
     const product = selectedProduct;
     if (!product) return;
+    const reason = rejectReasonText.trim();
 
-    const originalStatus = product.status;
-    const originalNote = product.note;
-    const originalRejectReason = product.rejectReason;
-    const isNumericId = product.id && /^\d+$/.test(String(product.id));
-
-    // Optimistically update local state & close modal
-    productStorage.updateProduct(product.sku, {
-      status: 'Bị từ chối',
-      rejectReason: rejectReasonText,
-      note: 'Từ chối: ' + rejectReasonText,
-    });
-    setShowRejectModal(false);
-    setRejectReasonText('');
-    setSelectedProduct(null);
-    refreshList();
-
-    if (isNumericId) {
-      try {
-        await adminApi.rejectProduct(product.id, rejectReasonText);
-
-        onToast({
-          title: 'Đã từ chối sản phẩm',
-          message: `Sản phẩm đã bị từ chối thành công trên hệ thống.`,
-          tone: 'red',
-        });
-      } catch (err) {
-        console.error("Lỗi đồng bộ từ chối lên BE:", err);
-        productStorage.updateProduct(product.sku, {
-          status: originalStatus,
-          note: originalNote,
-          rejectReason: originalRejectReason
-        });
-        refreshList();
-        alert("Không thể từ chối sản phẩm trên hệ thống.\nChi tiết lỗi: " + (err.response?.data?.message || err.response?.data?.error || err.message));
-      }
-    } else {
+    try {
+      await adminApi.rejectProduct(product.id, reason);
+      setShowRejectModal(false);
+      setRejectReasonText('');
+      setSelectedProduct(null);
+      await loadProducts();
       onToast({
         title: 'Đã từ chối sản phẩm',
-        message: `Sản phẩm local đã bị từ chối với lý do: ${rejectReasonText}`,
+        message: `Sản phẩm đã bị từ chối thành công trên hệ thống.`,
         tone: 'red',
       });
+    } catch (err) {
+      console.error("Lỗi từ chối sản phẩm trên BE:", err);
+      alert("Không thể từ chối sản phẩm trên hệ thống.\nChi tiết lỗi: " + (err.response?.data?.message || err.response?.data?.error || err.message));
     }
   };
 
@@ -1388,57 +1368,35 @@ function ProductsSection({ onToast }) {
     }
     const product = selectedProduct;
     if (!product) return;
+    const reason = warnReasonText.trim();
 
-    const originalStatus = product.status;
-    const originalNote = product.note;
-    const originalRejectReason = product.rejectReason;
-    const isNumericId = product.id && /^\d+$/.test(String(product.id));
-
-    // Optimistically update local state & close modal
-    productStorage.updateProduct(product.sku, {
-      status: 'Cảnh báo',
-      rejectReason: warnReasonText,
-      note: 'Cảnh báo: ' + warnReasonText,
-    });
-    setShowWarnModal(false);
-    setWarnReasonText('');
-    setSelectedProduct(null);
-    refreshList();
-
-    if (isNumericId) {
-      try {
-        await adminApi.warnProduct(product.id, warnReasonText);
-
-        onToast({
-          title: 'Đã gửi cảnh báo',
-          message: `Đã chuyển sản phẩm sang trạng thái cảnh báo vi phạm thành công trên hệ thống.`,
-          tone: 'red',
-        });
-      } catch (err) {
-        console.error("Lỗi đồng bộ cảnh báo lên BE:", err);
-        productStorage.updateProduct(product.sku, {
-          status: originalStatus,
-          note: originalNote,
-          rejectReason: originalRejectReason
-        });
-        refreshList();
-        alert("Không thể gửi cảnh báo sản phẩm trên hệ thống.\nChi tiết lỗi: " + (err.response?.data?.message || err.response?.data?.error || err.message));
-      }
-    } else {
+    try {
+      await adminApi.warnProduct(product.id, reason);
+      setShowWarnModal(false);
+      setWarnReasonText('');
+      setSelectedProduct(null);
+      await loadProducts();
       onToast({
         title: 'Đã gửi cảnh báo',
-        message: `Đã chuyển sản phẩm local sang trạng thái cảnh báo vi phạm.`,
+        message: `Đã chuyển sản phẩm sang trạng thái cảnh báo vi phạm thành công trên hệ thống.`,
         tone: 'red',
       });
+    } catch (err) {
+      console.error("Lỗi gửi cảnh báo sản phẩm trên BE:", err);
+      alert("Không thể gửi cảnh báo sản phẩm trên hệ thống.\nChi tiết lỗi: " + (err.response?.data?.message || err.response?.data?.error || err.message));
     }
   };
 
   const filteredProducts = useMemo(() => productsList.filter((product) => {
-    const matchesQuery = `${product.name} ${product.sku}`.toLowerCase().includes(query.trim().toLowerCase());
-    return matchesQuery && (!category || product.category === category) && (!status || product.status === status);
+    const matchesQuery = `${product.name} ${product.sku} ${product.vendorName || ''}`.toLowerCase().includes(query.trim().toLowerCase());
+    return matchesQuery && (!category || product.categoryLabel === category) && (!status || product.status === status);
   }), [productsList, category, query, status]);
 
   const visibleProducts = filteredProducts.slice((page - 1) * pageSize, page * pageSize);
+  const categoryOptions = useMemo(
+    () => [...new Set(productsList.map((product) => product.categoryLabel).filter(Boolean))],
+    [productsList]
+  );
 
   const resetFilters = () => {
     setQuery('');
@@ -1456,9 +1414,14 @@ function ProductsSection({ onToast }) {
         </button>
       </PageHeader>
       <Toolbar query={query} searchPlaceholder="Tìm theo tên hoặc SKU" onQueryChange={(value) => { setQuery(value); setPage(1); }} onReset={resetFilters}>
-        <ToolbarSelect value={category} onChange={(value) => { setCategory(value); setPage(1); }} placeholder="Tất cả ngành hàng" options={['Thời trang', 'Điện tử', 'Làm đẹp', 'Gia dụng']} />
+        <ToolbarSelect value={category} onChange={(value) => { setCategory(value); setPage(1); }} placeholder="Tất cả ngành hàng" options={categoryOptions} />
         <ToolbarSelect value={status} onChange={(value) => { setStatus(value); setPage(1); }} placeholder="Trạng thái sản phẩm" options={['Đang bán', 'Chờ duyệt', 'Cảnh báo', 'Tạm ẩn', 'Bị từ chối', 'Nháp']} />
       </Toolbar>
+      {loadError && (
+        <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          {loadError}
+        </div>
+      )}
       <section className="admin-panel mt-5 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[920px] text-left text-sm">
@@ -1489,7 +1452,7 @@ function ProductsSection({ onToast }) {
                   </td>
                   <td className="px-5 py-4 font-semibold text-slate-500">{product.sku}</td>
                   <td className="px-5 py-4 font-semibold text-slate-600">
-                    {product.category}
+                    {product.categoryLabel}
                   </td>
                   <td className="px-5 py-4 font-bold text-slate-800">
                     {typeof product.price === 'number' ? formatVnd(product.price) : product.price}
@@ -1511,7 +1474,13 @@ function ProductsSection({ onToast }) {
             </tbody>
           </table>
         </div>
-        {visibleProducts.length === 0 && <TableEmptyState />}
+        {isLoading && (
+          <div className="border-t border-slate-100 px-5 py-12 text-center">
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-indigo-500" />
+            <p className="mt-3 text-sm font-extrabold text-slate-700">Đang tải sản phẩm thật...</p>
+          </div>
+        )}
+        {!isLoading && visibleProducts.length === 0 && <TableEmptyState />}
         <TableFooter count={filteredProducts.length} page={page} pageSize={pageSize} onPageChange={setPage} />
       </section>
 
@@ -1559,7 +1528,7 @@ function ProductsSection({ onToast }) {
                 <div className="space-y-6">
                   <div>
                     <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
-                      {selectedProduct.category}
+                      {selectedProduct.categoryLabel}
                     </span>
                     <h2 className="text-xl font-extrabold text-slate-950 mt-3 mb-1.5 leading-snug">{selectedProduct.name}</h2>
                     <p className="text-xs font-semibold text-slate-400">SKU: <strong className="text-slate-600">{selectedProduct.sku}</strong></p>
@@ -1816,7 +1785,7 @@ function ProductsSection({ onToast }) {
                 className="admin-primary-button flex-1 justify-center bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/10 font-bold border-none"
                 onClick={() => {
                   setShowApproveConfirmModal(false);
-                  handleApprove(selectedProduct.sku);
+                  handleApprove(selectedProduct);
                 }}
               >
                 Xác nhận duyệt

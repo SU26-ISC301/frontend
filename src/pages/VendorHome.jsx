@@ -213,89 +213,6 @@ const orders = [
   },
 ];
 
-const products = [
-  {
-    name: "Áo khoác chống nắng UV",
-    sku: "AK-UV-021",
-    category: "Thời trang",
-    stock: 12,
-    sold: 428,
-    price: 389000,
-    status: "Đang bán",
-    quality: 92,
-  },
-  {
-    name: "Set son tint 3 màu",
-    sku: "SON-T3-118",
-    category: "Làm đẹp",
-    stock: 86,
-    sold: 312,
-    price: 259000,
-    status: "Đang bán",
-    quality: 96,
-  },
-  {
-    name: "Tai nghe bluetooth mini",
-    sku: "AUDIO-MINI-09",
-    category: "Điện tử",
-    stock: 24,
-    sold: 205,
-    price: 499000,
-    status: "Đang bán",
-    quality: 88,
-  },
-  {
-    name: "Bình giữ nhiệt 750ml",
-    sku: "BN-750-4C",
-    category: "Gia dụng",
-    stock: 7,
-    sold: 188,
-    price: 189000,
-    status: "Tồn thấp",
-    quality: 90,
-  },
-  {
-    name: "Máy xay sinh tố mini",
-    sku: "BLD-MINI-11",
-    category: "Gia dụng",
-    stock: 42,
-    sold: 176,
-    price: 329000,
-    status: "Đang bán",
-    quality: 86,
-  },
-  {
-    name: "Kem chống nắng SPF50+",
-    sku: "SKIN-SPF-50",
-    category: "Làm đẹp",
-    stock: 68,
-    sold: 164,
-    price: 219000,
-    status: "Đang bán",
-    quality: 94,
-  },
-  {
-    name: "Bàn phím cơ không dây",
-    sku: "KEY-WL-87",
-    category: "Điện tử",
-    stock: 5,
-    sold: 128,
-    price: 899000,
-    status: "Tồn thấp",
-    quality: 84,
-  },
-  {
-    name: "Túi tote canvas basic",
-    sku: "BAG-TOTE-04",
-    category: "Thời trang",
-    stock: 0,
-    sold: 121,
-    price: 149000,
-    status: "Tạm ẩn",
-    quality: 89,
-  },
-];
-
 const DEFAULT_VENDOR_PARENT_CATEGORY_ID = "dt-do-dien-tu";
 
 const shipments = [
@@ -664,6 +581,7 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
   const searchResults = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return [];
+    const storedProducts = productStorage.getStoredProducts();
     return [
       ...visibleNavItems.map((item) => ({
         slug: item.slug,
@@ -671,7 +589,7 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
         meta: "Chức năng seller",
         icon: item.icon,
       })),
-      ...products.map((product) => ({
+      ...storedProducts.map((product) => ({
         slug: "san-pham",
         title: product.name,
         meta: product.sku,
@@ -1925,7 +1843,7 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
           const backendIds = new Set(backendProducts.map(p => String(p.id)));
           let updated = stored.filter(p => {
             const isNumericId = p.id && /^\d+$/.test(String(p.id));
-            if (!isNumericId) return true; // Keep local drafts or mock products
+            if (!isNumericId) return true; // Keep local drafts that have not been saved to Backend yet
             return backendIds.has(String(p.id)); // Keep only if it still exists on the database
           });
 
