@@ -54,6 +54,7 @@ import { cn } from "../lib/utils";
 import { vendorMessageApi } from "../api/vendorMessageAPI";
 import { marketResearchApi } from "../api/marketResearchAPI";
 import { sellerApi } from "../api/sellerAPI";
+import { getSubscriptionStatus } from "../api/subscriptionApi";
 import { productStorage, mapBackendProductToLocal, buildBackendPayloadFromLocal, mergeProductData } from "../utils/productStorage";
 import {
   CategorySelectorField,
@@ -631,6 +632,24 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
     navigate("/seller");
   };
 
+  const handleAddProduct = async () => {
+    try {
+      const status = await getSubscriptionStatus();
+      if (status?.canPost === false || status?.remainingSlots === 0) {
+        onOpenPlanModal?.({ blocksNavigation: true });
+        return;
+      }
+      navigate("/vendor/products/add");
+    } catch {
+      const remaining = getRemainingSlots();
+      if (remaining <= 0) {
+        onOpenPlanModal?.({ blocksNavigation: true });
+      } else {
+        navigate("/vendor/products/add");
+      }
+    }
+  };
+
   const navigateTo = (slug) => {
     navigate(`/vendor/${slug}`);
     setQuery("");
@@ -850,14 +869,7 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
               <button
                 type="button"
                 className="vendor-primary-button hidden sm:inline-flex"
-                onClick={() => {
-                  const remaining = getRemainingSlots();
-                  if (remaining <= 0) {
-                    onOpenPlanModal?.({ blocksNavigation: true });
-                  } else {
-                    navigate("/vendor/products/add");
-                  }
-                }}
+                onClick={handleAddProduct}
               >
                 <Plus className="h-4 w-4" />
                 Đăng tin sản phẩm
@@ -1881,12 +1893,21 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
     setProductsList(productStorage.getStoredProducts());
   };
 
-  const handleAddProductClick = () => {
-    const remaining = getRemainingSlots();
-    if (remaining <= 0) {
-      onOpenPlanModal?.({ blocksNavigation: true });
-    } else {
+  const handleAddProductClick = async () => {
+    try {
+      const status = await getSubscriptionStatus();
+      if (status?.canPost === false || status?.remainingSlots === 0) {
+        onOpenPlanModal?.({ blocksNavigation: true });
+        return;
+      }
       navigate("/vendor/products/add");
+    } catch {
+      const remaining = getRemainingSlots();
+      if (remaining <= 0) {
+        onOpenPlanModal?.({ blocksNavigation: true });
+      } else {
+        navigate("/vendor/products/add");
+      }
     }
   };
 
@@ -1904,6 +1925,12 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
       }
 
       try {
+        const status = await getSubscriptionStatus();
+        if (status?.canPost === false || status?.remainingSlots === 0) {
+          onOpenPlanModal?.({ blocksNavigation: true });
+          return;
+        }
+
         const backendPayload = buildBackendPayloadFromLocal(product, 'pending', categoriesList);
         let updatedId = product.id;
         const isNumericId = product.id && /^\d+$/.test(String(product.id));
@@ -1918,6 +1945,7 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
         }
 
         productStorage.updateProduct(sku, { id: updatedId, status: "Chờ duyệt", note: "Đang chờ Admin duyệt" });
+        await getSubscriptionStatus().catch(() => {});
         onToast({
           title: "Gửi xét duyệt thành công",
           message: "Sản phẩm đã được chuyển sang hàng chờ Admin phê duyệt.",
@@ -1925,9 +1953,14 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
         refreshList();
       } catch (err) {
         console.error("Lỗi đồng bộ gửi duyệt lên BE:", err);
+        const message = err.response?.data?.message || err.response?.data?.error || err.message;
+        if (message?.toLowerCase().includes("hết lượt")) {
+          await getSubscriptionStatus().catch(() => {});
+          onOpenPlanModal?.({ blocksNavigation: true });
+        }
         onToast({
           title: "Không thể gửi xét duyệt",
-          message: err.response?.data?.message || err.response?.data?.error || err.message,
+          message,
           type: "error",
         });
       }

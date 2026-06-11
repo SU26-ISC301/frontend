@@ -10,11 +10,11 @@ import { ProductVariantsField } from './ProductVariantsField';
 import { cn } from '../../lib/utils';
 import { sellerApi } from '../../api/sellerAPI';
 import { marketResearchApi } from '../../api/marketResearchAPI';
+import { getSubscriptionStatus } from '../../api/subscriptionApi';
 import { VENDOR_FEATURES } from '../../config/vendorFeatures';
 import { productStorage, mapBackendProductToLocal, mergeProductData, STATIC_CATEGORY_SLUG_MAP } from '../../utils/productStorage';
 import SubscriptionPlanModal, {
   getVendorPlan,
-  consumeOneSlot,
 } from './SubscriptionPlanModal';
 
 export function ProductAddFormComplete({ isEdit }) {
@@ -166,10 +166,32 @@ export function ProductAddFormComplete({ isEdit }) {
   // Subscription plan quota
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planData, setPlanData] = useState(() => getVendorPlan());
-  const remainingSlots = planData.totalSlots === -1
+  const remainingSlots = planData.totalSlots === -1 || planData.totalSlots === Infinity
     ? Infinity
     : Math.max(0, (planData.totalSlots || 3) - (planData.usedSlots || 0));
-  const isQuotaExhausted = remainingSlots <= 0;
+  const isQuotaExhausted = planData.canPost === false || remainingSlots <= 0;
+
+  const syncPlanStatus = async () => {
+    try {
+      const status = await getSubscriptionStatus();
+      if (status) {
+        setPlanData({
+          planId: status.planType || 'free',
+          usedSlots: status.usedSlots || 0,
+          totalSlots: status.totalSlots,
+          remainingSlots: status.remainingSlots,
+          canPost: status.canPost,
+          expiresAt: status.expiresAt,
+        });
+      }
+    } catch (err) {
+      console.warn('Không thể tải trạng thái gói đăng tin:', err);
+    }
+  };
+
+  useEffect(() => {
+    syncPlanStatus();
+  }, []);
 
   const isScrollingProgrammatically = useRef(false);
   const scrollTimeoutRef = useRef(null);
@@ -855,6 +877,16 @@ export function ProductAddFormComplete({ isEdit }) {
   };
 
   const handleSubmit = async () => {
+    await syncPlanStatus();
+    const currentPlan = getVendorPlan();
+    const currentRemaining = currentPlan.totalSlots === -1 || currentPlan.totalSlots === Infinity
+      ? Infinity
+      : Math.max(0, (currentPlan.totalSlots || 3) - (currentPlan.usedSlots || 0));
+    if (currentRemaining <= 0) {
+      setShowPlanModal(true);
+      return;
+    }
+
     if (!validateForm()) {
       setSubmitNotice({
         tone: 'red',
@@ -956,10 +988,15 @@ export function ProductAddFormComplete({ isEdit }) {
       }
     } catch (apiError) {
       console.error('Lỗi khi gửi sản phẩm lên Backend:', apiError);
+      const apiMessage = apiError.response?.data?.message || apiError.response?.data?.error || apiError.message;
+      if (apiMessage?.toLowerCase().includes('hết lượt')) {
+        await syncPlanStatus();
+        setShowPlanModal(true);
+      }
       setSubmitNotice({
         tone: 'red',
         title: 'Không thể gửi xét duyệt',
-        message: apiError.response?.data?.message || apiError.response?.data?.error || apiError.message,
+        message: apiMessage,
       });
       mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       setIsSubmitting(false);
@@ -997,6 +1034,7 @@ export function ProductAddFormComplete({ isEdit }) {
 
     if (isEdit && sku) {
       productStorage.updateProduct(sku, localProductPayload);
+      await syncPlanStatus();
       navigate('/vendor/san-pham', {
         state: {
           toast: {
@@ -1007,8 +1045,7 @@ export function ProductAddFormComplete({ isEdit }) {
       });
     } else {
       productStorage.addProduct(localProductPayload);
-      const updated = consumeOneSlot();
-      setPlanData(updated);
+      await syncPlanStatus();
       navigate('/vendor/san-pham', {
         state: {
           toast: {

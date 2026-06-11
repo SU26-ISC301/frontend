@@ -118,7 +118,7 @@ export default function PostingQuotaBanner({ onUpgradeClick, refreshKey }) {
             Gói {meta.label}
           </p>
           <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-extrabold text-stone-500">
-            Hiển thị {displayDays} ngày / tin
+            Gói {displayDays} ngày
           </span>
           {isExhausted && (
             <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-extrabold text-red-600 border border-red-100">

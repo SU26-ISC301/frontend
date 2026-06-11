@@ -11,7 +11,10 @@ export async function getSubscriptionStatus() {
     const localData = {
       planId: planData.planType || 'free',
       usedSlots: planData.usedSlots || 0,
-      totalSlots: planData.totalSlots
+      totalSlots: planData.totalSlots,
+      remainingSlots: planData.remainingSlots,
+      canPost: planData.canPost,
+      expiresAt: planData.expiresAt,
     };
     localStorage.setItem('vendorPlan', JSON.stringify(localData));
   }
