@@ -15,7 +15,6 @@ import {
   CircleHelp,
   Clock3,
   History,
-  Coins,
   CreditCard,
   Download,
   Eye,
@@ -27,7 +26,6 @@ import {
   Menu,
   MessageSquareText,
   MoreHorizontal,
-  PackageCheck,
   PackageSearch,
   PenLine,
   Plus,
@@ -1038,31 +1036,31 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
   const change = previous.revenue > 0 ? ((latest.revenue - previous.revenue) / previous.revenue) * 100 : 0;
   const stats = [
     {
-      label: "Doanh thu hôm nay",
-      value: `${latest.revenue.toFixed(1).replace(".", ",")} triệu`,
+      label: "Lượt truy cập hôm nay",
+      value: new Intl.NumberFormat("vi-VN").format(Math.round(latest.revenue * 240)),
       change: `${change >= 0 ? "+" : ""}${change.toFixed(1).replace(".", ",")}%`,
       note: "so với hôm qua",
-      icon: Coins,
+      icon: Eye,
       tone: "is-orange",
-      target: "tai-chinh",
+      target: "trangchu",
     },
     {
-      label: "Đơn chờ xử lý",
-      value: "34",
-      change: "12 đơn",
-      note: "cần xác nhận trước 11:00",
-      icon: PackageCheck,
-      tone: "is-teal",
-      target: "don-hang",
-    },
-    {
-      label: "Tỷ lệ chuyển đổi",
-      value: "7,8%",
-      change: "+1,2%",
+      label: "Tổng lượt truy cập",
+      value: new Intl.NumberFormat("vi-VN").format(Math.round(trend.reduce((sum, item) => sum + item.revenue * 240, 0))),
+      change: "+14,2%",
       note: "so với tuần trước",
-      icon: TrendingUp,
+      icon: Users,
+      tone: "is-teal",
+      target: "trangchu",
+    },
+    {
+      label: "Tổng tin nhắn",
+      value: new Intl.NumberFormat("vi-VN").format(Math.round(latest.revenue * 15)),
+      change: "+5,3%",
+      note: "so với tuần trước",
+      icon: MessageSquareText,
       tone: "is-green",
-      target: "marketing",
+      target: "tin-nhan",
     },
     {
       label: "Đánh giá shop",
@@ -1090,15 +1088,15 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
 
   const exportRevenue = () => {
     downloadCsv(
-      "seller-revenue.csv",
-      ["Ngày", "Doanh thu (triệu)", "Số đơn"],
-      trend.map((item) => [item.label, item.revenue, item.orders]),
+      "seller-visits.csv",
+      ["Ngày", "Lượt truy cập", "Số đơn"],
+      trend.map((item) => [item.label, Math.round(item.revenue * 240), item.orders]),
     );
     onToast({
       title: "Đã tải báo cáo",
       message: isCustomMode
-        ? `Báo cáo doanh thu đã được xuất thành file CSV.`
-        : `Doanh thu ${range} ngày đã được xuất thành file CSV.`,
+        ? `Báo cáo lượt truy cập đã được xuất thành file CSV.`
+        : `Lượt truy cập ${range} ngày đã được xuất thành file CSV.`,
     });
   };
 
@@ -1113,14 +1111,14 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
           />
         ))}
       </section>
-      <section className="grid gap-5 xl:grid-cols-[1.65fr_0.85fr]">
+      <section className="grid gap-5 grid-cols-1">
         <Panel className="min-w-0 p-5">
           <PanelHeader
-            title="Xu hướng doanh thu"
+            title="Lượt truy cập vào shop"
             subtitle={
               isCustomMode
-                ? `Doanh thu từ ${new Date(customStartDate).toLocaleDateString('vi-VN')} đến ${new Date(customEndDate).toLocaleDateString('vi-VN')}`
-                : `Doanh thu và số đơn trong ${planId === 'free' ? 7 : range} ngày gần nhất`
+                ? `Lượt truy cập từ ${new Date(customStartDate).toLocaleDateString('vi-VN')} đến ${new Date(customEndDate).toLocaleDateString('vi-VN')}`
+                : `Lượt truy cập trong ${planId === 'free' ? 7 : range} ngày gần nhất`
             }
           >
             <div className="flex flex-wrap items-center gap-2 mr-2">
@@ -1256,43 +1254,6 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
           </PanelHeader>
           <VendorRevenueChart data={trend} />
         </Panel>
-        <Panel className="p-5">
-          <PanelHeader
-            title="Việc cần làm"
-            subtitle="Ưu tiên để duy trì hiệu suất shop"
-          />
-          <div className="mt-4 space-y-2.5">
-            {[
-              ["Xác nhận đơn mới", "12 đơn", PackageCheck, "don-hang"],
-              [
-                "Trả lời chat khách hàng",
-                "3 tin",
-                MessageSquareText,
-                "tin-nhan",
-              ],
-              ["Cập nhật tồn kho thấp", "4 SKU", Boxes, "san-pham"],
-              ["Tối ưu Flash Sale 20H", "72%", TicketPercent, "marketing"],
-            ].map(([label, value, Icon, target]) => (
-              <button
-                key={label}
-                type="button"
-                className="vendor-task"
-                onClick={() => navigateTo(target)}
-              >
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
-                  <Icon className="h-4 w-4" />
-                </span>
-                <span className="min-w-0 flex-1 text-left text-sm font-bold text-stone-700">
-                  {label}
-                </span>
-                <span className="text-xs font-extrabold text-stone-500">
-                  {value}
-                </span>
-                <ChevronRight className="h-4 w-4 text-stone-300" />
-              </button>
-            ))}
-          </div>
-        </Panel>
       </section>
       <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
         <Panel className="overflow-hidden">
@@ -1371,11 +1332,18 @@ function VendorRevenueChart({ data }) {
   const [hoverIndex, setHoverIndex] = useState(null);
   const width = 760;
   const height = 230;
-  const max = Math.ceil(Math.max(...data.map((item) => item.revenue)) / 5) * 5;
-  const points = data.map((item, index) => ({
+  const visitsFactor = 240;
+
+  const chartData = data.map((item) => ({
     ...item,
-    x: (index / (data.length - 1)) * width,
-    y: height - (item.revenue / max) * height,
+    visits: Math.round(item.revenue * visitsFactor),
+  }));
+
+  const max = Math.ceil(Math.max(...chartData.map((item) => item.visits)) / 500) * 500;
+  const points = chartData.map((item, index) => ({
+    ...item,
+    x: (index / (chartData.length - 1)) * width,
+    y: height - (item.visits / max) * height,
   }));
   const line = points
     .map(
@@ -1408,10 +1376,10 @@ function VendorRevenueChart({ data }) {
   };
 
   return (
-    <div className="mt-5 grid grid-cols-[34px_1fr] gap-3">
-      <div className="flex h-64 flex-col justify-between pb-6 text-[10px] font-bold text-stone-400">
+    <div className="mt-5 grid grid-cols-[45px_1fr] gap-3">
+      <div className="flex h-64 flex-col justify-between pb-6 text-[10px] font-bold text-stone-400 text-right pr-1">
         {[1, 0.75, 0.5, 0.25].map((ratio) => (
-          <span key={ratio}>{max * ratio}tr</span>
+          <span key={ratio}>{new Intl.NumberFormat("vi-VN").format(Math.round(max * ratio))}</span>
         ))}
         <span>0</span>
       </div>
@@ -1428,7 +1396,7 @@ function VendorRevenueChart({ data }) {
           className="absolute inset-x-0 top-0 h-[calc(100%-24px)] w-full overflow-visible"
           viewBox={`0 0 ${width} ${height}`}
           preserveAspectRatio="none"
-          aria-label={`Biểu đồ doanh thu ${data.length} ngày`}
+          aria-label={`Biểu đồ lượt truy cập ${data.length} ngày`}
           onMouseMove={onMove}
           onMouseLeave={() => setHoverIndex(null)}
         >
@@ -1483,7 +1451,7 @@ function VendorRevenueChart({ data }) {
               {hovered.label}
             </p>
             <p className="mt-1 text-sm font-extrabold text-stone-900">
-              {hovered.revenue.toFixed(1).replace(".", ",")} triệu
+              {new Intl.NumberFormat("vi-VN").format(hovered.visits)} lượt
             </p>
             <p className="mt-1 text-[10px] font-semibold text-stone-500">
               {hovered.orders} đơn hàng
