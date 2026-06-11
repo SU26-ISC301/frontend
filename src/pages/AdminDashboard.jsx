@@ -2886,6 +2886,10 @@ function StatusPill({ status }) {
 // AUDIT LOGGING SECTION FOR ADMIN DASHBOARD
 // ==========================================
 export function AuditLogSection({ onToast }) {
+  const [profiles, setProfiles] = useState([]);
+  const [vendorsList, setVendorsList] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null); // { email, fullName, role }
+  const [activeGroup, setActiveGroup] = useState('admin'); // 'admin' | 'vendor' | 'customer'
   const [logs, setLogs] = useState([]);
   const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2898,11 +2902,36 @@ export function AuditLogSection({ onToast }) {
   const [selectedPayload, setSelectedPayload] = useState(null);
   const pageSize = 10;
 
-  const fetchLogs = async () => {
+  const loadInitialData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminApi.getAuditLogs(page, pageSize, query, selectedAction);
+      const [profilesRes, vendorsRes, actionsRes] = await Promise.all([
+        adminApi.getAllProfiles(),
+        adminApi.getAllVendors(),
+        adminApi.getDistinctActions()
+      ]);
+      setProfiles(profilesRes.data?.data || []);
+      setVendorsList(vendorsRes.data?.data || vendorsRes.data || []);
+      setActions(actionsRes.data?.data || []);
+    } catch (err) {
+      console.error(err);
+      setError('Không thể tải thông tin danh sách tài khoản. Vui lòng kiểm tra kết nối.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const fetchUserLogs = useCallback(async () => {
+    if (!selectedUser) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminApi.getAuditLogs(page, pageSize, selectedUser.email, selectedAction);
       const data = response.data?.data;
       if (data) {
         setLogs(data.content || []);
@@ -2911,35 +2940,47 @@ export function AuditLogSection({ onToast }) {
       }
     } catch (err) {
       console.error(err);
-      setError('Không thể tải nhật ký hệ thống. Vui lòng kiểm tra kết nối.');
+      setError(`Không thể tải nhật ký hoạt động của ${selectedUser.fullName || selectedUser.email}.`);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedUser, page, selectedAction]);
 
-  const fetchActions = async () => {
-    try {
-      const response = await adminApi.getDistinctActions();
-      setActions(response.data?.data || []);
-    } catch (err) {
-      console.error(err);
+  useEffect(() => {
+    if (selectedUser) {
+      fetchUserLogs();
     }
-  };
+  }, [selectedUser, page, selectedAction, fetchUserLogs]);
 
-  useEffect(() => {
-    fetchLogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, selectedAction]);
+  const vendorEmailToShopName = useMemo(() => {
+    const map = {};
+    vendorsList.forEach(v => {
+      if (v.email) {
+        map[v.email.toLowerCase()] = v.shopName || v.shop || 'Cửa hàng';
+      }
+    });
+    return map;
+  }, [vendorsList]);
 
-  useEffect(() => {
-    fetchActions();
-  }, []);
+  const filteredProfiles = useMemo(() => {
+    return profiles.filter((p) => {
+      const r = (p.role || '').toLowerCase();
+      if (activeGroup === 'admin' && r !== 'admin') return false;
+      if (activeGroup === 'vendor' && r !== 'vendor') return false;
+      if (activeGroup === 'customer' && r !== 'customer') return false;
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    setPage(0);
-    fetchLogs();
-  };
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+
+      const shopName = p.email ? vendorEmailToShopName[p.email.toLowerCase()] || '' : '';
+      return (
+        (p.fullName || '').toLowerCase().includes(q) ||
+        (p.email || '').toLowerCase().includes(q) ||
+        (p.phone || '').toLowerCase().includes(q) ||
+        shopName.toLowerCase().includes(q)
+      );
+    });
+  }, [profiles, activeGroup, query, vendorEmailToShopName]);
 
   const formatTime = (timeStr) => {
     if (!timeStr) return '';
@@ -2959,14 +3000,10 @@ export function AuditLogSection({ onToast }) {
     if (act.includes('REGISTER') || act.includes('ONBOARDING')) return 'bg-purple-50 text-purple-700 border border-purple-200';
     if (act.includes('UPGRADE') || act.includes('SUBSCRIPTION')) return 'bg-indigo-50 text-indigo-700 border border-indigo-200';
     if (act.includes('PRODUCT')) return 'bg-blue-50 text-blue-700 border border-blue-200';
-    return 'bg-slate-50 text-slate-700 border border-slate-200';
   };
 
-  const getRoleBadgeClass = (role) => {
-    const r = (role || '').toLowerCase();
-    if (r === 'admin') return 'bg-purple-100 text-purple-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase';
-    if (r === 'vendor') return 'bg-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase';
-    return 'bg-slate-100 text-slate-800 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase';
+  const getInitials = (name) => {
+    return (name || '').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
   };
 
   const parseUserAgent = (ua) => {
@@ -2994,40 +3031,208 @@ export function AuditLogSection({ onToast }) {
     return `${browser} (${os})`;
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-            <History className="h-5 w-5 text-indigo-600" />
-            Nhật ký vận hành hệ thống
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Giám sát thời gian thực mọi hoạt động đăng nhập, cập nhật tài khoản, cccd, sản phẩm và nâng cấp của Customer, Vendor và Admin.
-          </p>
-        </div>
-        <button
-          onClick={() => { setPage(0); fetchLogs(); fetchActions(); }}
-          className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
-        >
-          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-          Làm mới
-        </button>
-      </div>
+  const getAvatarGradient = (role) => {
+    const r = (role || '').toLowerCase();
+    if (r === 'admin') return 'from-purple-500 to-indigo-500';
+    if (r === 'vendor') return 'from-indigo-500 to-blue-500';
+    return 'from-emerald-500 to-teal-500';
+  };
 
-      {/* Filter panel */}
-      <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-        <form onSubmit={handleSearchSubmit} className="flex flex-col gap-4 sm:flex-row sm:items-center">
+  if (!selectedUser) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
+              <History className="h-5 w-5 text-indigo-600" />
+              Nhật ký vận hành hệ thống
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Giám sát nhật ký hoạt động bằng cách chọn tài khoản Quản trị viên, Cửa hàng hoặc Khách hàng dưới đây.
+            </p>
+          </div>
+          <button
+            onClick={() => { setQuery(''); loadInitialData(); }}
+            className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
+          >
+            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+            Làm mới
+          </button>
+        </div>
+
+        <div className="flex flex-wrap border border-slate-200 bg-slate-100/50 p-1 rounded-xl gap-1 max-w-lg">
+          {[
+            { id: 'admin', label: 'Quản trị viên', count: profiles.filter(p => (p.role || '').toLowerCase() === 'admin').length },
+            { id: 'vendor', label: 'Người bán (Cửa hàng)', count: profiles.filter(p => (p.role || '').toLowerCase() === 'vendor').length },
+            { id: 'customer', label: 'Khách hàng', count: profiles.filter(p => (p.role || '').toLowerCase() === 'customer').length }
+          ].map((tab) => {
+            const isActive = activeGroup === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setActiveGroup(tab.id);
+                  setQuery('');
+                }}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold rounded-lg transition-all',
+                  isActive
+                    ? 'bg-white text-indigo-700 shadow-sm shadow-slate-900/5'
+                    : 'text-slate-500 hover:text-slate-950 hover:bg-slate-200/50'
+                )}
+              >
+                {tab.label}
+                <span className={cn('rounded-full px-1.5 py-0.5 text-[10px]', isActive ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-200 text-slate-600')}>
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Tìm kiếm theo Email, IP, Hành động hoặc Payload..."
+              placeholder={activeGroup === 'vendor' ? "Tìm theo tên, email hoặc tên shop..." : "Tìm theo tên hoặc email..."}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-shadow"
             />
           </div>
+        </div>
+
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+            <p className="text-sm font-medium text-slate-500">Đang tải danh sách tài khoản...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center px-4 bg-white rounded-xl border border-slate-100 shadow-sm">
+            <div className="rounded-full bg-red-50 p-3 text-red-600">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <h3 className="mt-4 text-sm font-semibold text-slate-900">Lỗi tải dữ liệu</h3>
+            <p className="mt-2 text-sm text-slate-500 max-w-md">{error}</p>
+            <button
+              onClick={loadInitialData}
+              className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 transition-colors"
+            >
+              Thử lại
+            </button>
+          </div>
+        ) : filteredProfiles.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center px-4 bg-white rounded-xl border border-slate-100 shadow-sm">
+            <div className="rounded-full bg-slate-50 p-3 text-slate-400">
+              <History className="h-6 w-6" />
+            </div>
+            <h3 className="mt-4 text-sm font-semibold text-slate-900">Không tìm thấy tài khoản</h3>
+            <p className="mt-2 text-sm text-slate-500">
+              Không tìm thấy tài khoản nào phù hợp với từ khóa của bạn.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredProfiles.map((profile) => {
+              const shopName = profile.email ? vendorEmailToShopName[profile.email.toLowerCase()] : '';
+              return (
+                <div
+                  key={profile.id || profile.email}
+                  onClick={() => {
+                    setSelectedUser(profile);
+                    setQuery('');
+                    setSelectedAction('');
+                    setPage(0);
+                  }}
+                  className="group bg-white border border-slate-150 hover:border-indigo-300 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer flex flex-col justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className={cn(
+                      "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white text-sm font-extrabold bg-gradient-to-br shadow-sm group-hover:scale-105 transition-transform duration-300",
+                      getAvatarGradient(profile.role)
+                    )}>
+                      {getInitials(profile.fullName || profile.email)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
+                        {profile.fullName || 'Người dùng chưa đặt tên'}
+                      </h4>
+                      <p className="text-xs font-semibold text-slate-400 truncate mt-0.5">{profile.email}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
+                    {activeGroup === 'vendor' && shopName && (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 border border-indigo-100 text-[10px] font-bold text-indigo-600 px-2.5 py-1">
+                        <Store className="h-3 w-3 shrink-0" /> {shopName}
+                      </span>
+                    )}
+                    {activeGroup === 'admin' && (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-purple-50 border border-purple-100 text-[10px] font-bold text-purple-600 px-2.5 py-1">
+                        <ShieldCheck className="h-3 w-3 shrink-0" /> Quản trị viên
+                      </span>
+                    )}
+                    {activeGroup === 'customer' && (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-100 text-[10px] font-bold text-emerald-600 px-2.5 py-1">
+                        <Users className="h-3 w-3 shrink-0" /> Khách hàng
+                      </span>
+                    )}
+
+                    <span className="text-xs font-bold text-indigo-600 flex items-center gap-0.5 group-hover:translate-x-1 transition-transform ml-auto">
+                      Xem nhật ký <ChevronRight className="h-4 w-4 shrink-0" />
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const shopName = selectedUser.email ? vendorEmailToShopName[selectedUser.email.toLowerCase()] : '';
+  const groupLabel = activeGroup === 'admin' ? 'Quản trị viên' : activeGroup === 'vendor' ? 'Cửa hàng' : 'Khách hàng';
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+            <button
+              onClick={() => setSelectedUser(null)}
+              className="hover:text-indigo-600 flex items-center gap-1 transition-colors"
+            >
+              <History className="h-4 w-4" /> Nhật ký vận hành
+            </button>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="text-slate-400">{groupLabel}</span>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="text-slate-800 font-bold">{selectedUser.fullName || selectedUser.email}</span>
+          </div>
+
+          <h2 className="text-xl font-semibold text-slate-900 mt-2 flex items-center gap-2">
+            Nhật ký hoạt động: {selectedUser.fullName || selectedUser.email}
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Chi tiết các thao tác thực hiện bởi {selectedUser.email} {shopName ? `(Cửa hàng: ${shopName})` : ''}.
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            setSelectedUser(null);
+            setQuery('');
+          }}
+          className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
+        >
+          Quay lại danh sách
+        </button>
+      </div>
+
+      <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="w-full sm:w-64">
             <select
               value={selectedAction}
@@ -3040,21 +3245,14 @@ export function AuditLogSection({ onToast }) {
               ))}
             </select>
           </div>
-          <button
-            type="submit"
-            className="w-full sm:w-auto rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
-          >
-            Tìm kiếm
-          </button>
-        </form>
+        </div>
       </div>
 
-      {/* Logs Table */}
       <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-            <p className="text-sm font-medium text-slate-500">Đang tải dữ liệu nhật ký...</p>
+            <p className="text-sm font-medium text-slate-500">Đang tải nhật ký hoạt động...</p>
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20 text-center px-4">
@@ -3064,7 +3262,7 @@ export function AuditLogSection({ onToast }) {
             <h3 className="mt-4 text-sm font-semibold text-slate-900">Lỗi tải dữ liệu</h3>
             <p className="mt-2 text-sm text-slate-500 max-w-md">{error}</p>
             <button
-              onClick={fetchLogs}
+              onClick={fetchUserLogs}
               className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 transition-colors"
             >
               Thử lại
@@ -3077,7 +3275,7 @@ export function AuditLogSection({ onToast }) {
             </div>
             <h3 className="mt-4 text-sm font-semibold text-slate-900">Không có bản ghi nào</h3>
             <p className="mt-2 text-sm text-slate-500">
-              Không tìm thấy nhật ký vận hành nào khớp với tiêu chí tìm kiếm của bạn.
+              Tài khoản này chưa thực hiện hành động nào tương ứng bộ lọc hiện tại.
             </p>
           </div>
         ) : (
@@ -3086,7 +3284,6 @@ export function AuditLogSection({ onToast }) {
               <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500 border-b border-slate-100">
                 <tr>
                   <th className="px-6 py-3.5">Thời gian</th>
-                  <th className="px-6 py-3.5">Người thực hiện</th>
                   <th className="px-6 py-3.5">Hành động</th>
                   <th className="px-6 py-3.5">Địa chỉ IP</th>
                   <th className="px-6 py-3.5">Thiết bị</th>
@@ -3098,18 +3295,6 @@ export function AuditLogSection({ onToast }) {
                   <tr key={log.id} className="hover:bg-slate-50 transition-colors">
                     <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-900">
                       {formatTime(log.createdAt)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
-                        <span className="font-semibold text-slate-800 break-all">{log.userEmail || 'Khách vãng lai'}</span>
-                        {log.userRole && (
-                          <div>
-                            <span className={getRoleBadgeClass(log.userRole)}>
-                              {log.userRole}
-                            </span>
-                          </div>
-                        )}
-                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className={cn("inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide", getActionBadgeClass(log.action))}>
@@ -3142,7 +3327,6 @@ export function AuditLogSection({ onToast }) {
           </div>
         )}
 
-        {/* Pagination */}
         {!loading && logs.length > 0 && (
           <div className="flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4">
             <div className="flex flex-1 justify-between sm:hidden">
@@ -3185,8 +3369,6 @@ export function AuditLogSection({ onToast }) {
                   >
                     ‹
                   </button>
-                  
-                  {/* Page Numbers */}
                   {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
                     let pageNum = page;
                     if (page < 2) pageNum = i;
@@ -3210,7 +3392,6 @@ export function AuditLogSection({ onToast }) {
                       </button>
                     );
                   })}
-
                   <button
                     disabled={page >= totalPages - 1}
                     onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
@@ -3232,11 +3413,9 @@ export function AuditLogSection({ onToast }) {
         )}
       </div>
 
-      {/* Payload Modal */}
       {selectedPayload && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
           <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <div className="flex items-center gap-2">
                 <History className="h-5 w-5 text-indigo-600" />
@@ -3250,7 +3429,6 @@ export function AuditLogSection({ onToast }) {
               </button>
             </div>
 
-            {/* Modal Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm border-b border-slate-100 pb-4">
                 <div>
