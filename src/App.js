@@ -40,7 +40,15 @@ function App() {
         <Route path="/vendor/:section/:action" element={<VendorHome />} />
         <Route path="/vendor/:section" element={<VendorHome />} />
 
-        <Route path="/quantri" element={<AdminDashboard />} />
+        <Route
+          path="/quantri"
+          element={<Navigate to="/admin/tong-quan" replace />}
+        />
+        <Route
+          path="/admin"
+          element={<Navigate to="/admin/tong-quan" replace />}
+        />
+        <Route path="/admin/:section" element={<AdminDashboard />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

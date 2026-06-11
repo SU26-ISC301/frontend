@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   AlertTriangle,
@@ -382,8 +383,10 @@ function downloadCsv(filename, columns, rows) {
 }
 
 export default function AdminDashboard() {
+  const { section = 'tong-quan' } = useParams();
+  const navigate = useNavigate();
   const [session, setSession] = useState(readAdminSession);
-  const [active, setActive] = useState('tong-quan');
+  const active = section;
   const [vendors, setVendors] = useState(initialVendors);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [toast, setToast] = useState(null);
@@ -445,7 +448,6 @@ export default function AdminDashboard() {
     storage.setItem('adminSession', JSON.stringify(nextSession));
     setSession(nextSession);
   }
-
   function handleLogout() {
     localStorage.removeItem('adminSession');
     localStorage.removeItem('accessToken');
@@ -458,14 +460,13 @@ export default function AdminDashboard() {
     sessionStorage.removeItem('adminAccessToken');
     sessionStorage.removeItem('adminRefreshToken');
     setSession(null);
-    setActive('tong-quan');
+    navigate('/admin/tong-quan');
   }
 
   const handleNavigate = (id) => {
-    setActive(id);
+    navigate(`/admin/${id}`);
     setMobileOpen(false);
   };
-
   const updateVendorStatus = async (id, status) => {
     const beStatus = status === 'Đã duyệt' ? 'approved' : status === 'Từ chối' ? 'rejected' : 'pending';
     const isNumericId = /^\d+$/.test(String(id));
@@ -778,7 +779,7 @@ function AdminLogin({ onLogin }) {
             <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-admin-accent lg:hidden">
               <Store className="h-6 w-6" />
             </span>
-            <p className="mt-7 text-xs font-extrabold uppercase tracking-[0.16em] text-admin-accent">/quantri</p>
+            <p className="mt-7 text-xs font-extrabold uppercase tracking-[0.16em] text-admin-accent">/admin</p>
             <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">Đăng nhập quản trị</h2>
             <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
               Sử dụng tài khoản nội bộ đã được cấp quyền truy cập.
@@ -1265,6 +1266,7 @@ function ProductsSection({ onToast }) {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedVendorName, setSelectedVendorName] = useState(null);
   
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReasonText, setRejectReasonText] = useState('');
@@ -1387,15 +1389,47 @@ function ProductsSection({ onToast }) {
     }
   };
 
-  const filteredProducts = useMemo(() => productsList.filter((product) => {
-    const matchesQuery = `${product.name} ${product.sku} ${product.vendorName || ''}`.toLowerCase().includes(query.trim().toLowerCase());
+  const vendorGroups = useMemo(() => {
+    const groups = {};
+    productsList.forEach((product) => {
+      const vName = product.vendorName || 'Chưa cập nhật';
+      if (!groups[vName]) {
+        groups[vName] = {
+          name: vName,
+          productCount: 0,
+          totalStock: 0,
+          pendingCount: 0,
+          products: [],
+        };
+      }
+      groups[vName].productCount += 1;
+      groups[vName].totalStock += Number(product.stock) || 0;
+      if (product.status === 'Chờ duyệt') {
+        groups[vName].pendingCount += 1;
+      }
+      groups[vName].products.push(product);
+    });
+    return Object.values(groups);
+  }, [productsList]);
+
+  const filteredVendors = useMemo(() => {
+    return vendorGroups.filter(v => v.name.toLowerCase().includes(query.trim().toLowerCase()));
+  }, [vendorGroups, query]);
+
+  const productsOfSelectedVendor = useMemo(() => {
+    if (!selectedVendorName) return [];
+    return productsList.filter(p => (p.vendorName || 'Chưa cập nhật') === selectedVendorName);
+  }, [productsList, selectedVendorName]);
+
+  const filteredProducts = useMemo(() => productsOfSelectedVendor.filter((product) => {
+    const matchesQuery = `${product.name} ${product.sku}`.toLowerCase().includes(query.trim().toLowerCase());
     return matchesQuery && (!category || product.categoryLabel === category) && (!status || product.status === status);
-  }), [productsList, category, query, status]);
+  }), [productsOfSelectedVendor, category, query, status]);
 
   const visibleProducts = filteredProducts.slice((page - 1) * pageSize, page * pageSize);
   const categoryOptions = useMemo(
-    () => [...new Set(productsList.map((product) => product.categoryLabel).filter(Boolean))],
-    [productsList]
+    () => [...new Set(productsOfSelectedVendor.map((product) => product.categoryLabel).filter(Boolean))],
+    [productsOfSelectedVendor]
   );
 
   const resetFilters = () => {
@@ -1407,82 +1441,183 @@ function ProductsSection({ onToast }) {
 
   return (
     <div>
-      <PageHeader title="Quản lý sản phẩm" subtitle="Kiểm tra sản phẩm, tồn kho, chất lượng nội dung và cảnh báo vi phạm.">
-        <button type="button" className="admin-primary-button" onClick={() => onToast({ title: 'Sẵn sàng thêm sản phẩm', message: 'Flow tạo sản phẩm sẽ mở tại bước nhập thông tin cơ bản.', tone: 'green' })}>
-          <Plus className="h-4 w-4" />
-          Thêm sản phẩm
-        </button>
+      <PageHeader
+        title={selectedVendorName ? `Sản phẩm - ${selectedVendorName}` : "Sản phẩm cửa hàng"}
+        subtitle={selectedVendorName ? `Danh sách sản phẩm của cửa hàng ${selectedVendorName}.` : "Quản lý và duyệt sản phẩm theo từng cửa hàng đối tác."}
+      >
+        {selectedVendorName ? (
+          <button
+            type="button"
+            className="admin-secondary-button mr-2"
+            onClick={() => {
+              setSelectedVendorName(null);
+              setQuery('');
+              setPage(1);
+            }}
+          >
+            Quay lại danh sách shop
+          </button>
+        ) : (
+          <button type="button" className="admin-primary-button" onClick={() => onToast({ title: 'Sẵn sàng thêm sản phẩm', message: 'Flow tạo sản phẩm sẽ mở tại bước nhập thông tin cơ bản.', tone: 'green' })}>
+            <Plus className="h-4 w-4" />
+            Thêm sản phẩm
+          </button>
+        )}
       </PageHeader>
-      <Toolbar query={query} searchPlaceholder="Tìm theo tên hoặc SKU" onQueryChange={(value) => { setQuery(value); setPage(1); }} onReset={resetFilters}>
-        <ToolbarSelect value={category} onChange={(value) => { setCategory(value); setPage(1); }} placeholder="Tất cả ngành hàng" options={categoryOptions} />
-        <ToolbarSelect value={status} onChange={(value) => { setStatus(value); setPage(1); }} placeholder="Trạng thái sản phẩm" options={['Đang bán', 'Chờ duyệt', 'Cảnh báo', 'Tạm ẩn', 'Bị từ chối', 'Nháp']} />
+
+      <Toolbar
+        query={query}
+        searchPlaceholder={selectedVendorName ? "Tìm theo tên hoặc SKU" : "Tìm tên cửa hàng..."}
+        onQueryChange={(value) => { setQuery(value); setPage(1); }}
+        onReset={resetFilters}
+      >
+        {selectedVendorName && (
+          <>
+            <ToolbarSelect value={category} onChange={(value) => { setCategory(value); setPage(1); }} placeholder="Tất cả ngành hàng" options={categoryOptions} />
+            <ToolbarSelect value={status} onChange={(value) => { setStatus(value); setPage(1); }} placeholder="Trạng thái sản phẩm" options={['Đang bán', 'Chờ duyệt', 'Cảnh báo', 'Tạm ẩn', 'Bị từ chối', 'Nháp']} />
+          </>
+        )}
       </Toolbar>
+
       {loadError && (
         <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
           {loadError}
         </div>
       )}
-      <section className="admin-panel mt-5 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[920px] text-left text-sm">
-            <thead className="admin-table-head">
-              <tr>
-                {['Sản phẩm', 'SKU', 'Ngành hàng', 'Giá', 'Tồn kho', 'Trạng thái', 'Thao tác'].map((column) => (
-                  <th key={column} className="px-5 py-3.5">{column}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {visibleProducts.map((product) => (
-                <tr key={product.id || product.sku} className="admin-table-row hover:bg-slate-50/40 cursor-pointer" onClick={() => setSelectedProduct(product)}>
-                  <td className="px-5 py-4">
+
+      {!selectedVendorName ? (
+        /* Shop List View */
+        <div className="mt-5">
+          {isLoading ? (
+            <div className="admin-panel px-5 py-12 text-center">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-indigo-500" />
+              <p className="mt-3 text-sm font-extrabold text-slate-700">Đang tải danh sách cửa hàng...</p>
+            </div>
+          ) : filteredVendors.length === 0 ? (
+            <div className="admin-panel mt-5">
+              <TableEmptyState />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredVendors.map((vendor) => (
+                <div
+                  key={vendor.name}
+                  onClick={() => {
+                    setSelectedVendorName(vendor.name);
+                    setQuery('');
+                    setPage(1);
+                  }}
+                  className="group bg-white border border-slate-150 hover:border-indigo-300 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer flex flex-col justify-between"
+                >
+                  <div>
                     <div className="flex items-center gap-3">
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-admin-accent overflow-hidden">
-                        {product.images && product.images.length > 0 ? (
-                          <img src={product.images[0].preview || product.images[0]} alt={product.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <Boxes className="h-5 w-5" />
-                        )}
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 group-hover:scale-105 transition-transform duration-300">
+                        <Store className="h-5 w-5" />
                       </span>
-                      <div>
-                        <p className="font-bold text-slate-900">{product.name}</p>
-                        <p className="mt-1 text-xs font-medium text-slate-400">{product.note || 'Không có ghi chú'}</p>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
+                          {vendor.name}
+                        </h4>
+                        <p className="text-xs font-semibold text-slate-400 mt-0.5">Cửa hàng đối tác</p>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-5 py-4 font-semibold text-slate-500">{product.sku}</td>
-                  <td className="px-5 py-4 font-semibold text-slate-600">
-                    {product.categoryLabel}
-                  </td>
-                  <td className="px-5 py-4 font-bold text-slate-800">
-                    {typeof product.price === 'number' ? formatVnd(product.price) : product.price}
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className={cn('font-bold', product.stock <= 12 ? 'text-orange-600' : 'text-slate-700')}>
-                      {product.stock <= 12 && <AlertTriangle className="mr-1 inline h-4 w-4" />}
-                      {product.stock}
+                    
+                    <div className="grid grid-cols-2 gap-3 mt-5 text-xs">
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <span className="text-slate-400 font-semibold block text-[10px] uppercase">Sản phẩm</span>
+                        <span className="font-extrabold text-slate-700 mt-0.5 block">{vendor.productCount} SKU</span>
+                      </div>
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <span className="text-slate-400 font-semibold block text-[10px] uppercase">Tổng tồn kho</span>
+                        <span className="font-extrabold text-slate-700 mt-0.5 block">{vendor.totalStock} chiếc</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
+                    {vendor.pendingCount > 0 ? (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-orange-50 text-[10px] font-bold text-orange-600 px-2 py-0.5 border border-orange-100">
+                        <AlertTriangle className="h-3 w-3 shrink-0" /> {vendor.pendingCount} chờ duyệt
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-55 text-[10px] font-bold text-emerald-600 px-2 py-0.5">
+                        <Check className="h-3 w-3 shrink-0" /> Đã duyệt hết
+                      </span>
+                    )}
+                    
+                    <span className="text-xs font-bold text-indigo-600 flex items-center gap-0.5 group-hover:translate-x-1 transition-transform">
+                      Xem sản phẩm <ChevronRight className="h-4 w-4 shrink-0" />
                     </span>
-                  </td>
-                  <td className="px-5 py-4"><StatusPill status={product.status} /></td>
-                  <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
-                    <button type="button" aria-label={`Thao tác ${product.name}`} className="admin-icon-button" onClick={() => setSelectedProduct(product)}>
-                      <Eye className="h-5 w-5 text-indigo-600 hover:text-indigo-800" />
-                    </button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
-        {isLoading && (
-          <div className="border-t border-slate-100 px-5 py-12 text-center">
-            <Loader2 className="mx-auto h-8 w-8 animate-spin text-indigo-500" />
-            <p className="mt-3 text-sm font-extrabold text-slate-700">Đang tải sản phẩm thật...</p>
+      ) : (
+        /* Products Table View */
+        <section className="admin-panel mt-5 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[920px] text-left text-sm">
+              <thead className="admin-table-head">
+                <tr>
+                  {['Sản phẩm', 'SKU', 'Ngành hàng', 'Giá', 'Tồn kho', 'Trạng thái', 'Thao tác'].map((column) => (
+                    <th key={column} className="px-5 py-3.5">{column}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {visibleProducts.map((product) => (
+                  <tr key={product.id || product.sku} className="admin-table-row hover:bg-slate-50/40 cursor-pointer" onClick={() => setSelectedProduct(product)}>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-admin-accent overflow-hidden">
+                          {product.images && product.images.length > 0 ? (
+                            <img src={product.images[0].preview || product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Boxes className="h-5 w-5" />
+                          )}
+                        </span>
+                        <div>
+                          <p className="font-bold text-slate-900">{product.name}</p>
+                          <p className="mt-1 text-xs font-medium text-slate-400">{product.note || 'Không có ghi chú'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-slate-500">{product.sku}</td>
+                    <td className="px-5 py-4 font-semibold text-slate-600">
+                      {product.categoryLabel}
+                    </td>
+                    <td className="px-5 py-4 font-bold text-slate-800">
+                      {typeof product.price === 'number' ? formatVnd(product.price) : product.price}
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className={cn('font-bold', product.stock <= 12 ? 'text-orange-600' : 'text-slate-700')}>
+                        {product.stock <= 12 && <AlertTriangle className="mr-1 inline h-4 w-4" />}
+                        {product.stock}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4"><StatusPill status={product.status} /></td>
+                    <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
+                      <button type="button" aria-label={`Thao tác ${product.name}`} className="admin-icon-button" onClick={() => setSelectedProduct(product)}>
+                        <Eye className="h-5 w-5 text-indigo-600 hover:text-indigo-800" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-        {!isLoading && visibleProducts.length === 0 && <TableEmptyState />}
-        <TableFooter count={filteredProducts.length} page={page} pageSize={pageSize} onPageChange={setPage} />
-      </section>
+          {isLoading && (
+            <div className="border-t border-slate-100 px-5 py-12 text-center">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-indigo-500" />
+              <p className="mt-3 text-sm font-extrabold text-slate-700">Đang tải sản phẩm thật...</p>
+            </div>
+          )}
+          {!isLoading && visibleProducts.length === 0 && <TableEmptyState />}
+          <TableFooter count={filteredProducts.length} page={page} pageSize={pageSize} onPageChange={setPage} />
+        </section>
+      )}
 
       {/* Product Review Detail Modal */}
       {selectedProduct && (

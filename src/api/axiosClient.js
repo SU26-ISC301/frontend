@@ -39,7 +39,7 @@ axiosClient.interceptors.request.use((config) => {
     const path = window.location.pathname;
     if (path.startsWith('/vendor') || path.startsWith('/seller')) {
       token = localStorage.getItem('vendorAccessToken') || sessionStorage.getItem('vendorAccessToken') || localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
-    } else if (path.startsWith('/quantri')) {
+    } else if (path.startsWith('/quantri') || path.startsWith('/admin')) {
       token = localStorage.getItem('adminAccessToken') || sessionStorage.getItem('adminAccessToken') || localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
     } else {
       token = localStorage.getItem('buyerAccessToken') || sessionStorage.getItem('buyerAccessToken') || localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
