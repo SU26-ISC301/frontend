@@ -21,6 +21,7 @@ import {
   EyeOff,
   ImagePlus,
   LayoutDashboard,
+  Lock,
   LogOut,
   Menu,
   MessageSquareText,
@@ -350,16 +351,16 @@ const campaigns = [
   },
 ];
 
-const salesTrend = Array.from({ length: 30 }, (_, index) => {
+const salesTrend = Array.from({ length: 180 }, (_, index) => {
   const date = new Date();
-  date.setDate(date.getDate() - (29 - index));
+  date.setDate(date.getDate() - (179 - index));
   const weekdayFactor = [0.82, 0.92, 1.01, 1.06, 1.08, 1.24, 1.18][
     date.getDay()
   ];
-  const campaignBoost = index > 20 && index < 25 ? 1.15 : 1;
+  const campaignBoost = index > 170 && index < 175 ? 1.15 : 1;
   const revenue =
     Math.round(
-      (12.6 + Math.sin(index / 2.9) * 2.5 + index * 0.17) *
+      (12.6 + Math.sin(index / 2.9) * 2.5 + index * 0.03) *
         weekdayFactor *
         campaignBoost *
         10,
@@ -743,23 +744,28 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
           </button>
         </div>
         <nav className="scrollbar-hide flex-1 space-y-1 overflow-y-auto px-3 py-5">
-          {visibleNavItems.map(({ slug, label, icon: Icon, badge }) => (
-            <NavLink
-              key={slug}
-              to={`/vendor/${slug}`}
-              className={({ isActive }) =>
-                cn("vendor-nav-item", isActive && "is-active")
-              }
-            >
-              <Icon className="h-[18px] w-[18px]" />
-              <span>{label}</span>
-              {badge && (
-                <span className="ml-auto rounded-full bg-orange-400 px-2 py-0.5 text-[10px] font-extrabold text-stone-950">
-                  {badge}
-                </span>
-              )}
-            </NavLink>
-          ))}
+          {visibleNavItems.map(({ slug, label, icon: Icon, badge }) => {
+            const isLocked = slug === 'nghien-cuu-thi-truong' && getVendorPlan().planId === 'free';
+            return (
+              <NavLink
+                key={slug}
+                to={`/vendor/${slug}`}
+                className={({ isActive }) =>
+                  cn("vendor-nav-item", isActive && "is-active", isLocked && "opacity-75 hover:opacity-100")
+                }
+              >
+                <Icon className="h-[18px] w-[18px]" />
+                <span>{label}</span>
+                {isLocked ? (
+                  <Lock className="ml-auto h-3.5 w-3.5 text-emerald-200/50" />
+                ) : badge ? (
+                  <span className="ml-auto rounded-full bg-orange-400 px-2 py-0.5 text-[10px] font-extrabold text-stone-950">
+                    {badge}
+                  </span>
+                ) : null}
+              </NavLink>
+            );
+          })}
         </nav>
         <div className="p-3">
           <div className="mb-2 rounded-xl border border-white/10 bg-white/5 p-3">
@@ -1016,12 +1022,63 @@ function StatCard({ stat, onClick }) {
   );
 }
 
-function OverviewPage({ navigateTo, onToast }) {
-  const [range, setRange] = useState(7);
-  const trend = salesTrend.slice(-range);
-  const latest = trend.at(-1);
-  const previous = trend.at(-2);
-  const change = ((latest.revenue - previous.revenue) / previous.revenue) * 100;
+function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
+  const plan = getVendorPlan();
+  const planId = plan.planId;
+
+  // Custom date range state for Premium
+  const [customStartDate, setCustomStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 29); // Default to last 30 days
+    return d.toISOString().split('T')[0];
+  });
+  const [customEndDate, setCustomEndDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+  const [isCustomMode, setIsCustomMode] = useState(false);
+
+  // Range state for quick filter (7, 14, 30 days)
+  const [range, setRange] = useState(() => {
+    if (planId === 'free') return 7;
+    if (planId === 'plus') return 30; // Plus defaults to 30 days
+    return 7; // Premium defaults to 7 days
+  });
+
+  const trend = useMemo(() => {
+    // If premium and in custom date mode
+    if (planId === 'premium' && isCustomMode) {
+      if (customStartDate && customEndDate) {
+        const start = new Date(customStartDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(customEndDate);
+        end.setHours(23, 59, 59, 999);
+        
+        const filtered = salesTrend.filter((item) => {
+          const itemDate = new Date(item.date);
+          return itemDate >= start && itemDate <= end;
+        });
+        
+        return filtered.length >= 2 ? filtered : salesTrend.slice(-7);
+      }
+    }
+    
+    // Quick filters
+    if (planId === 'free') {
+      return salesTrend.slice(-7); // Free is locked to 7 days
+    }
+    
+    if (planId === 'plus') {
+      // Plus can select up to 30 days (7, 14, 30)
+      return salesTrend.slice(-Math.min(range, 30));
+    }
+    
+    // Premium can use quick filters or custom range
+    return salesTrend.slice(-range);
+  }, [planId, isCustomMode, customStartDate, customEndDate, range]);
+
+  const latest = trend.at(-1) || { revenue: 0, orders: 0 };
+  const previous = trend.at(-2) || { revenue: 1, orders: 0 };
+  const change = previous.revenue > 0 ? ((latest.revenue - previous.revenue) / previous.revenue) * 100 : 0;
   const stats = [
     {
       label: "Doanh thu hôm nay",
@@ -1061,6 +1118,19 @@ function OverviewPage({ navigateTo, onToast }) {
     },
   ];
 
+  const handlePeriodClick = (period) => {
+    if (planId === 'free' && period > 7) {
+      onToast({
+        title: "Tính năng bị giới hạn",
+        message: "Gói Free chỉ hiển thị tối đa 7 ngày gần nhất. Hãy nâng cấp để xem báo cáo xa hơn!",
+      });
+      onOpenPlanModal();
+      return;
+    }
+    setIsCustomMode(false);
+    setRange(period);
+  };
+
   const exportRevenue = () => {
     downloadCsv(
       "seller-revenue.csv",
@@ -1069,7 +1139,9 @@ function OverviewPage({ navigateTo, onToast }) {
     );
     onToast({
       title: "Đã tải báo cáo",
-      message: `Doanh thu ${range} ngày đã được xuất thành file CSV.`,
+      message: isCustomMode
+        ? `Báo cáo doanh thu đã được xuất thành file CSV.`
+        : `Doanh thu ${range} ngày đã được xuất thành file CSV.`,
     });
   };
 
@@ -1088,18 +1160,94 @@ function OverviewPage({ navigateTo, onToast }) {
         <Panel className="min-w-0 p-5">
           <PanelHeader
             title="Xu hướng doanh thu"
-            subtitle={`Doanh thu và số đơn trong ${range} ngày gần nhất`}
+            subtitle={
+              isCustomMode
+                ? `Doanh thu từ ${new Date(customStartDate).toLocaleDateString('vi-VN')} đến ${new Date(customEndDate).toLocaleDateString('vi-VN')}`
+                : `Doanh thu và số đơn trong ${planId === 'free' ? 7 : range} ngày gần nhất`
+            }
           >
-            {[7, 14, 30].map((period) => (
-              <button
-                key={period}
-                type="button"
-                className={cn("vendor-tab", range === period && "is-active")}
-                onClick={() => setRange(period)}
-              >
-                {period} ngày
-              </button>
-            ))}
+            <div className="flex flex-wrap items-center gap-2 mr-2">
+              {/* Pulsing indicator for Premium */}
+              {planId === 'premium' && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[10px] font-extrabold text-emerald-700 mr-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span>Cập nhật liên tục</span>
+                </div>
+              )}
+
+              {/* Quick Period Buttons */}
+              <div className="flex bg-stone-100/80 p-0.5 rounded-lg border border-stone-200/40">
+                {[7, 14, 30].map((period) => {
+                  const isLocked = planId === 'free' && period > 7;
+                  const isActive = !isCustomMode && (planId === 'free' ? period === 7 : range === period);
+                  return (
+                    <button
+                      key={period}
+                      type="button"
+                      disabled={planId === 'free' && period > 7}
+                      className={cn(
+                        "px-2.5 py-1 text-[11px] font-bold rounded-md transition-all duration-150 flex items-center gap-1",
+                        isActive
+                          ? "bg-white text-stone-800 shadow-sm"
+                          : "text-stone-500 hover:text-stone-800 disabled:opacity-50"
+                      )}
+                      onClick={() => handlePeriodClick(period)}
+                    >
+                      <span>{period} ngày</span>
+                      {isLocked && <Lock className="h-2.5 w-2.5 text-stone-400" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Custom Range Selector */}
+              {planId === 'premium' ? (
+                <div className="flex items-center gap-1 bg-stone-50 px-2 py-0.5 rounded-lg border border-stone-200/50">
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    min="2026-01-01"
+                    max={customEndDate}
+                    onChange={(e) => {
+                      setCustomStartDate(e.target.value);
+                      setIsCustomMode(true);
+                    }}
+                    className="bg-transparent border-none p-0 text-[11px] font-extrabold text-stone-700 w-[110px] focus:ring-0 cursor-pointer"
+                  />
+                  <span className="text-[10px] font-extrabold text-stone-400">đến</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    min={customStartDate}
+                    max={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => {
+                      setCustomEndDate(e.target.value);
+                      setIsCustomMode(true);
+                    }}
+                    className="bg-transparent border-none p-0 text-[11px] font-extrabold text-stone-700 w-[110px] focus:ring-0 cursor-pointer"
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToast({
+                      title: "Yêu cầu nâng cấp",
+                      message: "Tính năng chọn khoảng thời gian tùy chỉnh chỉ dành cho gói Premium. Hãy nâng cấp ngay để trải nghiệm!",
+                    });
+                    onOpenPlanModal();
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1 bg-stone-100/50 border border-stone-200/30 rounded-lg text-[11px] font-bold text-stone-400 hover:text-stone-600 transition"
+                >
+                  <Lock className="h-3 w-3" />
+                  <span>Chọn khoảng thời gian</span>
+                </button>
+              )}
+            </div>
+
             <button
               type="button"
               aria-label="Xuất báo cáo"
@@ -3637,7 +3785,8 @@ function MessagesPage({ onToast }) {
   );
 }
 
-function MarketResearchPage({ onToast }) {
+function MarketResearchPage({ onToast, onOpenPlanModal }) {
+  const plan = getVendorPlan();
   const vendorInfo = getVendorInfo();
   const localVendorParentCategory = getVendorParentCategory(vendorInfo);
   const defaultCategoryId = getVendorMarketDefaultCategoryId(
@@ -3729,6 +3878,36 @@ function MarketResearchPage({ onToast }) {
       ignore = true;
     };
   }, [selectedCategoryId, source, submittedQuery, refreshKey, onToast]);
+
+  if (plan.planId === 'free') {
+    return (
+      <div className="relative min-h-[500px] flex items-center justify-center p-8 bg-slate-50/50 rounded-3xl border border-slate-200 overflow-hidden">
+        <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
+        
+        <div className="relative max-w-md w-full text-center space-y-6 bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-orange-50 text-orange-500 shadow-md shadow-orange-100 ring-4 ring-orange-50/50 animate-pulse">
+            <Lock className="h-8 w-8" />
+          </div>
+          
+          <div className="space-y-2">
+            <h3 className="text-xl font-extrabold text-slate-800 tracking-tight">Tính Năng Bị Khóa</h3>
+            <p className="text-xs font-semibold text-slate-500 leading-relaxed px-2">
+              Tính năng <strong>Nghiên cứu thị trường</strong> chỉ dành cho các đối tác đăng ký gói <strong>Plus</strong> hoặc <strong>Premium</strong>. Nâng cấp ngay để mở khóa các phân tích thông tin chi tiết, so khớp giá cả thị trường và gợi ý chiến lược bán hàng tối ưu!
+            </p>
+          </div>
+          
+          <button
+            type="button"
+            onClick={() => onOpenPlanModal?.()}
+            className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 text-xs font-extrabold text-white bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 rounded-xl shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all duration-200"
+          >
+            <Sparkles className="h-4 w-4 text-white" />
+            Nâng cấp gói dịch vụ ngay
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const resetFilters = () => {
     setSource("");
