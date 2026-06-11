@@ -88,7 +88,7 @@ export function ProductVariantsField({
         combinationValues: comb.map(o => o.value),
         stock: existingSku?.stock ?? '0',
         price: existingSku?.price ?? '',
-        weight: existingSku?.weight ?? '',
+        weight: existingSku?.weight || '500',
         discount: existingSku?.discount ?? '',
         sku: existingSku?.sku ?? '',
       };
@@ -114,8 +114,7 @@ export function ProductVariantsField({
   const [bulkPrice, setBulkPrice] = useState('');
   const [bulkDiscount, setBulkDiscount] = useState('');
   const [bulkSku, setBulkSku] = useState('');
-  const [bulkWeight, setBulkWeight] = useState('');
-  const [bulkWeightUnit, setBulkWeightUnit] = useState('g');
+
 
   // Prevent double scrolling when modal is active
   useEffect(() => {
@@ -130,15 +129,6 @@ export function ProductVariantsField({
   }, [isFullscreen]);
 
   const handleApplyBulk = () => {
-    // Process weight value if entered
-    let weightInGrams = '';
-    if (bulkWeight !== '') {
-      const parsedWeight = parseFloat(bulkWeight);
-      if (!isNaN(parsedWeight)) {
-        weightInGrams = bulkWeightUnit === 'kg' ? (parsedWeight * 1000).toString() : bulkWeight;
-      }
-    }
-
     // Trigger visual flash feedback
     setIsApplying(true);
     setTimeout(() => setIsApplying(false), 800);
@@ -150,7 +140,6 @@ export function ProductVariantsField({
       if (bulkPrice !== '') updates.singlePrice = bulkPrice;
       if (bulkDiscount !== '') updates.singleDiscount = bulkDiscount;
       if (bulkSku !== '') updates.singleSku = bulkSku;
-      if (weightInGrams !== '') updates.weight = weightInGrams; // Set main weight for single product
 
       onChange(updates);
       return;
@@ -163,7 +152,6 @@ export function ProductVariantsField({
       price: bulkPrice !== '' ? bulkPrice : s.price,
       discount: bulkDiscount !== '' ? bulkDiscount : s.discount,
       sku: bulkSku !== '' ? bulkSku : s.sku,
-      weight: weightInGrams !== '' ? weightInGrams : s.weight,
     }));
     onChange({ skus: updatedSkus });
   };
@@ -268,19 +256,16 @@ export function ProductVariantsField({
           <table className="w-full border-collapse text-left text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="py-3 px-4 font-bold text-slate-500 w-[20%]">
+                <th className="py-3 px-4 font-bold text-slate-500 w-[25%]">
                   Tên biến thể
                 </th>
-                <th className="py-3 px-4 font-bold text-slate-500 w-[15%]">
+                <th className="py-3 px-4 font-bold text-slate-500 w-[20%]">
                   <span className="text-red-500">*</span> Hàng có sẵn <HelpCircle className="h-3.5 w-3.5 text-slate-300 inline ml-1 cursor-pointer" />
                 </th>
-                <th className="py-3 px-4 font-bold text-slate-500 w-[20%]">
+                <th className="py-3 px-4 font-bold text-slate-500 w-[25%]">
                   <span className="text-red-500">*</span> Giá bán lẻ <HelpCircle className="h-3.5 w-3.5 text-slate-300 inline ml-1 cursor-pointer" />
                 </th>
-                <th className="py-3 px-4 font-bold text-slate-500 w-[18%]">
-                  <span className="text-red-500">*</span> Trọng lượng kiện hàng <HelpCircle className="h-3.5 w-3.5 text-slate-300 inline ml-1 cursor-pointer" />
-                </th>
-                <th className="py-3 px-4 font-bold text-slate-500 w-[12%]">
+                <th className="py-3 px-4 font-bold text-slate-500 w-[15%]">
                   Giảm giá <HelpCircle className="h-3.5 w-3.5 text-slate-300 inline ml-1 cursor-pointer" />
                 </th>
                 <th className="py-3 px-4 font-bold text-slate-500 w-[15%]">
@@ -291,7 +276,7 @@ export function ProductVariantsField({
             <tbody className="divide-y divide-slate-100">
               {skus.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400 font-semibold bg-slate-50/30">
+                  <td colSpan={5} className="py-8 text-center text-slate-400 font-semibold bg-slate-50/30">
                     Không có SKU nào
                   </td>
                 </tr>
@@ -348,25 +333,7 @@ export function ProductVariantsField({
                       )}
                     </td>
 
-                    {/* Weight */}
-                    <td className="py-3 px-4">
-                      <div>
-                        <input
-                          type="number"
-                          placeholder="0"
-                          value={sku.weight}
-                          onChange={(e) => handleUpdateSkuProp(sku.id, 'weight', e.target.value)}
-                          className={cn(
-                            "vendor-input w-full px-2.5 py-1.5 text-xs bg-white transition-all duration-300",
-                            isApplying && "bg-orange-50/50 border-orange-300",
-                            errors[`sku_weight_${index}`] && "border-red-500 focus:border-red-500"
-                          )}
-                        />
-                        {errors[`sku_weight_${index}`] && (
-                          <p className="text-[9px] font-bold text-red-500 mt-1 flex items-center gap-0.5">⚠️ {errors[`sku_weight_${index}`]}</p>
-                        )}
-                      </div>
-                    </td>
+
 
                     {/* Discount */}
                     <td className="py-3 px-4 relative">
@@ -533,25 +500,7 @@ export function ProductVariantsField({
               className="vendor-input w-full px-3 py-2 text-xs font-semibold bg-white"
             />
           </div>
-          <div className="relative w-44 flex items-center gap-1">
-            <input
-              type="number"
-              placeholder="Trọng lượng"
-              value={bulkWeight}
-              onChange={(e) => setBulkWeight(e.target.value)}
-              className="vendor-input w-full px-3 py-2 pr-12 text-xs font-semibold bg-white"
-            />
-            <div className="absolute right-2 top-2">
-              <select
-                value={bulkWeightUnit}
-                onChange={(e) => setBulkWeightUnit(e.target.value)}
-                className="text-[10px] font-bold text-slate-600 bg-transparent border-none focus:outline-none cursor-pointer"
-              >
-                <option value="g">g</option>
-                <option value="kg">kg</option>
-              </select>
-            </div>
-          </div>
+
           <button
             type="button"
             onClick={handleApplyBulk}

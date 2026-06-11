@@ -65,11 +65,11 @@ export function ProductAddFormComplete({ isEdit }) {
     trialEndDate: '',
 
     // Section 5: Vận chuyển
-    weight: '',
+    weight: '500',
     weightUnit: 'g',
-    length: '',
-    width: '',
-    height: '',
+    length: '10',
+    width: '10',
+    height: '10',
     shippingType: 'default',
     customPlatforms: {
       standard: true,
@@ -232,11 +232,11 @@ export function ProductAddFormComplete({ isEdit }) {
         discount: product.discount || '',
         sku: product.sku || '',
         dangerousGoods: product.dangerousGoods || 'no',
-        weight: toSafeString(product.weight),
+        weight: toSafeString(product.weight || 500),
         weightUnit: product.weightUnit || 'g',
-        length: toSafeString(product.length),
-        width: toSafeString(product.width),
-        height: toSafeString(product.height),
+        length: toSafeString(product.length || 10),
+        width: toSafeString(product.width || 10),
+        height: toSafeString(product.height || 10),
         shippingType: product.shippingType || 'default',
         customPlatforms: product.customPlatforms || {
           standard: true,
@@ -390,11 +390,11 @@ export function ProductAddFormComplete({ isEdit }) {
     // Check if scrolled near the bottom of the container
     const isAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 100;
     if (isAtBottom) {
-      setActiveSection('shipping');
+      setActiveSection('sales');
       return;
     }
 
-    const sections = ['basic', 'detail', 'sales', 'shipping'];
+    const sections = ['basic', 'detail', 'sales'];
     let currentSection = 'basic';
     const containerRect = container.getBoundingClientRect();
 
@@ -997,7 +997,6 @@ export function ProductAddFormComplete({ isEdit }) {
     { id: 'basic', label: 'Thông tin cơ bản' },
     { id: 'detail', label: 'Chi tiết sản phẩm' },
     { id: 'sales', label: 'Thông tin bán hàng' },
-    { id: 'shipping', label: 'Vận chuyển' },
   ];
 
   return (
@@ -1565,7 +1564,7 @@ export function ProductAddFormComplete({ isEdit }) {
           </section>
 
           {/* SECTION 5: VẬN CHUYỂN */}
-          <section ref={sectionRefs.shipping} className="vendor-panel p-8 bg-white space-y-6">
+          <section ref={sectionRefs.shipping} className="hidden">
             <div className="relative pl-4 py-0.5 bg-gradient-to-r from-slate-50 to-transparent rounded-r-lg">
               <span className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[#12372d] to-[#ea580c] rounded-full" />
               <h2 className="text-base font-bold text-slate-800 leading-none mb-1.5">Vận chuyển</h2>
