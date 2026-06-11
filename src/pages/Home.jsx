@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Header } from '../components/Home/Header';
 import { HeroBanner } from '../components/Home/HeroBanner';
 import { CategoryStrip } from '../components/Home/CategoryStrip';
@@ -74,12 +75,23 @@ function collectCategoryIds(category) {
   ].filter((id) => id !== undefined && id !== null);
 }
 
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 export default function Home() {
+  const [searchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [categories, setCategories] = useState([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const searchQuery = searchParams.get('search') || '';
+  const normalizedSearchQuery = normalizeText(searchQuery);
 
   useEffect(() => {
     let isMounted = true;
@@ -123,10 +135,21 @@ export default function Home() {
   }, [allCategories, products]);
 
   const visibleProducts = useMemo(() => {
-    if (!selectedCategory) return products;
+    const categoryProducts = selectedCategory
+      ? products.filter((product) => selectedCategoryIds.has(String(product.categoryId)))
+      : products;
 
-    return products.filter((product) => selectedCategoryIds.has(String(product.categoryId)));
-  }, [products, selectedCategory, selectedCategoryIds]);
+    if (!normalizedSearchQuery) return categoryProducts;
+
+    return categoryProducts.filter((product) => {
+      const haystack = normalizeText([
+        product.title,
+        product.badge,
+        product.categoryName,
+      ].join(' '));
+      return haystack.includes(normalizedSearchQuery);
+    });
+  }, [products, selectedCategory, selectedCategoryIds, normalizedSearchQuery]);
 
   useEffect(() => {
     let isMounted = true;
@@ -190,9 +213,13 @@ export default function Home() {
                 <Flame className="h-3.5 w-3.5" />
                 Đang được săn
               </span>
-              <h2 className="section-title">{selectedCategory ? selectedCategory.name : 'Gợi ý hôm nay'}</h2>
+              <h2 className="section-title">
+                {searchQuery ? `Kết quả cho "${searchQuery}"` : selectedCategory ? selectedCategory.name : 'Gợi ý hôm nay'}
+              </h2>
               <p className="text-sm text-slate-500">
-                {selectedCategory
+                {searchQuery
+                  ? `Đang lọc sản phẩm thật theo từ khóa ${searchQuery}.`
+                  : selectedCategory
                   ? `Sản phẩm thuộc danh mục ${selectedCategory.name}.`
                   : 'Sản phẩm đẹp, giá rõ ràng, hình ảnh thật hơn khi lướt mua.'}
               </p>
@@ -215,10 +242,18 @@ export default function Home() {
           ) : (
             <div className="rounded-2xl border border-white/80 bg-white/80 px-5 py-10 text-center shadow-sm">
               <p className="text-base font-extrabold text-slate-700">
-                {selectedCategory ? 'Chưa có sản phẩm trong danh mục này' : 'Chưa có sản phẩm thật đang bán'}
+                {searchQuery
+                  ? 'Không tìm thấy sản phẩm phù hợp'
+                  : selectedCategory
+                  ? 'Chưa có sản phẩm trong danh mục này'
+                  : 'Chưa có sản phẩm thật đang bán'}
               </p>
               <p className="mt-2 text-sm font-semibold text-slate-500">
-                {selectedCategory ? 'Bạn có thể chọn danh mục khác hoặc xem tất cả sản phẩm.' : 'Sản phẩm sẽ xuất hiện ở đây sau khi Admin phê duyệt.'}
+                {searchQuery
+                  ? 'Bạn thử đổi từ khóa, tên shop hoặc chọn một danh mục gợi ý khác nhé.'
+                  : selectedCategory
+                  ? 'Bạn có thể chọn danh mục khác hoặc xem tất cả sản phẩm.'
+                  : 'Sản phẩm sẽ xuất hiện ở đây sau khi Admin phê duyệt.'}
               </p>
             </div>
           )}

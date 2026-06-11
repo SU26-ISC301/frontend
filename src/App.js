@@ -9,6 +9,7 @@ import WarehouseManagement from "./components/Seller/Warehouse/WarehouseManageme
 import VendorSubscriptionCheckout from "./pages/VendorSubscriptionCheckout";
 import { ThemeToggle } from "./components/ThemeToggle";
 import ProductDetail from "./pages/ProductDetail";
+import Favorites from "./pages/Favorites";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/products/:id" element={<ProductDetail />} />
+        <Route path="/favorites" element={<Favorites />} />
 
         {/* Nhóm Route của Seller */}
         <Route path="/seller" element={<SellerCenter />} />
