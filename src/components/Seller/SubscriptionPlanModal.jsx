@@ -69,6 +69,7 @@ export const VENDOR_PLANS = [
       { label: 'Hiển thị tiêu chuẩn', included: true },
       { label: 'Thông tin tổng quan cập nhật liên tục', included: true },
       { label: 'Tính năng nghiên cứu thị trường', included: true },
+      { label: 'Gợi ý giá bán tối ưu', included: true },
       { label: 'Đánh dấu tin nổi bật', included: true },
     ],
   },
