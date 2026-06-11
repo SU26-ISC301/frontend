@@ -1305,22 +1305,7 @@ function ProductsSection({ onToast }) {
 
     if (isNumericId) {
       try {
-        const categories = await sellerApi.getProductCategories().catch(() => []);
-        const backendPayload = buildBackendPayloadFromLocal(product, 'approved', categories);
-        
-        try {
-          await sellerApi.updateProduct(product.id, backendPayload);
-        } catch (err) {
-          const hasVendorToken = !!(localStorage.getItem('vendorAccessToken') || sessionStorage.getItem('vendorAccessToken'));
-          if (hasVendorToken && (err.response?.status === 403 || err.response?.status === 401)) {
-            console.log("Admin update failed with status", err.response?.status, ", retrying with Vendor token...");
-            await sellerApi.updateProduct(product.id, backendPayload, {
-              headers: { 'X-Role-Token': 'vendor' }
-            });
-          } else {
-            throw err;
-          }
-        }
+        await adminApi.approveProduct(product.id);
 
         onToast({
           title: 'Đã phê duyệt sản phẩm',
@@ -1369,23 +1354,7 @@ function ProductsSection({ onToast }) {
 
     if (isNumericId) {
       try {
-        const categories = await sellerApi.getProductCategories().catch(() => []);
-        const backendPayload = buildBackendPayloadFromLocal(product, 'rejected', categories);
-        backendPayload.note = 'Từ chối: ' + rejectReasonText;
-
-        try {
-          await sellerApi.updateProduct(product.id, backendPayload);
-        } catch (err) {
-          const hasVendorToken = !!(localStorage.getItem('vendorAccessToken') || sessionStorage.getItem('vendorAccessToken'));
-          if (hasVendorToken && (err.response?.status === 403 || err.response?.status === 401)) {
-            console.log("Admin update failed with status", err.response?.status, ", retrying with Vendor token...");
-            await sellerApi.updateProduct(product.id, backendPayload, {
-              headers: { 'X-Role-Token': 'vendor' }
-            });
-          } else {
-            throw err;
-          }
-        }
+        await adminApi.rejectProduct(product.id, rejectReasonText);
 
         onToast({
           title: 'Đã từ chối sản phẩm',
@@ -1438,23 +1407,7 @@ function ProductsSection({ onToast }) {
 
     if (isNumericId) {
       try {
-        const categories = await sellerApi.getProductCategories().catch(() => []);
-        const backendPayload = buildBackendPayloadFromLocal(product, 'warning', categories);
-        backendPayload.note = 'Cảnh báo: ' + warnReasonText;
-
-        try {
-          await sellerApi.updateProduct(product.id, backendPayload);
-        } catch (err) {
-          const hasVendorToken = !!(localStorage.getItem('vendorAccessToken') || sessionStorage.getItem('vendorAccessToken'));
-          if (hasVendorToken && (err.response?.status === 403 || err.response?.status === 401)) {
-            console.log("Admin update failed with status", err.response?.status, ", retrying with Vendor token...");
-            await sellerApi.updateProduct(product.id, backendPayload, {
-              headers: { 'X-Role-Token': 'vendor' }
-            });
-          } else {
-            throw err;
-          }
-        }
+        await adminApi.warnProduct(product.id, warnReasonText);
 
         onToast({
           title: 'Đã gửi cảnh báo',

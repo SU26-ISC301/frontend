@@ -17,5 +17,14 @@ export const adminApi = {
     },
     getDistinctActions: () => {
         return axiosClient.get('/api/admin/audit-logs/actions');
+    },
+    approveProduct: (id) => {
+        return axiosClient.post(`/api/admin/products/${id}/approve`);
+    },
+    rejectProduct: (id, reason) => {
+        return axiosClient.post(`/api/admin/products/${id}/reject`, { reason });
+    },
+    warnProduct: (id, reason) => {
+        return axiosClient.post(`/api/admin/products/${id}/warn`, { reason });
     }
 };
