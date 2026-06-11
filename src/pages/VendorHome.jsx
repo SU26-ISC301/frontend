@@ -1811,7 +1811,7 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
   const [productsList, setProductsList] = useState(() => productStorage.getStoredProducts());
   const [activeDropdownSku, setActiveDropdownSku] = useState(null);
   const [rejectReasonModalProduct, setRejectReasonModalProduct] = useState(null);
-  const pageSize = 4;
+  const pageSize = 10;
   const [categoriesList, setCategoriesList] = useState([]);
 
   useEffect(() => {
