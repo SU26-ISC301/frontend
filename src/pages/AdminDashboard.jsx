@@ -42,7 +42,7 @@ import { cn } from '../lib/utils';
 import { ELECTRONICS_CATEGORIES } from '../components/Seller/CategorySelectorField';
 import { authApi } from '../api/authAPI';
 import { adminApi } from '../api/adminAPI';
-import { productStorage, buildBackendPayloadFromLocal } from '../utils/productStorage';
+import { productStorage } from '../utils/productStorage';
 import { sellerApi } from '../api/sellerAPI';
 
 const adminNavItems = [
