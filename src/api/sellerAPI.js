@@ -50,8 +50,8 @@ export const sellerApi = {
     return unwrap(response);
   },
 
-  getProductCategories: async () => {
-    const response = await axiosClient.get('/api/admin/market-research/categories');
+  getProductCategories: async (config = {}) => {
+    const response = await axiosClient.get('/api/admin/market-research/categories', config);
     return unwrap(response);
   },
 
@@ -75,13 +75,13 @@ export const sellerApi = {
     return unwrap(response);
   },
 
-  updateProduct: async (productId, payload) => {
-    const response = await axiosClient.put(`/api/products/${productId}`, payload);
+  updateProduct: async (productId, payload, config = {}) => {
+    const response = await axiosClient.put(`/api/products/${productId}`, payload, config);
     return unwrap(response);
   },
 
   deleteProduct: async (productId) => {
-    const response = await axiosClient.delete(`/api/products/${productId}`);
+    const response = await axiosClient.delete(`/api/products/${productId}?hard=false`);
     return unwrap(response);
   },
 

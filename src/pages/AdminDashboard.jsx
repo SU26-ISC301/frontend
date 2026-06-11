@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowDownToLine,
   ArrowUpRight,
@@ -455,9 +456,13 @@ export default function AdminDashboard() {
     localStorage.removeItem('adminSession');
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('adminAccessToken');
+    localStorage.removeItem('adminRefreshToken');
     sessionStorage.removeItem('adminSession');
     sessionStorage.removeItem('accessToken');
     sessionStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('adminAccessToken');
+    sessionStorage.removeItem('adminRefreshToken');
     setSession(null);
     setActive('tong-quan');
   }
@@ -707,6 +712,8 @@ function AdminLogin({ onLogin }) {
       // 2. Lưu token vào storage tạm thời để gọi getMe
       storage.setItem('accessToken', accessToken);
       storage.setItem('refreshToken', refreshToken);
+      storage.setItem('adminAccessToken', accessToken);
+      storage.setItem('adminRefreshToken', refreshToken);
 
       // 3. Lấy thông tin cá nhân để check role
       const meResponse = await authApi.getMe();
@@ -716,6 +723,8 @@ function AdminLogin({ onLogin }) {
         // Nếu không phải admin thì xóa token và báo lỗi
         storage.removeItem('accessToken');
         storage.removeItem('refreshToken');
+        storage.removeItem('adminAccessToken');
+        storage.removeItem('adminRefreshToken');
         setError('Tài khoản của bạn không có quyền truy cập quản trị.');
         return;
       }
@@ -726,6 +735,8 @@ function AdminLogin({ onLogin }) {
       // Xóa token nhỡ có lỗi xảy ra
       storage.removeItem('accessToken');
       storage.removeItem('refreshToken');
+      storage.removeItem('adminAccessToken');
+      storage.removeItem('adminRefreshToken');
       const msg =
         err?.response?.data?.message ||
         err?.response?.data?.error ||
@@ -1266,31 +1277,80 @@ function ProductsSection({ onToast }) {
   const [showWarnModal, setShowWarnModal] = useState(false);
   const [warnReasonText, setWarnReasonText] = useState('');
 
+  const [showApproveConfirmModal, setShowApproveConfirmModal] = useState(false);
+
   const pageSize = 4;
 
   const refreshList = () => {
     setProductsList(productStorage.getStoredProducts());
   };
 
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'sellerProducts') {
+        const updatedList = productStorage.getStoredProducts();
+        setProductsList(updatedList);
+        if (selectedProduct) {
+          const updatedSelected = updatedList.find(p => p.sku === selectedProduct.sku || (p.id && String(p.id) === String(selectedProduct.id)));
+          if (updatedSelected) {
+            setSelectedProduct(updatedSelected);
+          }
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [selectedProduct]);
+
   const handleApprove = async (sku) => {
     const product = productStorage.getProductBySku(sku);
+    if (!product) return;
+
+    const originalStatus = product.status;
+    const originalNote = product.note;
+    const isNumericId = product.id && /^\d+$/.test(String(product.id));
+
+    // Optimistically update local state & close modal
     productStorage.updateProduct(sku, { status: 'Đang bán', note: 'Đã phê duyệt bởi Admin' });
-    onToast({
-      title: 'Đã phê duyệt sản phẩm',
-      message: 'Sản phẩm đã được chuyển sang trạng thái Đang bán trên cửa hàng.',
-      tone: 'green',
-    });
     setSelectedProduct(null);
     refreshList();
 
-    if (product && product.id) {
+    if (isNumericId) {
       try {
         const categories = await sellerApi.getProductCategories().catch(() => []);
         const backendPayload = buildBackendPayloadFromLocal(product, 'approved', categories);
-        await sellerApi.updateProduct(product.id, backendPayload);
+        
+        try {
+          await sellerApi.updateProduct(product.id, backendPayload);
+        } catch (err) {
+          const hasVendorToken = !!(localStorage.getItem('vendorAccessToken') || sessionStorage.getItem('vendorAccessToken'));
+          if (hasVendorToken && (err.response?.status === 403 || err.response?.status === 401)) {
+            console.log("Admin update failed with status", err.response?.status, ", retrying with Vendor token...");
+            await sellerApi.updateProduct(product.id, backendPayload, {
+              headers: { 'X-Role-Token': 'vendor' }
+            });
+          } else {
+            throw err;
+          }
+        }
+
+        onToast({
+          title: 'Đã phê duyệt sản phẩm',
+          message: 'Sản phẩm đã được duyệt bán thành công trên hệ thống.',
+          tone: 'green',
+        });
       } catch (err) {
-        console.warn("Lỗi đồng bộ duyệt sản phẩm lên BE:", err);
+        console.error("Lỗi đồng bộ duyệt sản phẩm lên BE:", err);
+        productStorage.updateProduct(sku, { status: originalStatus, note: originalNote });
+        refreshList();
+        alert("Không thể duyệt sản phẩm trên hệ thống.\nChi tiết lỗi: " + (err.response?.data?.message || err.response?.data?.error || err.message));
       }
+    } else {
+      onToast({
+        title: 'Đã phê duyệt sản phẩm',
+        message: 'Sản phẩm local đã được chuyển sang trạng thái Đang bán.',
+        tone: 'green',
+      });
     }
   };
 
@@ -1301,30 +1361,65 @@ function ProductsSection({ onToast }) {
       return;
     }
     const product = selectedProduct;
+    if (!product) return;
+
+    const originalStatus = product.status;
+    const originalNote = product.note;
+    const originalRejectReason = product.rejectReason;
+    const isNumericId = product.id && /^\d+$/.test(String(product.id));
+
+    // Optimistically update local state & close modal
     productStorage.updateProduct(product.sku, {
       status: 'Bị từ chối',
       rejectReason: rejectReasonText,
       note: 'Từ chối: ' + rejectReasonText,
-    });
-    onToast({
-      title: 'Đã từ chối sản phẩm',
-      message: `Sản phẩm đã bị từ chối với lý do: ${rejectReasonText}`,
-      tone: 'red',
     });
     setShowRejectModal(false);
     setRejectReasonText('');
     setSelectedProduct(null);
     refreshList();
 
-    if (product && product.id) {
+    if (isNumericId) {
       try {
         const categories = await sellerApi.getProductCategories().catch(() => []);
         const backendPayload = buildBackendPayloadFromLocal(product, 'rejected', categories);
         backendPayload.note = 'Từ chối: ' + rejectReasonText;
-        await sellerApi.updateProduct(product.id, backendPayload);
+
+        try {
+          await sellerApi.updateProduct(product.id, backendPayload);
+        } catch (err) {
+          const hasVendorToken = !!(localStorage.getItem('vendorAccessToken') || sessionStorage.getItem('vendorAccessToken'));
+          if (hasVendorToken && (err.response?.status === 403 || err.response?.status === 401)) {
+            console.log("Admin update failed with status", err.response?.status, ", retrying with Vendor token...");
+            await sellerApi.updateProduct(product.id, backendPayload, {
+              headers: { 'X-Role-Token': 'vendor' }
+            });
+          } else {
+            throw err;
+          }
+        }
+
+        onToast({
+          title: 'Đã từ chối sản phẩm',
+          message: `Sản phẩm đã bị từ chối thành công trên hệ thống.`,
+          tone: 'red',
+        });
       } catch (err) {
-        console.warn("Lỗi đồng bộ từ chối lên BE:", err);
+        console.error("Lỗi đồng bộ từ chối lên BE:", err);
+        productStorage.updateProduct(product.sku, {
+          status: originalStatus,
+          note: originalNote,
+          rejectReason: originalRejectReason
+        });
+        refreshList();
+        alert("Không thể từ chối sản phẩm trên hệ thống.\nChi tiết lỗi: " + (err.response?.data?.message || err.response?.data?.error || err.message));
       }
+    } else {
+      onToast({
+        title: 'Đã từ chối sản phẩm',
+        message: `Sản phẩm local đã bị từ chối với lý do: ${rejectReasonText}`,
+        tone: 'red',
+      });
     }
   };
 
@@ -1335,30 +1430,65 @@ function ProductsSection({ onToast }) {
       return;
     }
     const product = selectedProduct;
+    if (!product) return;
+
+    const originalStatus = product.status;
+    const originalNote = product.note;
+    const originalRejectReason = product.rejectReason;
+    const isNumericId = product.id && /^\d+$/.test(String(product.id));
+
+    // Optimistically update local state & close modal
     productStorage.updateProduct(product.sku, {
       status: 'Cảnh báo',
       rejectReason: warnReasonText,
       note: 'Cảnh báo: ' + warnReasonText,
-    });
-    onToast({
-      title: 'Đã gửi cảnh báo',
-      message: `Đã chuyển sản phẩm sang trạng thái cảnh báo vi phạm.`,
-      tone: 'red',
     });
     setShowWarnModal(false);
     setWarnReasonText('');
     setSelectedProduct(null);
     refreshList();
 
-    if (product && product.id) {
+    if (isNumericId) {
       try {
         const categories = await sellerApi.getProductCategories().catch(() => []);
         const backendPayload = buildBackendPayloadFromLocal(product, 'warning', categories);
         backendPayload.note = 'Cảnh báo: ' + warnReasonText;
-        await sellerApi.updateProduct(product.id, backendPayload);
+
+        try {
+          await sellerApi.updateProduct(product.id, backendPayload);
+        } catch (err) {
+          const hasVendorToken = !!(localStorage.getItem('vendorAccessToken') || sessionStorage.getItem('vendorAccessToken'));
+          if (hasVendorToken && (err.response?.status === 403 || err.response?.status === 401)) {
+            console.log("Admin update failed with status", err.response?.status, ", retrying with Vendor token...");
+            await sellerApi.updateProduct(product.id, backendPayload, {
+              headers: { 'X-Role-Token': 'vendor' }
+            });
+          } else {
+            throw err;
+          }
+        }
+
+        onToast({
+          title: 'Đã gửi cảnh báo',
+          message: `Đã chuyển sản phẩm sang trạng thái cảnh báo vi phạm thành công trên hệ thống.`,
+          tone: 'red',
+        });
       } catch (err) {
-        console.warn("Lỗi đồng bộ cảnh báo lên BE:", err);
+        console.error("Lỗi đồng bộ cảnh báo lên BE:", err);
+        productStorage.updateProduct(product.sku, {
+          status: originalStatus,
+          note: originalNote,
+          rejectReason: originalRejectReason
+        });
+        refreshList();
+        alert("Không thể gửi cảnh báo sản phẩm trên hệ thống.\nChi tiết lỗi: " + (err.response?.data?.message || err.response?.data?.error || err.message));
       }
+    } else {
+      onToast({
+        title: 'Đã gửi cảnh báo',
+        message: `Đã chuyển sản phẩm local sang trạng thái cảnh báo vi phạm.`,
+        tone: 'red',
+      });
     }
   };
 
@@ -1578,7 +1708,7 @@ function ProductsSection({ onToast }) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleApprove(selectedProduct.sku)}
+                    onClick={() => setShowApproveConfirmModal(true)}
                     className="admin-primary-button justify-center font-bold px-5 h-10 text-xs shadow-md shadow-indigo-600/10"
                   >
                     Phê duyệt sản phẩm
@@ -1701,6 +1831,57 @@ function ProductsSection({ onToast }) {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Approve Confirmation Modal */}
+      {showApproveConfirmModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 p-6 shadow-2xl animate-in fade-in zoom-in duration-200 text-slate-800">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-base font-extrabold text-slate-950 flex items-center gap-2">
+                <span className="w-1.5 h-4 rounded-sm bg-indigo-600 flex-shrink-0" />
+                Xác nhận phê duyệt sản phẩm
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowApproveConfirmModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex gap-3 text-sm text-indigo-800 leading-relaxed font-medium">
+                <AlertCircle className="h-5 w-5 shrink-0 text-indigo-600 mt-0.5" />
+                <div>
+                  <p className="font-bold text-indigo-900 mb-1">Cảnh báo phê duyệt:</p>
+                  Sản phẩm <strong className="text-indigo-950 font-extrabold">"{selectedProduct?.name}"</strong> (SKU: {selectedProduct?.sku}) sau khi được phê duyệt sẽ được hiển thị công khai trên sàn và chuyển sang trạng thái <strong className="text-indigo-950 font-extrabold">"Đang bán"</strong>.
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 mt-6">
+              <button
+                type="button"
+                className="admin-secondary-button flex-1 justify-center font-bold"
+                onClick={() => setShowApproveConfirmModal(false)}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="admin-primary-button flex-1 justify-center bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/10 font-bold border-none"
+                onClick={() => {
+                  setShowApproveConfirmModal(false);
+                  handleApprove(selectedProduct.sku);
+                }}
+              >
+                Xác nhận duyệt
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

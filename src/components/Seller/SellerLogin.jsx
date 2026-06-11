@@ -64,6 +64,8 @@ export function SellerLogin({ onSwitchToRegister }) {
       });
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
+      localStorage.setItem('vendorAccessToken', data.accessToken);
+      localStorage.setItem('vendorRefreshToken', data.refreshToken);
       localStorage.setItem('vendorInfo', JSON.stringify(data));
       if (rememberLogin) {
         saveRememberedLogin('vendor', form.identifier, form.password);
