@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Eye,
+  Heart,
   Loader2,
   MapPin,
   MessageCircle,
@@ -12,7 +13,6 @@ import {
   Send,
   ShieldCheck,
   Star,
-  TrendingUp,
 } from 'lucide-react';
 import { Header } from '../components/Home/Header';
 import { Footer } from '../components/layout/Footer';
@@ -23,6 +23,8 @@ import { Card, CardContent } from '../components/ui/card';
 import { productApi } from '../api/productAPI';
 import { buyerMessageApi } from '../api/buyerMessageAPI';
 import { marketResearchApi } from '../api/marketResearchAPI';
+import { wishlistApi } from '../api/wishlistAPI';
+import { recordViewedCategory } from '../utils/viewedCategories';
 import { cn } from '../lib/utils';
 
 const MESSAGE_DRAFT_PREFIX = 'productMessageDraft:';
@@ -53,6 +55,17 @@ function writeTimedCache(key, data) {
 
 function formatPrice(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value || 0));
+}
+
+function formatCompactPrice(value) {
+  const number = Number(value || 0);
+  if (number >= 1000000) {
+    return `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }).format(number / 1000000)} tr`;
+  }
+  if (number >= 1000) {
+    return `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(number / 1000)} k`;
+  }
+  return new Intl.NumberFormat('vi-VN').format(number);
 }
 
 function formatDate(value) {
@@ -166,53 +179,59 @@ function MarketPriceBand({ range, currentPrice, isLoading }) {
   }
 
   const width = Math.max(range.max - range.min, 1);
-  const position = Math.min(100, Math.max(0, ((currentPrice - range.min) / width) * 100));
+  const position = Math.min(92, Math.max(8, ((currentPrice - range.min) / width) * 100));
+  const sourceSummary = range.sources?.length
+    ? range.sources.map((source) => source.source).slice(0, 5).join(', ')
+    : null;
 
   return (
-    <div className="rounded-2xl bg-slate-50 p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <div className="rounded-2xl bg-[#f2f2f2] p-4">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(18rem,1.35fr)] md:items-center">
         <div>
-          <p className="flex items-center gap-1.5 text-sm font-extrabold text-slate-900">
-            <TrendingUp className="h-4 w-4 text-[#ff5a2f]" />
+          <p className="flex items-center gap-1.5 text-base font-extrabold text-slate-950">
             Khoảng giá thị trường
+            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-500 text-[10px] font-black text-slate-600">
+              i
+            </span>
           </p>
           <p className="mt-1 text-xs font-semibold text-slate-500">
             {range.external
-              ? `Theo ${range.samples} mức giá public từ ${range.sourceCount} nguồn thị trường`
+              ? `Theo dữ liệu public mới nhất từ ${range.sourceCount} nguồn`
               : `Tạm tính theo ${range.samples} mức giá sản phẩm thật cùng danh mục trong hệ thống`}
           </p>
+          {sourceSummary && (
+            <p className="mt-2 line-clamp-1 text-[11px] font-bold text-slate-400">
+              Nguồn: {sourceSummary}
+            </p>
+          )}
         </div>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-[#ff4d2e] shadow-sm">
-          ₫{formatPrice(currentPrice)}
-        </span>
-      </div>
-      <div className="relative h-3 rounded-full bg-slate-200">
-        <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#2563eb] via-[#22c55e] to-[#ff5a2f]" style={{ width: '100%' }} />
-        <div
-          className="absolute top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-white bg-[#ff5a2f] shadow-lg"
-          style={{ left: `${position}%` }}
-        />
-      </div>
-      <div className="mt-3 flex justify-between text-xs font-bold text-slate-500">
-        <span>{range.minSource || 'Thấp nhất'}: ₫{formatPrice(range.min)}</span>
-        <span>TB ₫{formatPrice(Math.round(range.avg))}</span>
-        <span>{range.maxSource || 'Cao nhất'}: ₫{formatPrice(range.max)}</span>
-      </div>
-      {range.sources?.length > 0 && (
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          {range.sources.slice(0, 5).map((source) => (
-            <a
-              key={source.source}
-              href={source.url}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm ring-1 ring-slate-100 transition hover:text-[#ff4d2e]"
+
+        <div className="pt-7">
+          <div className="relative">
+            <div className="h-1.5 rounded-full bg-white shadow-inner" />
+            <div className="absolute inset-y-0 left-[18%] right-[10%] rounded-full bg-[#2563eb]" />
+            <div
+              className="absolute top-1/2 h-6 w-px -translate-y-1/2 bg-slate-300"
+              style={{ left: '18%' }}
+            />
+            <div
+              className="absolute top-1/2 h-6 w-px -translate-y-1/2 bg-slate-300"
+              style={{ right: '10%' }}
+            />
+            <div
+              className="absolute -top-8 -translate-x-1/2 rounded-md bg-[#2563eb] px-2.5 py-1 text-xs font-black text-white shadow-sm after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-x-[5px] after:border-t-[5px] after:border-x-transparent after:border-t-[#2563eb]"
+              style={{ left: `${position}%` }}
             >
-              {source.source}: ₫{formatPrice(source.min)} - ₫{formatPrice(source.max)}
-            </a>
-          ))}
+              {formatCompactPrice(currentPrice)}
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-3 text-xs font-bold text-slate-600">
+            <span>{formatCompactPrice(range.min)}</span>
+            <span className="text-center text-slate-500">TB {formatCompactPrice(Math.round(range.avg))}</span>
+            <span className="text-right">{formatCompactPrice(range.max)}</span>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -230,6 +249,9 @@ export default function ProductDetail() {
   const [message, setMessage] = useState(() => localStorage.getItem(`${MESSAGE_DRAFT_PREFIX}${id}`) || '');
   const [sendStatus, setSendStatus] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [favorite, setFavorite] = useState(false);
+  const [favoriteMessage, setFavoriteMessage] = useState('');
+  const [pendingFavorite, setPendingFavorite] = useState(false);
 
   useEffect(() => {
     const handleAuthChanged = (event) => {
@@ -310,6 +332,35 @@ export default function ProductDetail() {
     localStorage.setItem(`${MESSAGE_DRAFT_PREFIX}${id}`, message);
   }, [id, message]);
 
+  useEffect(() => {
+    if (!product?.categoryId || !product?.categoryName) return;
+    recordViewedCategory({
+      id: product.categoryId,
+      name: product.categoryName,
+      image: getProductImage(product),
+    });
+  }, [product]);
+
+  useEffect(() => {
+    if (!id || !loggedIn) {
+      setFavorite(false);
+      return;
+    }
+
+    let mounted = true;
+    wishlistApi.isFavorite(id)
+      .then((response) => {
+        if (mounted) setFavorite(Boolean(response?.favorite));
+      })
+      .catch(() => {
+        if (mounted) setFavorite(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [id, loggedIn]);
+
   const images = useMemo(() => {
     const mediaImages = (product?.mediaList || [])
       .filter((media) => (media.mediaType || media.media_type) === 'image')
@@ -335,6 +386,26 @@ export default function ProductDetail() {
   const requireLogin = () => {
     setSendStatus('Vui lòng đăng nhập để xem đầy đủ số điện thoại hoặc gửi tin nhắn. Nội dung bạn đã nhập vẫn được giữ lại.');
     setAuthOpen(true);
+  };
+
+  const addFavorite = async () => {
+    try {
+      await wishlistApi.addFavorite(id);
+      setFavorite(true);
+      setFavoriteMessage('Đã thêm tin đăng vào mục yêu thích.');
+    } catch (error) {
+      setFavoriteMessage(error?.response?.data?.message || 'Chưa thể thêm vào mục yêu thích. Vui lòng thử lại.');
+    }
+  };
+
+  const handleFavorite = async () => {
+    setFavoriteMessage('');
+    if (!loggedIn) {
+      setPendingFavorite(true);
+      setAuthOpen(true);
+      return;
+    }
+    await addFavorite();
   };
 
   useEffect(() => {
@@ -411,12 +482,17 @@ export default function ProductDetail() {
   };
 
   const handleAuthenticated = async () => {
+    setAuthOpen(false);
     setLoggedIn(true);
     setSendStatus('Đăng nhập thành công. Tin nhắn bạn đã nhập vẫn còn, bạn có thể gửi ngay.');
     try {
       await loadProduct();
     } catch (error) {
       console.warn('Không thể tải lại thông tin liên hệ:', error);
+    }
+    if (pendingFavorite) {
+      setPendingFavorite(false);
+      await addFavorite();
     }
   };
 
@@ -507,7 +583,24 @@ export default function ProductDetail() {
                       Tin nổi bật
                     </span>
                   )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      'rounded-full px-4 font-extrabold',
+                      favorite && 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-50'
+                    )}
+                    onClick={handleFavorite}
+                  >
+                    <Heart className={cn('h-4 w-4', favorite && 'fill-current')} />
+                    {favorite ? 'Đã lưu' : 'Lưu tin'}
+                  </Button>
                 </div>
+                {favoriteMessage && (
+                  <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+                    {favoriteMessage}
+                  </p>
+                )}
 
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <p className="text-3xl font-black text-[#ff4d2e]">₫{formatPrice(currentPrice)}</p>

@@ -1,16 +1,23 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Bell, Heart, LogOut, Search, Store, UserCircle } from 'lucide-react';
 import { BrandLogo } from '../layout/BrandLogo';
 import { Button } from '../ui/button';
 import { BuyerAuthModal } from '../Auth/BuyerAuthModal';
 import { authApi } from '../../api/authAPI';
 import { getAvatarSrc } from '../../utils/avatar';
+import { readViewedCategories } from '../../utils/viewedCategories';
 
 export function Header() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [authOpen, setAuthOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [profile, setProfile] = useState(null);
+  const [searchValue, setSearchValue] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [viewedCategories, setViewedCategories] = useState(() => readViewedCategories());
+  const [pendingFavoritesNavigation, setPendingFavoritesNavigation] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -37,6 +44,21 @@ export function Header() {
     };
   }, []);
 
+  useEffect(() => {
+    const refreshViewedCategories = () => setViewedCategories(readViewedCategories());
+    window.addEventListener('storage', refreshViewedCategories);
+    window.addEventListener('viewed-categories-changed', refreshViewedCategories);
+    return () => {
+      window.removeEventListener('storage', refreshViewedCategories);
+      window.removeEventListener('viewed-categories-changed', refreshViewedCategories);
+    };
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setSearchValue(params.get('search') || '');
+  }, [location.search]);
+
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
@@ -51,6 +73,10 @@ export function Header() {
   const handleAuthenticated = () => {
     setIsLoggedIn(true);
     window.dispatchEvent(new CustomEvent('buyer-auth-changed', { detail: { loggedIn: true } }));
+    if (pendingFavoritesNavigation) {
+      setPendingFavoritesNavigation(false);
+      navigate('/favorites');
+    }
     authApi.getMe()
       .then((response) => {
         setProfile(response.data?.data || response.data);
@@ -58,6 +84,28 @@ export function Header() {
       .catch(() => {
         setProfile(null);
       });
+  };
+
+  const submitSearch = (event) => {
+    event.preventDefault();
+    const query = searchValue.trim();
+    setSearchOpen(false);
+    navigate(query ? `/?search=${encodeURIComponent(query)}` : '/');
+  };
+
+  const selectSuggestion = (category) => {
+    setSearchValue(category.name);
+    setSearchOpen(false);
+    navigate(`/?search=${encodeURIComponent(category.name)}`);
+  };
+
+  const openFavorites = () => {
+    if (!isLoggedIn) {
+      setPendingFavoritesNavigation(true);
+      setAuthOpen(true);
+      return;
+    }
+    navigate('/favorites');
   };
 
   return (
@@ -94,35 +142,83 @@ export function Header() {
                 </Link>
               </div>
 
-              <div className="relative flex-1">
+              <form className="relative flex-1" onSubmit={submitSearch}>
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="search"
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
+                  onFocus={() => {
+                    setViewedCategories(readViewedCategories());
+                    setSearchOpen(true);
+                  }}
+                  onBlur={() => window.setTimeout(() => setSearchOpen(false), 160)}
                   placeholder="Tìm sản phẩm, thương hiệu, shop..."
                   className="h-11 w-full rounded-full border border-slate-200 bg-white pl-11 pr-24 text-sm shadow-inner shadow-slate-100 outline-none transition-all placeholder:text-slate-400 focus:border-[#ff6a3d] focus:ring-4 focus:ring-[#ff6a3d]/15"
                 />
                 <Button
-                  type="button"
+                  type="submit"
                   size="sm"
                   className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full bg-[#ff5a2f] px-5 hover:bg-[#ff6a3d]"
                 >
                   Tìm
                 </Button>
-              </div>
+                {searchOpen && (
+                  <div
+                    className="absolute left-0 right-0 top-[calc(100%+0.65rem)] z-50 overflow-hidden rounded-3xl border border-white/80 bg-white shadow-[0_24px_70px_-28px_rgba(15,23,42,0.55)]"
+                    onMouseDown={(event) => event.preventDefault()}
+                  >
+                    <div className="border-b border-slate-100 px-5 py-4">
+                      <p className="text-sm font-extrabold text-slate-950">Gợi ý cho bạn</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        Dựa trên các danh mục bạn thường mở xem trong chi tiết sản phẩm.
+                      </p>
+                    </div>
+                    {viewedCategories.length > 0 ? (
+                      <div className="grid max-h-[22rem] gap-1 overflow-y-auto p-2 sm:grid-cols-2">
+                        {viewedCategories.map((category) => (
+                          <button
+                            key={category.id}
+                            type="button"
+                            onClick={() => selectSuggestion(category)}
+                            className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-[#fff3ee]"
+                          >
+                            <span className="flex h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
+                              {category.image ? (
+                                <img src={category.image} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <span className="flex h-full w-full items-center justify-center bg-[#eaf2ff] text-[#1d72e8]">
+                                  <Search className="h-5 w-5" />
+                                </span>
+                              )}
+                            </span>
+                            <span className="min-w-0">
+                              <span className="line-clamp-1 text-sm font-extrabold text-slate-800">{category.name}</span>
+                              <span className="mt-0.5 block text-xs font-bold text-[#ff5a2f]">
+                                Đã xem {category.count} lần
+                              </span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-5 py-6 text-sm font-semibold text-slate-500">
+                        Chưa có danh mục thường xem. Mở vài tin đăng, hệ thống sẽ gợi ý nhanh ở đây.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </form>
 
               <div className="hidden items-center gap-1 lg:flex">
-                {[
-                  { icon: Heart, label: 'Yêu thích' },
-                ].map(({ icon: Icon, label }) => (
-                  <button
-                    key={label}
-                    type="button"
-                    className="group relative flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-all hover:bg-[#fff1ed] hover:text-[#ff4d2e]"
-                    title={label}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  onClick={openFavorites}
+                  className="group relative flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-all hover:bg-[#fff1ed] hover:text-[#ff4d2e]"
+                  title="Yêu thích"
+                >
+                  <Heart className="h-5 w-5" />
+                </button>
               </div>
 
               {isLoggedIn ? (
