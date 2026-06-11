@@ -699,6 +699,8 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
+    localStorage.removeItem("vendorAccessToken");
+    localStorage.removeItem("vendorRefreshToken");
     localStorage.removeItem("vendorInfo");
     navigate("/seller");
   };
@@ -1883,6 +1885,16 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
   }, []);
 
   useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'sellerProducts') {
+        setProductsList(productStorage.getStoredProducts());
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  useEffect(() => {
     const syncBackendProducts = async () => {
       const vendorInfo = getVendorInfo();
       const vendorId = vendorInfo?.id || vendorInfo?.vendorId;
@@ -1908,11 +1920,18 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
         const backendProducts = await sellerApi.getProductsByVendor(vendorId);
         if (Array.isArray(backendProducts)) {
           const stored = productStorage.getStoredProducts();
-          const updated = [...stored];
+          
+          // Filter out any local products that have a numeric ID but are NOT in the backend products list
+          const backendIds = new Set(backendProducts.map(p => String(p.id)));
+          let updated = stored.filter(p => {
+            const isNumericId = p.id && /^\d+$/.test(String(p.id));
+            if (!isNumericId) return true; // Keep local drafts or mock products
+            return backendIds.has(String(p.id)); // Keep only if it still exists on the database
+          });
 
           backendProducts.forEach(beProd => {
             const mapped = mapBackendProductToLocal(beProd, categories);
-            const idx = updated.findIndex(p => p.sku === mapped.sku || (p.id && p.id === mapped.id));
+            const idx = updated.findIndex(p => p.sku === mapped.sku || (p.id && String(p.id) === String(mapped.id)));
             if (idx !== -1) {
               // Merge but keep local properties safely
               updated[idx] = mergeProductData(updated[idx], mapped);

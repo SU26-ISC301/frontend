@@ -28,6 +28,8 @@ export function Header() {
           setProfile(null);
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
+          localStorage.removeItem('buyerAccessToken');
+          localStorage.removeItem('buyerRefreshToken');
         });
     }
     return () => {
@@ -38,6 +40,8 @@ export function Header() {
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('buyerAccessToken');
+    localStorage.removeItem('buyerRefreshToken');
     localStorage.removeItem('vendorInfo');
     setIsLoggedIn(false);
     setProfile(null);

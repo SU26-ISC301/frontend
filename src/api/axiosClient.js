@@ -17,7 +17,35 @@ axiosClient.interceptors.request.use((config) => {
     }
   }
 
-  const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+  let token = null;
+  const roleToken = config.headers?.['X-Role-Token'] || (config.headers?.get && config.headers.get('X-Role-Token'));
+  if (roleToken) {
+    if (roleToken === 'vendor') {
+      token = localStorage.getItem('vendorAccessToken') || sessionStorage.getItem('vendorAccessToken') || localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+    } else if (roleToken === 'admin') {
+      token = localStorage.getItem('adminAccessToken') || sessionStorage.getItem('adminAccessToken') || localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+    } else if (roleToken === 'buyer') {
+      token = localStorage.getItem('buyerAccessToken') || sessionStorage.getItem('buyerAccessToken') || localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+    }
+    
+    if (typeof config.headers?.delete === 'function') {
+      config.headers.delete('X-Role-Token');
+    } else if (config.headers) {
+      delete config.headers['X-Role-Token'];
+    }
+  }
+
+  if (!token) {
+    const path = window.location.pathname;
+    if (path.startsWith('/vendor') || path.startsWith('/seller')) {
+      token = localStorage.getItem('vendorAccessToken') || sessionStorage.getItem('vendorAccessToken') || localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+    } else if (path.startsWith('/quantri')) {
+      token = localStorage.getItem('adminAccessToken') || sessionStorage.getItem('adminAccessToken') || localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+    } else {
+      token = localStorage.getItem('buyerAccessToken') || sessionStorage.getItem('buyerAccessToken') || localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+    }
+  }
+  
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, Save, Send, AlertCircle, HelpCircle, ChevronDown } from 'lucide-react';
+import { ChevronLeft, Save, Send, AlertCircle, HelpCircle, ChevronDown, X } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ProductImageUploadV3 } from './ProductImageUploadV3';
 import { BrandSelectorField } from './BrandSelectorField';
@@ -11,7 +11,7 @@ import { cn } from '../../lib/utils';
 import { sellerApi } from '../../api/sellerAPI';
 import { marketResearchApi } from '../../api/marketResearchAPI';
 import { VENDOR_FEATURES } from '../../config/vendorFeatures';
-import { productStorage, mapBackendProductToLocal, mergeProductData } from '../../utils/productStorage';
+import { productStorage, mapBackendProductToLocal, mergeProductData, STATIC_CATEGORY_SLUG_MAP } from '../../utils/productStorage';
 import SubscriptionPlanModal, {
   getVendorPlan,
   consumeOneSlot,
@@ -86,10 +86,11 @@ export function ProductAddFormComplete({ isEdit }) {
   const [activeSection, setActiveSection] = useState('basic');
   const [activeSubSection, setActiveSubSection] = useState('images');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
   const [showWeightUnitMenu, setShowWeightUnitMenu] = useState(false);
   const [isBasicExpanded, setIsBasicExpanded] = useState(true);
   const [categoriesList, setCategoriesList] = useState([]);
-
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -101,7 +102,7 @@ export function ProductAddFormComplete({ isEdit }) {
       } catch (err) {
         console.warn('Lỗi gọi getProductCategories, thử /vendors/market-research:', err);
       }
-      
+
       try {
         const res = await marketResearchApi.getVendorMarketResearch();
         if (res && Array.isArray(res.categories)) {
@@ -131,6 +132,9 @@ export function ProductAddFormComplete({ isEdit }) {
 
   const getBackendCategoryId = (categorySlug) => {
     if (!categorySlug) return null;
+    const staticId = STATIC_CATEGORY_SLUG_MAP[categorySlug];
+    if (staticId) return staticId;
+
     const leaves = getCategoryLeaves(ELECTRONICS_CATEGORIES);
     const localLeaf = leaves.find(l => l.id === categorySlug);
     if (!localLeaf) {
@@ -142,7 +146,7 @@ export function ProductAddFormComplete({ isEdit }) {
     const backendMatch = categoriesList.find(
       c => c.name && c.name.trim().toLowerCase() === localName
     );
-    
+
     if (backendMatch) {
       return parseInt(backendMatch.id, 10);
     }
@@ -169,10 +173,102 @@ export function ProductAddFormComplete({ isEdit }) {
   const isScrollingProgrammatically = useRef(false);
   const scrollTimeoutRef = useRef(null);
 
+  const fillFormWithProduct = (product) => {
+    if (!product) return;
+    try {
+      const safeImages = (product.images || []).map(img => {
+        if (!img) return { preview: '', file: null, name: '' };
+        if (typeof img === 'string') {
+          return { preview: img, file: null, name: img.split('/').pop() || '' };
+        }
+        return {
+          preview: img.preview || img.url || img,
+          file: null,
+          name: img.name || ''
+        };
+      });
+
+      const safeVariants = (() => {
+        try {
+          if (!product.variants) return [];
+          const parsed = typeof product.variants === 'string' ? JSON.parse(product.variants) : product.variants;
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          console.error("Error parsing product.variants:", e);
+          return [];
+        }
+      })();
+
+      const safeSkus = (() => {
+        try {
+          if (!product.skus) return [];
+          const parsed = typeof product.skus === 'string' ? JSON.parse(product.skus) : product.skus;
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          console.error("Error parsing product.skus:", e);
+          return [];
+        }
+      })();
+
+      const toSafeString = (val) => (val !== undefined && val !== null) ? String(val) : '';
+
+      setFormData({
+        images: safeImages,
+        productName: product.name || '',
+        brand: product.brand || '',
+        category: product.category || '',
+        attributes: product.attributes || {},
+        description: product.description || '',
+        video: product.video || null,
+        hasVariant: !!product.hasVariant,
+        variants: safeVariants,
+        skus: safeSkus,
+        singlePrice: product.hasVariant ? '' : toSafeString(product.price),
+        singleStock: product.hasVariant ? '0' : toSafeString(product.stock),
+        singleDiscount: toSafeString(product.discount),
+        singleSku: product.hasVariant ? '' : (product.sku || ''),
+        price: product.price || '',
+        stock: product.stock || '',
+        discount: product.discount || '',
+        sku: product.sku || '',
+        dangerousGoods: product.dangerousGoods || 'no',
+        weight: toSafeString(product.weight),
+        weightUnit: product.weightUnit || 'g',
+        length: toSafeString(product.length),
+        width: toSafeString(product.width),
+        height: toSafeString(product.height),
+        shippingType: product.shippingType || 'default',
+        customPlatforms: product.customPlatforms || {
+          standard: true,
+          bulky: true,
+          express24h: true,
+          instant: true,
+        },
+        codEnabled: product.codEnabled !== undefined ? product.codEnabled : true,
+        shippingMethod: product.shippingMethod || 'standard',
+        shippingFee: product.shippingFee || '',
+      });
+    } catch (e) {
+      console.error("Lỗi điền thông tin sản phẩm vào form:", e);
+    }
+  };
+
   useEffect(() => {
     if (isEdit && sku) {
       const loadProduct = async () => {
-        let product = productStorage.getProductBySku(sku);
+        let product;
+        try {
+          product = productStorage.getProductBySku(sku);
+        } catch (storageErr) {
+          console.error("Lỗi lấy sản phẩm từ localStorage:", storageErr);
+        }
+
+        // ── IMMEDIATE MAPPING ──
+        // Điền dữ liệu từ Local Storage vào Form ngay lập tức để tránh giao diện bị trống khi tải trang
+        if (product) {
+          fillFormWithProduct(product);
+        }
+
         try {
           let categories = [];
           try {
@@ -189,62 +285,52 @@ export function ProductAddFormComplete({ isEdit }) {
             }
           }
 
-          const isNumericId = product && product.id && /^\d+$/.test(String(product.id));
-          if (product && product.id && isNumericId) {
-            const beProd = await sellerApi.getProductById(product.id);
-            if (beProd) {
-              const mapped = mapBackendProductToLocal(beProd, categories);
-              const merged = mergeProductData(product, mapped);
-              product = merged;
-              productStorage.updateProduct(sku, merged);
+          // Fallback: Nếu không tìm thấy cục bộ, gọi API lấy danh sách sản phẩm từ backend và khôi phục
+          if (!product) {
+            try {
+              const vendorInfo = JSON.parse(localStorage.getItem("vendorInfo") || "{}");
+              const vendorId = vendorInfo?.id || vendorInfo?.vendorId;
+              if (vendorId) {
+                const backendProducts = await sellerApi.getProductsByVendor(vendorId);
+                if (Array.isArray(backendProducts)) {
+                  const beProd = backendProducts.find(p => {
+                    const mapped = mapBackendProductToLocal(p, categories);
+                    return mapped.sku === sku || (p.variants && p.variants.some(v => v.sku === sku || v.sellerSku === sku));
+                  });
+                  if (beProd) {
+                    const mapped = mapBackendProductToLocal(beProd, categories);
+                    productStorage.addProduct(mapped);
+                    product = mapped;
+                    fillFormWithProduct(product);
+                  }
+                }
+              }
+            } catch (fallbackErr) {
+              console.warn("Lỗi đồng bộ fallback tìm sản phẩm từ BE:", fallbackErr);
+            }
+          } else {
+            // Nếu sản phẩm có sẵn, cập nhật dữ liệu mới nhất từ backend
+            const isNumericId = product.id && /^\d+$/.test(String(product.id));
+            if (isNumericId) {
+              try {
+                const beProd = await sellerApi.getProductById(product.id);
+                if (beProd) {
+                  const mapped = mapBackendProductToLocal(beProd, categories);
+                  const merged = mergeProductData(product, mapped);
+                  product = merged;
+                  productStorage.updateProduct(sku, merged);
+                  fillFormWithProduct(product);
+                }
+              } catch (beGetErr) {
+                console.warn("Lỗi khi tải chi tiết sản phẩm qua ID từ BE (vẫn giữ dữ liệu cục bộ):", beGetErr);
+              }
             }
           }
         } catch (err) {
           console.warn('Lỗi khi tải chi tiết sản phẩm từ BE:', err);
         }
 
-        if (product) {
-          setFormData({
-            images: (product.images || []).map(img => ({
-              preview: img.preview || img,
-              file: null,
-              name: img.name || ''
-            })),
-            productName: product.name || '',
-            brand: product.brand || '',
-            category: product.category || '',
-            attributes: product.attributes || {},
-            description: product.description || '',
-            video: product.video || null,
-            hasVariant: !!product.hasVariant,
-            variants: product.variants ? (typeof product.variants === 'string' ? JSON.parse(product.variants) : product.variants) : [],
-            skus: product.skus ? (typeof product.skus === 'string' ? JSON.parse(product.skus) : product.skus) : [],
-            singlePrice: product.hasVariant ? '' : String(product.price || ''),
-            singleStock: product.hasVariant ? '0' : String(product.stock !== undefined ? product.stock : '0'),
-            singleDiscount: product.discount ? String(product.discount) : '',
-            singleSku: product.hasVariant ? '' : (product.sku || ''),
-            price: product.price || '',
-            stock: product.stock || '',
-            discount: product.discount || '',
-            sku: product.sku || '',
-            dangerousGoods: product.dangerousGoods || 'no',
-            weight: product.weight !== undefined ? String(product.weight) : '',
-            weightUnit: product.weightUnit || 'g',
-            length: product.length !== undefined ? String(product.length) : '',
-            width: product.width !== undefined ? String(product.width) : '',
-            height: product.height !== undefined ? String(product.height) : '',
-            shippingType: product.shippingType || 'default',
-            customPlatforms: product.customPlatforms || {
-              standard: true,
-              bulky: true,
-              express24h: true,
-              instant: true,
-            },
-            codEnabled: product.codEnabled !== undefined ? product.codEnabled : true,
-            shippingMethod: product.shippingMethod || 'standard',
-            shippingFee: product.shippingFee || '',
-          });
-        } else {
+        if (!product) {
           alert('Không tìm thấy sản phẩm cần chỉnh sửa!');
           navigate('/vendor/san-pham');
         }
@@ -383,6 +469,7 @@ export function ProductAddFormComplete({ isEdit }) {
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: '' }));
+    setIsDirty(true);
   };
 
   const handleVideoUpload = (e) => {
@@ -614,12 +701,14 @@ export function ProductAddFormComplete({ isEdit }) {
       return formData.weightUnit === 'kg' ? parsed * 1000 : parsed;
     })();
 
+    const brandId = 1;
+
     return {
       categoryId,
-      brandId: 1,
+      brandId,
       name: formData.productName,
       description: formData.description,
-      status: status || 'pending',
+      status: (status || 'pending').toUpperCase(),
       condition: 'new',
       originCountry: formData.attributes.originCountry || 'Việt Nam',
       warrantyType: formData.attributes.warrantyType || 'Không bảo hành',
@@ -646,7 +735,7 @@ export function ProductAddFormComplete({ isEdit }) {
 
     const imagesToUpload = formData.images.filter(img => img.file instanceof File).map(img => img.file);
     const videoToUpload = formData.video instanceof File ? formData.video : null;
-    
+
     const filesToUpload = [...imagesToUpload];
     if (videoToUpload) {
       filesToUpload.push(videoToUpload);
@@ -668,7 +757,7 @@ export function ProductAddFormComplete({ isEdit }) {
       } catch (uploadError) {
         console.warn('Lỗi tải media lên Backend, sử dụng dự phòng local URLs:', uploadError);
         alert('Lưu ý: Không thể tải ảnh/video lên server Backend (Lỗi mạng hoặc server quá tải).\nHệ thống sẽ tạm thời dùng liên kết cục bộ để bạn tiếp tục lưu bản nháp.');
-        
+
         uploadedImages = formData.images.map(img => {
           if (img.file instanceof File) {
             try {
@@ -776,7 +865,7 @@ export function ProductAddFormComplete({ isEdit }) {
 
     const imagesToUpload = formData.images.filter(img => img.file instanceof File).map(img => img.file);
     const videoToUpload = formData.video instanceof File ? formData.video : null;
-    
+
     const filesToUpload = [...imagesToUpload];
     if (videoToUpload) {
       filesToUpload.push(videoToUpload);
@@ -798,7 +887,7 @@ export function ProductAddFormComplete({ isEdit }) {
       } catch (uploadError) {
         console.warn('Lỗi tải media lên Backend, sử dụng dự phòng local URLs:', uploadError);
         alert('Lưu ý: Không thể tải ảnh/video lên server Backend (Lỗi mạng hoặc server quá tải).\nHệ thống sẽ tạm thời dùng liên kết cục bộ để bạn tiếp tục gửi xét duyệt sản phẩm.');
-        
+
         uploadedImages = formData.images.map(img => {
           if (img.file instanceof File) {
             try {
@@ -1137,7 +1226,13 @@ export function ProductAddFormComplete({ isEdit }) {
         <div className="vendor-topbar sticky top-0 px-8 py-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/vendor/san-pham')}
+              onClick={() => {
+                if (isDirty) {
+                  setShowExitConfirmModal(true);
+                } else {
+                  navigate('/vendor/san-pham');
+                }
+              }}
               className="vendor-icon-button"
               title="Quay lại"
             >
@@ -1252,6 +1347,7 @@ export function ProductAddFormComplete({ isEdit }) {
                     attributes: {}
                   }));
                   setErrors((prev) => ({ ...prev, category: '', attributes: {} }));
+                  setIsDirty(true);
                 }}
                 error={errors.category}
               />
@@ -1431,6 +1527,7 @@ export function ProductAddFormComplete({ isEdit }) {
                   ...prev,
                   ...updatedFields,
                 }));
+                setIsDirty(true);
                 // Clear errors related to sales fields
                 setErrors((prev) => {
                   const copy = { ...prev };
@@ -1695,6 +1792,57 @@ export function ProductAddFormComplete({ isEdit }) {
           <div className="h-20" />
         </div>
       </main>
+
+      {/* Exit Confirmation Modal */}
+      {showExitConfirmModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 p-6 shadow-2xl animate-in fade-in zoom-in duration-200 text-slate-800">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-base font-extrabold text-[#12372d] flex items-center gap-2">
+                <span className="w-1.5 h-4 rounded-sm bg-[#ea580c] flex-shrink-0" />
+                Xác nhận rời khỏi trang
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowExitConfirmModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 flex gap-3 text-sm text-orange-800 leading-relaxed font-medium">
+                <AlertCircle className="h-5 w-5 shrink-0 text-[#ea580c] mt-0.5" />
+                <div>
+                  <p className="font-bold text-orange-900 mb-1">Thay đổi chưa được lưu:</p>
+                  Bạn có một số thay đổi chưa lưu. Nếu rời đi bây giờ, các chỉnh sửa này sẽ bị mất hoàn toàn.
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 mt-6">
+              <button
+                type="button"
+                className="vendor-secondary-button flex-1 justify-center font-bold"
+                onClick={() => setShowExitConfirmModal(false)}
+              >
+                Tiếp tục chỉnh sửa
+              </button>
+              <button
+                type="button"
+                className="vendor-primary-button flex-1 justify-center bg-[#ea580c] hover:bg-orange-700 text-white shadow-md shadow-orange-600/10 font-bold border-none"
+                onClick={() => {
+                  setShowExitConfirmModal(false);
+                  navigate('/vendor/san-pham');
+                }}
+              >
+                Rời khỏi trang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

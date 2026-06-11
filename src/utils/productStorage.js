@@ -1,6 +1,64 @@
 import { ELECTRONICS_CATEGORIES } from '../components/Seller/CategorySelectorField';
 import { getAttributeSchema } from './attributeSchemas';
 
+export const TECH_BRANDS = [
+  'Apple', 'Samsung', 'Sony', 'LG', 'Xiaomi', 'OPPO', 'Vivo', 'realme',
+  'Huawei', 'Honor', 'OnePlus', 'Google', 'Motorola', 'Nokia', 'ASUS',
+  'Acer', 'Dell', 'HP', 'Lenovo', 'MSI', 'Razer', 'GIGABYTE', 'ROG (ASUS)',
+  'Logitech', 'JBL', 'Bose', 'Sennheiser', 'Audio-Technica', 'AKG', 'Jabra',
+  'Anker', 'Baseus', 'Ugreen', 'Belkin', 'SanDisk', 'Western Digital',
+  'Seagate', 'Kingston', 'Crucial', 'Corsair', 'Cooler Master', 'Noctua',
+  'NZXT', 'Thermaltake', 'be quiet!', 'Seasonic', 'Dyson', 'Philips',
+  'Panasonic', 'Toshiba', 'D-Link', 'TP-Link', 'Netgear', 'Ubiquiti',
+  'Intel', 'AMD', 'NVIDIA', 'Không có thương hiệu',
+];
+
+export const STATIC_CATEGORY_ID_MAP = {
+  12: 'op-lung-bao-da',
+  13: 'sac-cap-dt',
+  14: 'kinh-cuong-luc',
+  15: 'pin-du-phong',
+  16: 'tai-nghe-co-day',
+  17: 'de-sac-khong-day',
+  18: 'may-anh-compact',
+  19: 'may-anh-mirrorless',
+  20: 'may-anh-dslr',
+  21: 'camera-hanh-dong',
+  22: 'drone',
+  23: 'phu-kien-camera',
+  24: 'loa-bluetooth',
+  25: 'loa-de-ban',
+  26: 'tai-nghe-bluetooth',
+  27: 'soundbar',
+  28: 'micro-thu-am',
+  29: 'console-tro-choi',
+  30: 'console-cam-tay',
+  31: 'tro-choi-dien-tu',
+  32: 'phu-kien-console',
+  33: 'dong-ho-thong-minh',
+  34: 'vong-suc-khoe',
+  35: 'smarthome',
+  36: 'den-thong-minh',
+  37: 'dien-thoai-thong-minh',
+  38: 'may-tinh-bang',
+  39: 'dien-thoai-pho-thong',
+  40: 'may-tinh-de-ban',
+  41: 'laptop',
+  42: 'may-tinh-bang-pc',
+  43: 'ban-phim',
+  44: 'chuot-pc',
+  45: 'man-hinh',
+  46: 'tai-nghe-gaming',
+  47: 'webcam',
+  48: 'loa-may-tinh',
+  49: 'o-cung-hdd',
+  50: 'o-cung-ssd'
+};
+
+export const STATIC_CATEGORY_SLUG_MAP = Object.entries(STATIC_CATEGORY_ID_MAP).reduce((acc, [id, slug]) => {
+  acc[slug] = parseInt(id, 10);
+  return acc;
+}, {});
 
 const STORAGE_KEY = 'sellerProducts';
 
@@ -314,6 +372,9 @@ const getCategoryLeaves = (nodes) => {
 export function buildBackendPayloadFromLocal(product, status, categoriesList = []) {
   const getBackendCategoryId = (categorySlug) => {
     if (!categorySlug) return null;
+    const staticId = STATIC_CATEGORY_SLUG_MAP[categorySlug];
+    if (staticId) return staticId;
+
     const leaves = getCategoryLeaves(ELECTRONICS_CATEGORIES);
     const localLeaf = leaves.find(l => l.id === categorySlug);
     if (!localLeaf) {
@@ -427,12 +488,14 @@ export function buildBackendPayloadFromLocal(product, status, categoriesList = [
     return product.weightUnit === 'kg' ? parsed * 1000 : parsed;
   })();
 
+  const brandId = 1;
+
   return {
     categoryId,
-    brandId: 1,
+    brandId,
     name: product.name,
     description: product.description,
-    status: status || 'pending',
+    status: (status || 'pending').toUpperCase(),
     condition: 'new',
     originCountry: product.attributes?.originCountry || 'Việt Nam',
     warrantyType: product.attributes?.warrantyType || 'Không bảo hành',
@@ -462,20 +525,34 @@ export function mapBackendProductToLocal(beProd, categoriesList = []) {
 
   const categoryId = beProd.categoryId || beProd.category_id;
   let categorySlug = '';
+  const leaves = getCategoryLeaves(ELECTRONICS_CATEGORIES);
   const beCategory = categoriesList.find(c => parseInt(c.id, 10) === categoryId);
   if (beCategory) {
-    const leaves = getCategoryLeaves(ELECTRONICS_CATEGORIES);
     const leafMatch = leaves.find(l => l.name.trim().toLowerCase() === beCategory.name.trim().toLowerCase());
     if (leafMatch) {
       categorySlug = leafMatch.id;
     } else {
       categorySlug = beCategory.id ? beCategory.id.toString() : '';
     }
-  } else {
-    categorySlug = categoryId ? categoryId.toString() : '';
+  }
+
+  if (!categorySlug && beProd.categoryName) {
+    const leafMatch = leaves.find(l => l.name.trim().toLowerCase() === beProd.categoryName.trim().toLowerCase());
+    if (leafMatch) {
+      categorySlug = leafMatch.id;
+    }
+  }
+
+  if (!categorySlug && categoryId) {
+    categorySlug = STATIC_CATEGORY_ID_MAP[categoryId] || categoryId.toString();
   }
 
   const brandId = beProd.brandId || beProd.brand_id;
+  let brandName = '';
+  if (brandId && !isNaN(brandId)) {
+    const idx = parseInt(brandId, 10) - 1;
+    brandName = TECH_BRANDS[idx] || 'Apple';
+  }
 
   const originCountry = beProd.originCountry || beProd.origin_country || '';
   const warrantyType = beProd.warrantyType || beProd.warranty_type || '';
@@ -649,7 +726,7 @@ export function mapBackendProductToLocal(beProd, categoriesList = []) {
   return {
     id: beProd.id,
     name: beProd.name || '',
-    brand: brandId ? String(brandId) : '',
+    brand: brandName || (beProd.brand ? String(beProd.brand) : ''),
     category: categorySlug,
     description: beProd.description || '',
     price,
@@ -697,6 +774,14 @@ export function mergeProductData(local, remote) {
     category = remote.category;
   }
 
+  // Determine brand
+  let brand = local.brand || remote.brand || '';
+  if (local.brand && local.brand !== 'Không có thương hiệu') {
+    brand = local.brand;
+  } else if (remote.brand) {
+    brand = remote.brand;
+  }
+
   // Merge attributes
   const attributes = { ...(local.attributes || {}) };
   if (remote.attributes && Object.keys(remote.attributes).length > 0) {
@@ -711,13 +796,12 @@ export function mergeProductData(local, remote) {
   let images = local.images || [];
   if (Array.isArray(remote.images) && remote.images.length > 0) {
     images = remote.images;
+  } else if (local.images && local.images.length > 0) {
+    images = local.images;
   }
 
   // Merge video
-  let video = local.video;
-  if (remote.video) {
-    video = remote.video;
-  }
+  let video = local.video || remote.video;
 
   // Merge variants
   let variants = local.variants || [];
@@ -728,7 +812,27 @@ export function mergeProductData(local, remote) {
   // Merge skus
   let skus = local.skus || [];
   if (Array.isArray(remote.skus) && remote.skus.length > 0) {
-    skus = remote.skus;
+    skus = remote.skus.map(rSku => {
+      const lSku = (local.skus || []).find(
+        ls => ls.combinationName === rSku.combinationName || 
+              (ls.sku && ls.sku === rSku.sku) || 
+              (ls.sellerSku && ls.sellerSku === rSku.sellerSku)
+      );
+      if (lSku) {
+        return {
+          ...lSku,
+          ...rSku,
+          price: rSku.price && parseFloat(rSku.price) > 0 ? rSku.price : (lSku.price || ''),
+          stock: rSku.stock && parseInt(rSku.stock, 10) >= 0 ? rSku.stock : (lSku.stock || '0'),
+          discount: rSku.discount && parseFloat(rSku.discount) > 0 ? rSku.discount : (lSku.discount || ''),
+          weight: rSku.weight && parseFloat(rSku.weight) > 0 ? rSku.weight : (lSku.weight || ''),
+          imageUrl: rSku.imageUrl || lSku.imageUrl || '',
+          key: rSku.key,
+          id: rSku.id
+        };
+      }
+      return rSku;
+    });
   }
 
   // Merge description
@@ -737,9 +841,61 @@ export function mergeProductData(local, remote) {
     description = remote.description;
   }
 
+  // Merge physical details
+  let weight = local.weight || '';
+  if (remote.weight && parseFloat(remote.weight) > 0) {
+    weight = remote.weight;
+  }
+  let weightUnit = local.weightUnit || remote.weightUnit || 'g';
+
+  let length = local.length || '';
+  if (remote.length && parseFloat(remote.length) > 0) {
+    length = remote.length;
+  }
+
+  let width = local.width || '';
+  if (remote.width && parseFloat(remote.width) > 0) {
+    width = remote.width;
+  }
+
+  let height = local.height || '';
+  if (remote.height && parseFloat(remote.height) > 0) {
+    height = remote.height;
+  }
+
+  // Single variant fields
+  let price = local.price;
+  if (remote.price && parseFloat(remote.price) > 0) {
+    price = remote.price;
+  }
+  let stock = local.stock;
+  if (remote.stock !== undefined && remote.stock !== null) {
+    stock = remote.stock;
+  }
+  let discount = local.discount;
+  if (remote.discount && parseFloat(remote.discount) > 0) {
+    discount = remote.discount;
+  }
+  let sku = local.sku || remote.sku || '';
+
+  let singlePrice = local.singlePrice || '';
+  if (price && parseFloat(price) > 0) {
+    singlePrice = String(price);
+  }
+  let singleStock = local.singleStock || '0';
+  if (stock !== undefined && stock !== null) {
+    singleStock = String(stock);
+  }
+  let singleDiscount = local.singleDiscount || '';
+  if (discount && parseFloat(discount) > 0) {
+    singleDiscount = String(discount);
+  }
+  let singleSku = local.singleSku || sku || '';
+
   return {
     ...local,
     ...remote,
+    brand,
     category,
     attributes,
     images,
@@ -747,7 +903,19 @@ export function mergeProductData(local, remote) {
     variants,
     skus,
     description,
-    // Keep local fields that backend doesn't support or defaults to default value
+    weight,
+    weightUnit,
+    length,
+    width,
+    height,
+    price,
+    stock,
+    discount,
+    sku,
+    singlePrice,
+    singleStock,
+    singleDiscount,
+    singleSku,
     dangerousGoods: remote.dangerousGoods === 'no' && local.dangerousGoods ? local.dangerousGoods : remote.dangerousGoods,
     shippingType: remote.shippingType === 'default' && local.shippingType ? local.shippingType : remote.shippingType,
     customPlatforms: remote.customPlatforms || local.customPlatforms,

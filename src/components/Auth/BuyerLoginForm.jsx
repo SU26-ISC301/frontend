@@ -61,6 +61,8 @@ export function BuyerLoginForm({ onSuccess, onForgotPassword }) {
       // Lưu token vào localStorage để dùng cho các request sau
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('buyerAccessToken', accessToken);
+      localStorage.setItem('buyerRefreshToken', refreshToken);
       if (rememberLogin) {
         saveRememberedLogin('buyer', form.identifier, form.password);
       } else {
