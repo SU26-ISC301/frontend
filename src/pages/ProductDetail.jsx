@@ -25,6 +25,7 @@ import { buyerMessageApi } from '../api/buyerMessageAPI';
 import { marketResearchApi } from '../api/marketResearchAPI';
 import { wishlistApi } from '../api/wishlistAPI';
 import { recordViewedCategory } from '../utils/viewedCategories';
+import { sellerApi } from '../api/sellerAPI';
 import { cn } from '../lib/utils';
 
 const MESSAGE_DRAFT_PREFIX = 'productMessageDraft:';
@@ -107,6 +108,7 @@ function mapProductCard(product) {
     image: getProductImage(product),
     badge: product.vendorName || product.categoryName || 'ShopVN',
     isPremiumHighlighted: Boolean(product.premiumHighlighted),
+    vendorId: product.vendorId || product.vendor_id || null,
   };
 }
 
@@ -340,6 +342,14 @@ export default function ProductDetail() {
       image: getProductImage(product),
     });
   }, [product]);
+
+  useEffect(() => {
+    if (!product?.id || !product?.vendorId) return;
+    
+    // Ghi nhận lượt truy cập vào bài đăng (product post)
+    sellerApi.recordVisit(product.vendorId, product.id)
+      .catch((err) => console.warn('Lỗi ghi nhận lượt truy cập sản phẩm:', err));
+  }, [product?.id, product?.vendorId]);
 
   useEffect(() => {
     if (!id || !loggedIn) {
@@ -626,14 +636,17 @@ export default function ProductDetail() {
 
             <Card className="border-white/80 bg-white/95">
               <CardContent className="p-5">
-                <div className="flex items-center gap-3">
+                <div 
+                  className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-opacity group/shop"
+                  onClick={() => window.open(`/shop/${product.vendorId}`, '_blank', 'noopener,noreferrer')}
+                >
                   <img
                     src={product.vendorLogoUrl || '/logo192.png'}
                     alt={product.vendorName}
-                    className="h-14 w-14 rounded-2xl border border-white object-cover shadow-sm"
+                    className="h-14 w-14 rounded-2xl border border-white object-cover shadow-sm group-hover/shop:scale-105 transition-transform"
                   />
                   <div className="min-w-0 flex-1">
-                    <h2 className="truncate text-base font-extrabold text-slate-950">{product.vendorName || 'Shop'}</h2>
+                    <h2 className="truncate text-base font-extrabold text-slate-950 group-hover/shop:text-[#ff5a2f] transition-colors">{product.vendorName || 'Shop'}</h2>
                     <p className="mt-1 text-sm font-semibold text-slate-500">{product.vendorDescription || product.vendorCategory || 'Shop đã được xác minh'}</p>
                   </div>
                   <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-700">

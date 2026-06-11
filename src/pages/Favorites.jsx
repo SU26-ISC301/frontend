@@ -44,6 +44,7 @@ function mapProductCard(product) {
     badge: product.vendorName || product.categoryName || 'ShopVN',
     isPremiumHighlighted: Boolean(product.premiumHighlighted),
     initialFavorite: true,
+    vendorId: product.vendorId || product.vendor_id || null,
   };
 }
 

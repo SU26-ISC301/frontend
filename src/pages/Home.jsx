@@ -55,6 +55,7 @@ function mapProductCard(product) {
     categoryId: product.categoryId || product.category_id || null,
     categoryName: product.categoryName || '',
     isPremiumHighlighted: Boolean(product.premiumHighlighted),
+    vendorId: product.vendorId || product.vendor_id || null,
   };
 }
 

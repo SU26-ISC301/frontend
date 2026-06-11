@@ -999,7 +999,41 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
     return `${d}/${m}/${y}`;
   };
 
+  const [statsData, setStatsData] = useState(null);
+
+  const vendorInfo = getVendorInfo();
+  const vendorId = vendorInfo?.id || vendorInfo?.vendorId;
+
+  useEffect(() => {
+    if (!vendorId) return;
+    let mounted = true;
+
+    const fetchStats = async () => {
+      try {
+        const queryRange = isCustomMode ? null : (planId === 'free' ? 7 : range);
+        const queryStart = isCustomMode ? customStartDate : null;
+        const queryEnd = isCustomMode ? customEndDate : null;
+        const data = await sellerApi.getVisitsStats(vendorId, queryRange, queryStart, queryEnd);
+        if (mounted) {
+          setStatsData(data);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải thống kê lượt truy cập:", err);
+      }
+    };
+
+    fetchStats();
+    return () => {
+      mounted = false;
+    };
+  }, [vendorId, range, customStartDate, customEndDate, isCustomMode, planId]);
+
+  const isRealData = Boolean(statsData);
+
   const trend = useMemo(() => {
+    if (isRealData && statsData?.trend) {
+      return statsData.trend;
+    }
     // If premium and in custom date mode
     if (planId === 'premium' && isCustomMode) {
       if (customStartDate && customEndDate) {
@@ -1029,15 +1063,18 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
     
     // Premium can use quick filters or custom range
     return salesTrend.slice(-range);
-  }, [planId, isCustomMode, customStartDate, customEndDate, range]);
+  }, [planId, isCustomMode, customStartDate, customEndDate, range, isRealData, statsData]);
 
   const latest = trend.at(-1) || { revenue: 0, orders: 0 };
   const previous = trend.at(-2) || { revenue: 1, orders: 0 };
   const change = previous.revenue > 0 ? ((latest.revenue - previous.revenue) / previous.revenue) * 100 : 0;
+  
   const stats = [
     {
       label: "Lượt truy cập hôm nay",
-      value: new Intl.NumberFormat("vi-VN").format(Math.round(latest.revenue * 240)),
+      value: new Intl.NumberFormat("vi-VN").format(
+        isRealData && statsData ? statsData.todayVisits : Math.round(latest.revenue * 240)
+      ),
       change: `${change >= 0 ? "+" : ""}${change.toFixed(1).replace(".", ",")}%`,
       note: "so với hôm qua",
       icon: Eye,
@@ -1046,7 +1083,9 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
     },
     {
       label: "Tổng lượt truy cập",
-      value: new Intl.NumberFormat("vi-VN").format(Math.round(trend.reduce((sum, item) => sum + item.revenue * 240, 0))),
+      value: new Intl.NumberFormat("vi-VN").format(
+        isRealData && statsData ? statsData.totalVisits : Math.round(trend.reduce((sum, item) => sum + item.revenue * 240, 0))
+      ),
       change: "+14,2%",
       note: "so với tuần trước",
       icon: Users,
@@ -1055,7 +1094,9 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
     },
     {
       label: "Tổng tin nhắn",
-      value: new Intl.NumberFormat("vi-VN").format(Math.round(latest.revenue * 15)),
+      value: new Intl.NumberFormat("vi-VN").format(
+        isRealData && statsData ? Math.round(statsData.todayVisits * 0.08) : Math.round(latest.revenue * 15)
+      ),
       change: "+5,3%",
       note: "so với tuần trước",
       icon: MessageSquareText,
@@ -1087,10 +1128,11 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
   };
 
   const exportRevenue = () => {
+    const factor = isRealData ? 1 : 240;
     downloadCsv(
       "seller-visits.csv",
       ["Ngày", "Lượt truy cập", "Số đơn"],
-      trend.map((item) => [item.label, Math.round(item.revenue * 240), item.orders]),
+      trend.map((item) => [item.label, Math.round(item.revenue * factor), item.orders]),
     );
     onToast({
       title: "Đã tải báo cáo",
@@ -1275,26 +1317,50 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
         </Panel>
         <Panel className="p-5">
           <PanelHeader
-            title="Hiệu suất cửa hàng"
-            subtitle="Mục tiêu vận hành trong tuần"
+            title="Bài đăng thịnh hành"
+            subtitle="Top 3 sản phẩm có lượt truy cập cao nhất"
           />
           <div className="mt-5 space-y-4">
-            <ProgressItem
-              label="Phản hồi chat dưới 5 phút"
-              value="94%"
-              percent={94}
-            />
-            <ProgressItem
-              label="Giao hàng đúng hạn"
-              value="96,2%"
-              percent={96.2}
-            />
-            <ProgressItem label="Tỷ lệ hủy đơn" value="1,4%" percent={82} />
-            <ProgressItem
-              label="Chất lượng nội dung"
-              value="89/100"
-              percent={89}
-            />
+            {statsData?.topProducts && statsData.topProducts.length > 0 ? (
+              statsData.topProducts.map((prod, idx) => (
+                <div
+                  key={prod.id || idx}
+                  onClick={() => prod.id && window.open(`/products/${prod.id}`, '_blank', 'noopener,noreferrer')}
+                  className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-stone-50 cursor-pointer transition-colors border border-stone-100 bg-white"
+                >
+                  <span className={cn(
+                    "flex h-6 w-6 items-center justify-center rounded-full text-xs font-black text-white shrink-0 shadow-sm",
+                    idx === 0 ? "bg-amber-500" : idx === 1 ? "bg-slate-400" : "bg-orange-400"
+                  )}>
+                    {idx + 1}
+                  </span>
+                  <div className="h-12 w-12 rounded-xl bg-stone-100 overflow-hidden border border-stone-200/60 shrink-0">
+                    {prod.imageUrl ? (
+                      <img src={prod.imageUrl} alt={prod.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-stone-400">
+                        No image
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-xs font-extrabold text-stone-900 group-hover:text-orange-600 transition-colors">
+                      {prod.name}
+                    </p>
+                    <p className="mt-1 text-[11px] font-black text-orange-600">
+                      {prod.price > 0 ? `₫${new Intl.NumberFormat('vi-VN').format(prod.price)}` : 'Liên hệ'}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-extrabold text-[#ff5a2f] ring-1 ring-orange-100">
+                    {new Intl.NumberFormat('vi-VN').format(prod.visits)} lượt xem
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="py-8 text-center text-xs font-bold text-stone-400">
+                Chưa có dữ liệu bài đăng thịnh hành.
+              </div>
+            )}
           </div>
         </Panel>
       </section>
@@ -1332,7 +1398,7 @@ function VendorRevenueChart({ data }) {
   const [hoverIndex, setHoverIndex] = useState(null);
   const width = 760;
   const height = 230;
-  const visitsFactor = 240;
+  const visitsFactor = (data && data.length > 0 && (data[0].visits !== undefined || data[0].visits === 0)) ? 1 : 240;
 
   const chartData = data.map((item) => ({
     ...item,
@@ -1463,23 +1529,6 @@ function VendorRevenueChart({ data }) {
             <span key={`${data.length}-${index}`}>{data[index].label}</span>
           ))}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function ProgressItem({ label, value, percent }) {
-  return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-3 text-xs">
-        <p className="font-bold text-stone-500">{label}</p>
-        <p className="font-extrabold text-stone-800">{value}</p>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-stone-100">
-        <div
-          className="vendor-progress h-full rounded-full bg-teal-600"
-          style={{ width: `${percent}%` }}
-        />
       </div>
     </div>
   );

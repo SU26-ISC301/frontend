@@ -10,6 +10,7 @@ import VendorSubscriptionCheckout from "./pages/VendorSubscriptionCheckout";
 import { ThemeToggle } from "./components/ThemeToggle";
 import ProductDetail from "./pages/ProductDetail";
 import Favorites from "./pages/Favorites";
+import ShopDetail from "./pages/ShopDetail";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/products/:id" element={<ProductDetail />} />
         <Route path="/favorites" element={<Favorites />} />
+        <Route path="/shop/:id" element={<ShopDetail />} />
 
         {/* Nhóm Route của Seller */}
         <Route path="/seller" element={<SellerCenter />} />
