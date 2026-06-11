@@ -391,7 +391,7 @@ export default function AdminDashboard() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const fetchVendors = async () => {
+  const fetchVendors = useCallback(async () => {
     try {
       const response = await adminApi.getAllVendors();
       const backendVendors = response.data?.data || response.data || [];
@@ -416,7 +416,22 @@ export default function AdminDashboard() {
     } catch (err) {
       console.warn('Lỗi khi tải danh sách vendor từ Backend:', err);
     }
-  };
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('adminSession');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('adminAccessToken');
+    localStorage.removeItem('adminRefreshToken');
+    sessionStorage.removeItem('adminSession');
+    sessionStorage.removeItem('accessToken');
+    sessionStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('adminAccessToken');
+    sessionStorage.removeItem('adminRefreshToken');
+    setSession(null);
+    navigate('/admin/tong-quan');
+  }, [navigate]);
 
   useEffect(() => {
     if (session) {
@@ -433,7 +448,7 @@ export default function AdminDashboard() {
           handleLogout();
         });
     }
-  }, [session]);
+  }, [session, handleLogout, fetchVendors]);
 
   const pendingCount = vendors.filter((vendor) => !['Đã duyệt', 'Từ chối'].includes(vendor.status)).length;
 
@@ -447,20 +462,6 @@ export default function AdminDashboard() {
     const storage = remember ? localStorage : sessionStorage;
     storage.setItem('adminSession', JSON.stringify(nextSession));
     setSession(nextSession);
-  }
-  function handleLogout() {
-    localStorage.removeItem('adminSession');
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('adminAccessToken');
-    localStorage.removeItem('adminRefreshToken');
-    sessionStorage.removeItem('adminSession');
-    sessionStorage.removeItem('accessToken');
-    sessionStorage.removeItem('refreshToken');
-    sessionStorage.removeItem('adminAccessToken');
-    sessionStorage.removeItem('adminRefreshToken');
-    setSession(null);
-    navigate('/admin/tong-quan');
   }
 
   const handleNavigate = (id) => {
