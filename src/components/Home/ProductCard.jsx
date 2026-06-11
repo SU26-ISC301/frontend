@@ -1,9 +1,15 @@
-import { Heart, ShoppingCart, Star } from 'lucide-react';
+import { Crown, Heart, ShoppingCart, Star } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
+import { cn } from '../../lib/utils';
 
-export function ProductCard({ index, title, price, oldPrice, sold, rating, image, badge }) {
+export function ProductCard({ index, title, price, oldPrice, sold, rating, image, badge, isPremiumHighlighted }) {
   return (
-    <Card className="product-card group overflow-hidden rounded-[1rem] border-white/80 bg-white">
+    <Card className={cn(
+      'product-card group overflow-hidden rounded-[1rem] bg-white',
+      isPremiumHighlighted
+        ? 'border-amber-300 ring-2 ring-amber-300/45 shadow-lg shadow-amber-500/15'
+        : 'border-white/80'
+    )}>
       <div className="relative aspect-square overflow-hidden bg-slate-100">
         {image ? (
           <img
@@ -28,6 +34,12 @@ export function ProductCard({ index, title, price, oldPrice, sold, rating, image
         <span className="pill absolute left-2 top-2 bg-white/92 text-[#ff4d2e] shadow-sm backdrop-blur">
           {badge}
         </span>
+        {isPremiumHighlighted && (
+          <span className="absolute left-2 bottom-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white shadow-lg shadow-orange-500/25">
+            <Crown className="h-3 w-3" />
+            Tin nổi bật
+          </span>
+        )}
         <button
           type="button"
           className="absolute bottom-3 left-3 right-3 flex translate-y-3 items-center justify-center gap-2 rounded-full bg-[#13252f] px-3 py-2 text-xs font-bold text-white opacity-0 shadow-xl shadow-black/20 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
@@ -37,6 +49,12 @@ export function ProductCard({ index, title, price, oldPrice, sold, rating, image
         </button>
       </div>
       <CardContent className="p-3.5">
+        {isPremiumHighlighted && (
+          <p className="mb-1 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-extrabold text-amber-700 ring-1 ring-amber-100">
+            <Crown className="h-3 w-3" />
+            Premium
+          </p>
+        )}
         <h3 className="line-clamp-2 min-h-[2.6rem] text-sm font-semibold leading-snug text-[#16202a]">
           {title}
         </h3>

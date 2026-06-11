@@ -49,6 +49,7 @@ function mapProductCard(product) {
     rating: product.avgRating ? Number(product.avgRating).toFixed(1) : '0.0',
     image: images[0]?.mediaUrl || variants.find((variant) => variant.imageUrl)?.imageUrl || '',
     badge: product.vendorName || product.categoryName || 'ShopVN',
+    isPremiumHighlighted: Boolean(product.premiumHighlighted),
   };
 }
 
@@ -62,7 +63,9 @@ export default function Home() {
     productApi.getPublicProducts()
       .then((data) => {
         if (!isMounted) return;
-        setProducts(Array.isArray(data) ? data.map(mapProductCard) : []);
+        const mapped = Array.isArray(data) ? data.map(mapProductCard) : [];
+        mapped.sort((a, b) => Number(b.isPremiumHighlighted) - Number(a.isPremiumHighlighted));
+        setProducts(mapped);
       })
       .catch((error) => {
         console.warn('Không thể tải sản phẩm thật:', error);
