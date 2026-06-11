@@ -932,7 +932,7 @@ function StatCard({ stat, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="vendor-panel vendor-stat-card group w-full p-5 text-left"
+      className="vendor-panel vendor-stat-card group w-full p-5 text-left relative overflow-hidden"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -940,7 +940,13 @@ function StatCard({ stat, onClick }) {
             {stat.label}
           </p>
           <p className="mt-3 text-2xl font-extrabold tracking-tight text-stone-950">
-            {stat.value}
+            {stat.isLocked ? (
+              <span className="flex items-center gap-1 text-stone-400 text-sm font-bold">
+                <Lock className="h-4 w-4" /> Khóa
+              </span>
+            ) : (
+              stat.value
+            )}
           </p>
         </div>
         <span className={cn("vendor-stat-icon", stat.tone)}>
@@ -948,14 +954,20 @@ function StatCard({ stat, onClick }) {
         </span>
       </div>
       <p className="mt-4 text-xs font-semibold text-stone-400">
-        <span className="mr-1.5 font-extrabold text-teal-700">
-          {stat.change}
-        </span>
-        {stat.note}
+        {stat.isLocked ? (
+          <span className="text-stone-400 font-bold">Yêu cầu gói Plus/Premium</span>
+        ) : (
+          <>
+            <span className="mr-1.5 font-extrabold text-teal-700">
+              {stat.change}
+            </span>
+            {stat.note}
+          </>
+        )}
       </p>
       {onClick && (
         <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-extrabold text-orange-600 opacity-0 transition-opacity group-hover:opacity-100">
-          Xem chi tiết <ArrowUpRight className="h-3 w-3" />
+          {stat.isLocked ? "Nâng cấp ngay" : "Xem chi tiết"} <ArrowUpRight className="h-3 w-3" />
         </span>
       )}
     </button>
@@ -1080,6 +1092,7 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
       icon: Eye,
       tone: "is-orange",
       target: "trangchu",
+      isLocked: planId === 'free',
     },
     {
       label: "Tổng lượt truy cập",
@@ -1091,6 +1104,7 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
       icon: Users,
       tone: "is-teal",
       target: "trangchu",
+      isLocked: planId === 'free',
     },
     {
       label: "Tổng tin nhắn",
@@ -1102,6 +1116,7 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
       icon: MessageSquareText,
       tone: "is-green",
       target: "tin-nhan",
+      isLocked: false,
     },
     {
       label: "Đánh giá shop",
@@ -1111,6 +1126,7 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
       icon: Star,
       tone: "is-yellow",
       target: "cai-dat-shop",
+      isLocked: false,
     },
   ];
 
@@ -1149,12 +1165,22 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
           <StatCard
             key={stat.label}
             stat={stat}
-            onClick={() => navigateTo(stat.target)}
+            onClick={() => {
+              if (stat.isLocked) {
+                onToast({
+                  title: "Tính năng bị giới hạn",
+                  message: `Thống kê "${stat.label}" chỉ dành cho các tài khoản đã nâng cấp lên gói Plus hoặc Premium.`,
+                });
+                onOpenPlanModal();
+                return;
+              }
+              navigateTo(stat.target);
+            }}
           />
         ))}
       </section>
       <section className="grid gap-5 grid-cols-1">
-        <Panel className="min-w-0 p-5">
+        <Panel className="min-w-0 p-5 relative">
           <PanelHeader
             title="Lượt truy cập vào shop"
             subtitle={
@@ -1294,6 +1320,24 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
               <Download className="h-4 w-4" />
             </button>
           </PanelHeader>
+          {planId === 'free' && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[3px] rounded-3xl p-6 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-500 shadow-sm border border-orange-100 mb-3">
+                <Lock className="h-6 w-6" />
+              </div>
+              <h3 className="text-sm font-extrabold text-stone-900">Biểu đồ lượt truy cập bị giới hạn</h3>
+              <p className="mt-1 max-w-xs text-xs font-semibold text-stone-500 leading-normal">
+                Xem biểu đồ xu hướng lượt truy cập hàng ngày của cửa hàng khi nâng cấp lên gói Plus hoặc Premium.
+              </p>
+              <button
+                type="button"
+                onClick={onOpenPlanModal}
+                className="mt-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-extrabold rounded-full shadow-md shadow-orange-500/15 transition-all"
+              >
+                Nâng cấp ngay
+              </button>
+            </div>
+          )}
           <VendorRevenueChart data={trend} />
         </Panel>
       </section>
@@ -1315,11 +1359,29 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
           </div>
           <OrderTable rows={orders.slice(0, 4)} compact />
         </Panel>
-        <Panel className="p-5">
+        <Panel className="p-5 relative">
           <PanelHeader
             title="Bài đăng thịnh hành"
             subtitle="Top 3 sản phẩm có lượt truy cập cao nhất"
           />
+          {planId !== 'premium' && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[3px] rounded-3xl p-5 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-500 shadow-sm border border-orange-100 mb-3">
+                <Lock className="h-6 w-6" />
+              </div>
+              <h3 className="text-sm font-extrabold text-stone-900">Bài đăng thịnh hành bị giới hạn</h3>
+              <p className="mt-1 max-w-xs text-xs font-semibold text-stone-500 leading-normal">
+                Thống kê Top 3 sản phẩm thịnh hành nhất chỉ áp dụng cho gói Premium.
+              </p>
+              <button
+                type="button"
+                onClick={onOpenPlanModal}
+                className="mt-3 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-extrabold rounded-full shadow-md shadow-orange-500/15 transition-all"
+              >
+                Nâng cấp Premium
+              </button>
+            </div>
+          )}
           <div className="mt-5 space-y-4">
             {statsData?.topProducts && statsData.topProducts.length > 0 ? (
               statsData.topProducts.map((prod, idx) => (
