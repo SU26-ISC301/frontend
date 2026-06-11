@@ -340,14 +340,14 @@ export const productStorage = {
           return { valid: false, error: `Biến thể "${sku.combinationName || i + 1}" chưa nhập số lượng tồn kho.` };
         }
         if (!sku.weight || isNaN(parseFloat(sku.weight)) || parseFloat(sku.weight) <= 0) {
-          return { valid: false, error: `Biến thể "${sku.combinationName || i + 1}" chưa cấu hình trọng lượng vận chuyển.` };
+          sku.weight = '500';
         }
       }
     }
 
     // Shipping weight validation
     if (!product.weight || isNaN(parseFloat(product.weight)) || parseFloat(product.weight) <= 0) {
-      return { valid: false, error: 'Trọng lượng vận chuyển kiện hàng không hợp lệ (phải lớn hơn 0).' };
+      product.weight = '500';
     }
 
     return { valid: true };
