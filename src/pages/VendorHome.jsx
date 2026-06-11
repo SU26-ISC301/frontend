@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { NavLink, Navigate, useNavigate, useParams } from "react-router-dom";
+import { NavLink, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowUpRight,
   AlertTriangle,
@@ -548,10 +548,18 @@ function VendorToast({ toast, onClose }) {
     return () => window.clearTimeout(timeout);
   }, [onClose, toast]);
 
+  const isError = toast.type === "error" || toast.tone === "red";
+
   return (
-    <div className="vendor-toast fixed bottom-5 right-5 z-[70] flex max-w-sm items-start gap-3 rounded-xl border border-orange-100 bg-white p-4 shadow-xl shadow-orange-950/10">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700">
-        <CheckCircle2 className="h-4 w-4" />
+    <div className={cn(
+      "vendor-toast fixed bottom-5 right-5 z-[70] flex max-w-sm items-start gap-3 rounded-xl border bg-white p-4 shadow-xl",
+      isError ? "border-red-100 shadow-red-950/10" : "border-orange-100 shadow-orange-950/10"
+    )}>
+      <span className={cn(
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+        isError ? "bg-red-50 text-red-600" : "bg-teal-50 text-teal-700"
+      )}>
+        {isError ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
       </span>
       <div className="min-w-0">
         <p className="text-sm font-extrabold text-stone-800">{toast.title}</p>
@@ -1887,7 +1895,11 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
     if (product) {
       const validation = productStorage.validateProduct(product);
       if (!validation.valid) {
-        alert(`Bản nháp chưa hoàn thiện, vui lòng chọn 'Chỉnh sửa' để nhập đầy đủ thông tin trước khi gửi xét duyệt!\n\nChi tiết: ${validation.error}`);
+        onToast({
+          title: "Bản nháp chưa hoàn thiện",
+          message: `Vui lòng chọn Chỉnh sửa để nhập đủ thông tin. Chi tiết: ${validation.error}`,
+          type: "error",
+        });
         return;
       }
 
@@ -1913,7 +1925,11 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
         refreshList();
       } catch (err) {
         console.error("Lỗi đồng bộ gửi duyệt lên BE:", err);
-        alert("Không thể gửi xét duyệt sản phẩm lên Backend.\nChi tiết lỗi: " + (err.response?.data?.message || err.response?.data?.error || err.message));
+        onToast({
+          title: "Không thể gửi xét duyệt",
+          message: err.response?.data?.message || err.response?.data?.error || err.message,
+          type: "error",
+        });
       }
     }
   };
@@ -5460,6 +5476,7 @@ const pageComponents = {
 export default function VendorHome() {
   const { section = "trangchu", action } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [toast, setToast] = useState(null);
 
   // Subscription plan modal state
@@ -5487,6 +5504,12 @@ export default function VendorHome() {
       navigate('/vendor/products/add');
     }
   }, [afterSelectCb, navigate, planModalBlocks]);
+
+  useEffect(() => {
+    if (!location.state?.toast) return;
+    setToast(location.state.toast);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
 
   // Check if warehouse is configured (both PICKUP and RETURN exist)
   const [hasWarehouseConfigured, setHasWarehouseConfigured] = useState(false);
