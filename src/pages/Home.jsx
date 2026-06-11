@@ -5,15 +5,15 @@ import { CategoryStrip } from '../components/Home/CategoryStrip';
 import { ProductCard } from '../components/Home/ProductCard';
 import { Footer } from '../components/layout/Footer';
 import { Card, CardContent } from '../components/ui/card';
-import { Clock3, Flame, Percent, ShieldCheck, Truck } from 'lucide-react';
+import { BarChart3, Clock3, Flame, ShieldCheck, Truck } from 'lucide-react';
 import { productApi } from '../api/productAPI';
 import { categoryApi } from '../api/categoryAPI';
 
 const highlights = [
   {
-    icon: Percent,
-    title: 'Deal thật mỗi giờ',
-    desc: 'Voucher tự động áp dụng khi thanh toán',
+    icon: BarChart3,
+    title: 'Giá tham khảo rõ ràng',
+    desc: 'Xem khoảng giá thị trường trước khi liên hệ shop',
     accent: 'from-[#ff4d2e] to-[#ff8a3d]',
   },
   {

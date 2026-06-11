@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, Heart, LogOut, Search, ShoppingCart, Store, TicketPercent, UserCircle } from 'lucide-react';
+import { Bell, Heart, LogOut, Search, Store, UserCircle } from 'lucide-react';
 import { BrandLogo } from '../layout/BrandLogo';
 import { Button } from '../ui/button';
 import { BuyerAuthModal } from '../Auth/BuyerAuthModal';
@@ -45,7 +45,19 @@ export function Header() {
     localStorage.removeItem('vendorInfo');
     setIsLoggedIn(false);
     setProfile(null);
-    window.location.reload(); // Tải lại trang
+    window.dispatchEvent(new CustomEvent('buyer-auth-changed', { detail: { loggedIn: false } }));
+  };
+
+  const handleAuthenticated = () => {
+    setIsLoggedIn(true);
+    window.dispatchEvent(new CustomEvent('buyer-auth-changed', { detail: { loggedIn: true } }));
+    authApi.getMe()
+      .then((response) => {
+        setProfile(response.data?.data || response.data);
+      })
+      .catch(() => {
+        setProfile(null);
+      });
   };
 
   return (
@@ -63,7 +75,7 @@ export function Header() {
             <div className="hidden items-center gap-4 text-white/68 sm:flex">
               <span className="transition-colors hover:text-white">Freeship cho đơn từ 99K</span>
               <span className="h-3 w-px bg-white/20" />
-              <span className="transition-colors hover:text-white">Tải app nhận voucher</span>
+              <span className="transition-colors hover:text-white">Tin đăng thật từ shop đã xác minh</span>
             </div>
           </div>
         </div>
@@ -86,7 +98,7 @@ export function Header() {
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="search"
-                  placeholder="Tìm sản phẩm, thương hiệu, voucher..."
+                  placeholder="Tìm sản phẩm, thương hiệu, shop..."
                   className="h-11 w-full rounded-full border border-slate-200 bg-white pl-11 pr-24 text-sm shadow-inner shadow-slate-100 outline-none transition-all placeholder:text-slate-400 focus:border-[#ff6a3d] focus:ring-4 focus:ring-[#ff6a3d]/15"
                 />
                 <Button
@@ -100,9 +112,7 @@ export function Header() {
 
               <div className="hidden items-center gap-1 lg:flex">
                 {[
-                  { icon: TicketPercent, label: 'Voucher' },
                   { icon: Heart, label: 'Yêu thích' },
-                  { icon: ShoppingCart, label: 'Giỏ hàng' },
                 ].map(({ icon: Icon, label }) => (
                   <button
                     key={label}
@@ -111,11 +121,6 @@ export function Header() {
                     title={label}
                   >
                     <Icon className="h-5 w-5" />
-                    {label === 'Giỏ hàng' && (
-                      <span className="absolute right-1 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ff4d2e] px-1 text-[10px] font-bold text-white">
-                        2
-                      </span>
-                    )}
                   </button>
                 ))}
               </div>
@@ -164,7 +169,7 @@ export function Header() {
         </div>
       </header>
 
-      <BuyerAuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
+      <BuyerAuthModal open={authOpen} onClose={() => setAuthOpen(false)} onAuthenticated={handleAuthenticated} />
     </>
   );
 }
