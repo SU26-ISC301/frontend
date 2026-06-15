@@ -56,8 +56,9 @@ import { cn } from "../lib/utils";
 import { vendorMessageApi } from "../api/vendorMessageAPI";
 import { marketResearchApi } from "../api/marketResearchAPI";
 import { sellerApi } from "../api/sellerAPI";
+import { categoryApi } from "../api/categoryAPI";
 import { getSubscriptionStatus } from "../api/subscriptionApi";
-import { productStorage, mapBackendProductToLocal, buildBackendPayloadFromLocal, mergeProductData } from "../utils/productStorage";
+import { productStorage, mapBackendProductToLocal, buildBackendPayloadFromLocal, flattenCategoryTree, mergeProductData } from "../utils/productStorage";
 import {
   CategorySelectorField,
   ELECTRONICS_CATEGORIES,
@@ -2014,6 +2015,19 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
   const pageSize = 10;
   const [categoriesList, setCategoriesList] = useState([]);
 
+  const hasBackendCategoryIds = (categories) =>
+    flattenCategoryTree(categories).some((category) => Number.isFinite(Number(category.id)));
+
+  const ensureBackendCategories = async () => {
+    if (categoriesList.length > 0 && hasBackendCategoryIds(categoriesList)) {
+      return categoriesList;
+    }
+    const categories = await categoryApi.getPublicCategories();
+    const safeCategories = Array.isArray(categories) ? categories : [];
+    setCategoriesList(safeCategories);
+    return safeCategories;
+  };
+
   useEffect(() => {
     const handleOutsideClick = () => {
       setActiveDropdownSku(null);
@@ -2041,9 +2055,9 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
       try {
         let categories = [];
         try {
-          categories = await sellerApi.getProductCategories();
+          categories = await categoryApi.getPublicCategories();
         } catch (catErr) {
-          console.warn('Lỗi lấy danh mục qua admin endpoint, thử market-research:', catErr);
+          console.warn('Lỗi lấy danh mục qua /api/categories, thử market-research:', catErr);
           try {
             const res = await marketResearchApi.getVendorMarketResearch();
             if (res && Array.isArray(res.categories)) {
@@ -2131,7 +2145,8 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
           return;
         }
 
-        const backendPayload = buildBackendPayloadFromLocal(product, 'pending', categoriesList);
+        const backendCategories = await ensureBackendCategories();
+        const backendPayload = buildBackendPayloadFromLocal(product, 'pending', backendCategories);
         let updatedId = product.id;
         const isNumericId = product.id && /^\d+$/.test(String(product.id));
 
@@ -2173,7 +2188,8 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
       try {
         const isNumericId = product.id && /^\d+$/.test(String(product.id));
         if (product.id && isNumericId) {
-          const backendPayload = buildBackendPayloadFromLocal(product, 'draft', categoriesList);
+          const backendCategories = await ensureBackendCategories();
+          const backendPayload = buildBackendPayloadFromLocal(product, 'draft', backendCategories);
           await sellerApi.updateProduct(product.id, backendPayload);
         }
         
@@ -2196,7 +2212,8 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
       try {
         const isNumericId = product.id && /^\d+$/.test(String(product.id));
         if (product.id && isNumericId) {
-          const backendPayload = buildBackendPayloadFromLocal(product, 'inactive', categoriesList);
+          const backendCategories = await ensureBackendCategories();
+          const backendPayload = buildBackendPayloadFromLocal(product, 'inactive', backendCategories);
           await sellerApi.updateProduct(product.id, backendPayload);
         }
 
@@ -2219,7 +2236,8 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
       try {
         const isNumericId = product.id && /^\d+$/.test(String(product.id));
         if (product.id && isNumericId) {
-          const backendPayload = buildBackendPayloadFromLocal(product, 'approved', categoriesList);
+          const backendCategories = await ensureBackendCategories();
+          const backendPayload = buildBackendPayloadFromLocal(product, 'approved', backendCategories);
           await sellerApi.updateProduct(product.id, backendPayload);
         }
 

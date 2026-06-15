@@ -60,6 +60,84 @@ export const STATIC_CATEGORY_SLUG_MAP = Object.entries(STATIC_CATEGORY_ID_MAP).r
   return acc;
 }, {});
 
+const normalizeCategoryText = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+export const flattenCategoryTree = (nodes = []) => {
+  const result = [];
+  const walk = (list) => {
+    (Array.isArray(list) ? list : []).forEach((node) => {
+      if (!node) return;
+      result.push(node);
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        walk(node.children);
+      }
+    });
+  };
+  walk(nodes);
+  return result;
+};
+
+export const getCategoryLeaves = (nodes = []) => {
+  const result = [];
+  const walk = (list) => {
+    (Array.isArray(list) ? list : []).forEach((node) => {
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        walk(node.children);
+      } else if (node) {
+        result.push(node);
+      }
+    });
+  };
+  walk(nodes);
+  return result;
+};
+
+export function resolveBackendCategoryId(categorySlug, backendCategories = []) {
+  const backendNodes = flattenCategoryTree(backendCategories);
+  const backendLeaves = getCategoryLeaves(backendCategories);
+  const candidates = backendNodes.length ? backendNodes : backendCategories;
+
+  if (!categorySlug) {
+    return backendLeaves[0]?.id ? Number(backendLeaves[0].id) : null;
+  }
+
+  const categoryKey = String(categorySlug).trim();
+  const numericId = Number(categoryKey);
+
+  if (Number.isFinite(numericId)) {
+    const exists = candidates.some((category) => Number(category.id) === numericId);
+    if (exists) return numericId;
+  }
+
+  const localLeaves = getCategoryLeaves(ELECTRONICS_CATEGORIES);
+  const localLeaf = localLeaves.find((leaf) => String(leaf.id) === categoryKey);
+  const localName = localLeaf?.name;
+  const staticSlug = STATIC_CATEGORY_ID_MAP[numericId];
+
+  const matchers = [
+    (category) => String(category.slug || '').trim().toLowerCase() === categoryKey.toLowerCase(),
+    (category) => String(category.id || '').trim().toLowerCase() === categoryKey.toLowerCase(),
+    (category) => staticSlug && String(category.slug || '').trim().toLowerCase() === staticSlug.toLowerCase(),
+    (category) => localName && normalizeCategoryText(category.name) === normalizeCategoryText(localName),
+    (category) => normalizeCategoryText(category.name) === normalizeCategoryText(categoryKey),
+  ];
+
+  for (const matcher of matchers) {
+    const found = candidates.find(matcher);
+    if (found?.id) return Number(found.id);
+  }
+
+  return backendLeaves[0]?.id ? Number(backendLeaves[0].id) : null;
+}
+
 const STORAGE_KEY = 'sellerProducts';
 
 const LEGACY_MOCK_PRODUCT_IDS = new Set([
@@ -234,55 +312,11 @@ export const productStorage = {
   }
 };
 
-const getCategoryLeaves = (nodes) => {
-  const result = [];
-  const recurse = (list) => {
-    list.forEach(node => {
-      if (!node.children || node.children.length === 0) {
-        result.push(node);
-      } else {
-        recurse(node.children);
-      }
-    });
-  };
-  recurse(nodes);
-  return result;
-};
-
 export function buildBackendPayloadFromLocal(product, status, categoriesList = []) {
-  const getBackendCategoryId = (categorySlug) => {
-    if (!categorySlug) return null;
-    const staticId = STATIC_CATEGORY_SLUG_MAP[categorySlug];
-    if (staticId) return staticId;
-
-    const leaves = getCategoryLeaves(ELECTRONICS_CATEGORIES);
-    const localLeaf = leaves.find(l => l.id === categorySlug);
-    if (!localLeaf) {
-      if (!isNaN(categorySlug)) return parseInt(categorySlug, 10);
-      return null;
-    }
-
-    const localName = localLeaf.name.trim().toLowerCase();
-    const backendMatch = categoriesList.find(
-      c => c.name && c.name.trim().toLowerCase() === localName
-    );
-
-    if (backendMatch) {
-      return parseInt(backendMatch.id, 10);
-    }
-
-    const backendMatchSlug = categoriesList.find(
-      c => c.id && c.id.toString().trim().toLowerCase() === categorySlug.trim().toLowerCase()
-    );
-    if (backendMatchSlug) {
-      return parseInt(backendMatchSlug.id, 10);
-    }
-
-    if (!isNaN(categorySlug)) return parseInt(categorySlug, 10);
-    return null;
-  };
-
-  const categoryId = getBackendCategoryId(product.category) || 12;
+  const categoryId = resolveBackendCategoryId(product.category, categoriesList);
+  if (!categoryId) {
+    throw new Error('Không xác định được danh mục hợp lệ từ backend. Vui lòng tải lại trang và chọn lại danh mục.');
+  }
 
   const mediaList = [];
   const uploadedImages = (product.images || []).map(img => img.preview || img);

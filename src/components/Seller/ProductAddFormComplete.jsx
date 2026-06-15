@@ -9,10 +9,11 @@ import { ProductDescriptionEditor } from './ProductDescriptionEditor';
 import { ProductVariantsField } from './ProductVariantsField';
 import { cn } from '../../lib/utils';
 import { sellerApi } from '../../api/sellerAPI';
+import { categoryApi } from '../../api/categoryAPI';
 import { marketResearchApi } from '../../api/marketResearchAPI';
 import { getSubscriptionStatus } from '../../api/subscriptionApi';
 import { VENDOR_FEATURES } from '../../config/vendorFeatures';
-import { productStorage, mapBackendProductToLocal, mergeProductData, STATIC_CATEGORY_SLUG_MAP } from '../../utils/productStorage';
+import { productStorage, mapBackendProductToLocal, mergeProductData, flattenCategoryTree, resolveBackendCategoryId } from '../../utils/productStorage';
 import SubscriptionPlanModal, {
   getVendorPlan,
 } from './SubscriptionPlanModal';
@@ -92,16 +93,34 @@ export function ProductAddFormComplete({ isEdit }) {
   const [showWeightUnitMenu, setShowWeightUnitMenu] = useState(false);
   const [isBasicExpanded, setIsBasicExpanded] = useState(true);
   const [categoriesList, setCategoriesList] = useState([]);
+
+  const loadBackendCategories = async () => {
+    const categories = await categoryApi.getPublicCategories();
+    return Array.isArray(categories) ? categories : [];
+  };
+
+  const hasBackendCategoryIds = (categories) =>
+    flattenCategoryTree(categories).some((category) => Number.isFinite(Number(category.id)));
+
+  const ensureBackendCategories = async () => {
+    if (categoriesList.length > 0 && hasBackendCategoryIds(categoriesList)) {
+      return categoriesList;
+    }
+    const categories = await loadBackendCategories();
+    setCategoriesList(categories);
+    return categories;
+  };
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const list = await sellerApi.getProductCategories();
+        const list = await loadBackendCategories();
         if (Array.isArray(list)) {
           setCategoriesList(list);
           return;
         }
       } catch (err) {
-        console.warn('Lỗi gọi getProductCategories, thử /vendors/market-research:', err);
+        console.warn('Lỗi gọi /api/categories, thử /vendors/market-research:', err);
       }
 
       try {
@@ -115,53 +134,6 @@ export function ProductAddFormComplete({ isEdit }) {
     };
     fetchCategories();
   }, []);
-
-  const getCategoryLeaves = (nodes) => {
-    const result = [];
-    const recurse = (list) => {
-      list.forEach(node => {
-        if (!node.children || node.children.length === 0) {
-          result.push(node);
-        } else {
-          recurse(node.children);
-        }
-      });
-    };
-    recurse(nodes);
-    return result;
-  };
-
-  const getBackendCategoryId = (categorySlug) => {
-    if (!categorySlug) return null;
-    const staticId = STATIC_CATEGORY_SLUG_MAP[categorySlug];
-    if (staticId) return staticId;
-
-    const leaves = getCategoryLeaves(ELECTRONICS_CATEGORIES);
-    const localLeaf = leaves.find(l => l.id === categorySlug);
-    if (!localLeaf) {
-      if (!isNaN(categorySlug)) return parseInt(categorySlug, 10);
-      return null;
-    }
-
-    const localName = localLeaf.name.trim().toLowerCase();
-    const backendMatch = categoriesList.find(
-      c => c.name && c.name.trim().toLowerCase() === localName
-    );
-
-    if (backendMatch) {
-      return parseInt(backendMatch.id, 10);
-    }
-
-    const backendMatchSlug = categoriesList.find(
-      c => c.id && c.id.toString().trim().toLowerCase() === categorySlug.trim().toLowerCase()
-    );
-    if (backendMatchSlug) {
-      return parseInt(backendMatchSlug.id, 10);
-    }
-
-    if (!isNaN(categorySlug)) return parseInt(categorySlug, 10);
-    return null;
-  };
 
   const getCategoryDisplayName = (categorySlug) => {
     if (!categorySlug) return '';
@@ -318,9 +290,9 @@ export function ProductAddFormComplete({ isEdit }) {
         try {
           let categories = [];
           try {
-            categories = await sellerApi.getProductCategories();
+            categories = await loadBackendCategories();
           } catch (catErr) {
-            console.warn('Lỗi gọi getProductCategories, thử /vendors/market-research:', catErr);
+            console.warn('Lỗi gọi /api/categories, thử /vendors/market-research:', catErr);
             try {
               const res = await marketResearchApi.getVendorMarketResearch();
               if (res && Array.isArray(res.categories)) {
@@ -662,8 +634,11 @@ export function ProductAddFormComplete({ isEdit }) {
     return Object.keys(next).length === 0;
   };
 
-  const buildBackendProductPayload = (uploadedImages, uploadedVideo, status) => {
-    const categoryId = getBackendCategoryId(formData.category) || 12;
+  const buildBackendProductPayload = (uploadedImages, uploadedVideo, status, backendCategories = categoriesList) => {
+    const categoryId = resolveBackendCategoryId(formData.category, backendCategories);
+    if (!categoryId) {
+      throw new Error('Không xác định được danh mục hợp lệ từ backend. Vui lòng tải lại trang và chọn lại danh mục.');
+    }
 
     const mediaList = [];
     uploadedImages.forEach((imgUrl, index) => {
@@ -838,7 +813,15 @@ export function ProductAddFormComplete({ isEdit }) {
       calculatedSku = formData.skus.find(s => s.sku)?.sku || '';
     }
 
-    const backendPayload = buildBackendProductPayload(uploadedImages, uploadedVideo, 'draft');
+    let backendPayload;
+    try {
+      const backendCategories = await ensureBackendCategories();
+      backendPayload = buildBackendProductPayload(uploadedImages, uploadedVideo, 'draft', backendCategories);
+    } catch (payloadError) {
+      alert(payloadError.message || 'Không thể tải danh mục sản phẩm từ backend.');
+      setIsSubmitting(false);
+      return;
+    }
 
     let beProduct = null;
     try {
@@ -996,7 +979,20 @@ export function ProductAddFormComplete({ isEdit }) {
       calculatedSku = formData.skus.find(s => s.sku)?.sku || '';
     }
 
-    const backendPayload = buildBackendProductPayload(uploadedImages, uploadedVideo, 'pending');
+    let backendPayload;
+    try {
+      const backendCategories = await ensureBackendCategories();
+      backendPayload = buildBackendProductPayload(uploadedImages, uploadedVideo, 'pending', backendCategories);
+    } catch (payloadError) {
+      setSubmitNotice({
+        tone: 'red',
+        title: 'Không thể gửi xét duyệt',
+        message: payloadError.message || 'Không thể tải danh mục sản phẩm từ backend.',
+      });
+      mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      setIsSubmitting(false);
+      return;
+    }
 
     let beProduct = null;
     try {
