@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  CircleDollarSign,
   CircleHelp,
   Clock3,
   History,
@@ -23,12 +24,15 @@ import {
   LayoutDashboard,
   Lock,
   LogOut,
+  Megaphone,
   Menu,
   MessageSquareText,
   MoreHorizontal,
+  MousePointerClick,
   PackageSearch,
   PenLine,
   Plus,
+  ReceiptText,
   RefreshCw,
   Search,
   Send,
@@ -245,27 +249,115 @@ const shipments = [
   },
 ];
 
-const campaigns = [
+const PROMOTION_CONFIG = {
+  minBudget: 50000,
+  maxBudget: 50000000,
+  minDurationDays: 1,
+  maxDurationDays: 30,
+  budgetPresets: [100000, 300000, 500000, 1000000],
+};
+
+const mockPromotionWallet = {
+  availableBalance: 700000,
+  lockedBalance: 500000,
+  totalDeposited: 2200000,
+  totalSpent: 385000,
+};
+
+const mockPromotionProducts = [
   {
-    name: "Flash Sale 20H",
-    metric: "26 sản phẩm",
-    progress: 72,
-    budget: "2.500.000đ",
-    revenue: "18.420.000đ",
+    id: "mock-post-101",
+    sku: "SPV-MKT-101",
+    name: "Tai nghe bluetooth mini",
+    category: "Điện tử",
+    price: 499000,
+    status: "Đang bán",
+    quality: 92,
+    sold: 184,
+    reputationScore: 85,
   },
   {
-    name: "Voucher theo dõi shop",
-    metric: "1.248 lượt dùng",
-    progress: 58,
-    budget: "1.200.000đ",
-    revenue: "9.680.000đ",
+    id: "mock-post-102",
+    sku: "SPV-MKT-102",
+    name: "Bình giữ nhiệt 750ml",
+    category: "Gia dụng",
+    price: 189000,
+    status: "Đang bán",
+    quality: 78,
+    sold: 96,
+    reputationScore: 60,
   },
   {
-    name: "Livestream cuối tuần",
-    metric: "18:30 hôm nay",
-    progress: 36,
-    budget: "800.000đ",
-    revenue: "6.240.000đ",
+    id: "mock-post-103",
+    sku: "SPV-MKT-103",
+    name: "Túi tote canvas basic",
+    category: "Thời trang",
+    price: 149000,
+    status: "Tồn thấp",
+    quality: 68,
+    sold: 42,
+    reputationScore: 30,
+  },
+];
+
+const mockPromotions = [
+  {
+    id: "PRM-9001",
+    postId: "mock-post-101",
+    postName: "Tai nghe bluetooth mini",
+    status: "ACTIVE",
+    initialBudget: 500000,
+    remainingBudget: 326000,
+    spentAmount: 174000,
+    impressions: 12840,
+    clicks: 87,
+    cpcSnapshot: 2000,
+    startDate: "2026-06-12",
+    endDate: "2026-06-19",
+  },
+  {
+    id: "PRM-9002",
+    postId: "mock-post-102",
+    postName: "Bình giữ nhiệt 750ml",
+    status: "SCHEDULED",
+    initialBudget: 300000,
+    remainingBudget: 300000,
+    spentAmount: 0,
+    impressions: 0,
+    clicks: 0,
+    cpcSnapshot: 2000,
+    startDate: "2026-06-16",
+    endDate: "2026-06-23",
+  },
+];
+
+const mockWalletTransactions = [
+  {
+    id: "WTX-2309",
+    type: "PROMOTION_RESERVE",
+    label: "Giữ ngân sách PRM-9001",
+    amount: -500000,
+    availableAfter: 700000,
+    lockedAfter: 500000,
+    time: "12/06/2026 09:22",
+  },
+  {
+    id: "WTX-2308",
+    type: "TOP_UP",
+    label: "Nạp tiền qua cổng thanh toán",
+    amount: 1000000,
+    availableAfter: 1200000,
+    lockedAfter: 0,
+    time: "12/06/2026 09:12",
+  },
+  {
+    id: "WTX-2307",
+    type: "PROMOTION_CLICK_CHARGE",
+    label: "Click hợp lệ PRM-9001",
+    amount: -2000,
+    availableAfter: 700000,
+    lockedAfter: 498000,
+    time: "12/06/2026 10:31",
   },
 ];
 
@@ -331,6 +423,32 @@ function formatShortCurrency(value) {
     }).format(value / 1000000)}tr`;
   }
   return `${new Intl.NumberFormat("vi-VN").format(value / 1000)}K`;
+}
+
+function formatPercent(value) {
+  return `${new Intl.NumberFormat("vi-VN", {
+    maximumFractionDigits: 1,
+  }).format(value)}%`;
+}
+
+function calculatePromotionCpc(reputationScore = 30) {
+  if (reputationScore >= 80) return 1000;
+  if (reputationScore >= 50) return 2000;
+  return 3000;
+}
+
+function getPromotionStatusLabel(status) {
+  return {
+    ACTIVE: "Đang chạy",
+    SCHEDULED: "Sắp chạy",
+    EXHAUSTED: "Hết ngân sách",
+    COMPLETED: "Đã hoàn tất",
+    CANCELLED: "Đã hủy",
+  }[status] || status;
+}
+
+function toInputDate(date) {
+  return date.toISOString().split("T")[0];
 }
 
 function normalizeCategoryText(value) {
@@ -515,9 +633,11 @@ function StatusBadge({ children, status, className }) {
       "Đã xác minh": "is-green",
       "Đang chạy": "is-green",
       "Đã có dữ liệu": "is-green",
+      "Đã hoàn tất": "is-green",
       "Đang giao": "is-blue",
       "Trên đường giao": "is-blue",
       "Đã lên lịch": "is-blue",
+      "Sắp chạy": "is-blue",
       "Đang xử lý": "is-orange",
       "Chờ duyệt": "is-orange",
       "Chờ Admin duyệt": "is-orange",
@@ -525,6 +645,7 @@ function StatusBadge({ children, status, className }) {
       "Chờ bàn giao": "is-orange",
       "Cần in nhãn": "is-orange",
       "Tồn thấp": "is-red",
+      "Hết ngân sách": "is-red",
       "Bị từ chối": "is-red",
       "Cảnh báo": "is-red",
       "Trả hàng": "is-red",
@@ -4600,110 +4721,604 @@ function MarketInsightRow({ icon: Icon, label, value }) {
   );
 }
 
-function MarketingPage({ onToast }) {
+function MarketingPage({ onToast, navigateTo }) {
+  const storedProducts = productStorage.getStoredProducts();
+  const eligibleProducts = useMemo(() => {
+    const mapped = storedProducts
+      .filter((product) => ["Đang bán", "Tồn thấp"].includes(product.status))
+      .map((product, index) => ({
+        id: product.id || product.sku,
+        sku: product.sku,
+        name: product.name,
+        category: product.category || "Chưa phân loại",
+        price: Number(product.price || 0),
+        status: product.status,
+        quality: Number(product.quality || 72),
+        sold: Number(product.sold || 0),
+        reputationScore: Number(product.quality || 72) >= 85 ? 85 : Number(product.quality || 72) >= 70 ? 60 : 30,
+      }));
+    return mapped.length ? mapped : mockPromotionProducts;
+  }, [storedProducts]);
+
+  const [wallet, setWallet] = useState(mockPromotionWallet);
+  const [transactions, setTransactions] = useState(mockWalletTransactions);
+  const [promotions, setPromotions] = useState(mockPromotions);
+  const [selectedPostId, setSelectedPostId] = useState(eligibleProducts[0]?.id || "");
+  const [budget, setBudget] = useState(PROMOTION_CONFIG.budgetPresets[1]);
+  const [startDate, setStartDate] = useState(toInputDate(new Date()));
+  const [endDate, setEndDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 7);
+    return toInputDate(date);
+  });
+
+  const selectedPost = eligibleProducts.find((product) => String(product.id) === String(selectedPostId)) || eligibleProducts[0];
+  const estimatedCpc = calculatePromotionCpc(selectedPost?.reputationScore);
+  const estimatedMaxClicks = budget > 0 ? Math.floor(budget / estimatedCpc) : 0;
+  const deficit = Math.max(0, budget - wallet.availableBalance);
+  const isBalanceSufficient = deficit === 0;
+  const hasRunningPromotion = selectedPost
+    ? promotions.some((promotion) =>
+        String(promotion.postId) === String(selectedPost.id) &&
+        ["ACTIVE", "SCHEDULED"].includes(promotion.status),
+      )
+    : false;
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T23:59:59`);
+  const durationDays = Math.max(0, Math.ceil((end - start) / 86400000));
+  const isDurationValid =
+    startDate &&
+    endDate &&
+    end >= start &&
+    durationDays >= PROMOTION_CONFIG.minDurationDays &&
+    durationDays <= PROMOTION_CONFIG.maxDurationDays;
+  const isBudgetValid =
+    budget >= PROMOTION_CONFIG.minBudget && budget <= PROMOTION_CONFIG.maxBudget;
+  const canSubmit =
+    selectedPost &&
+    isBudgetValid &&
+    isDurationValid &&
+    isBalanceSufficient &&
+    !hasRunningPromotion;
+
+  const summary = useMemo(() => {
+    return promotions.reduce(
+      (acc, promotion) => {
+        acc.active += promotion.status === "ACTIVE" ? 1 : 0;
+        acc.spent += promotion.spentAmount;
+        acc.remaining += promotion.remainingBudget;
+        acc.clicks += promotion.clicks;
+        acc.impressions += promotion.impressions;
+        return acc;
+      },
+      { active: 0, spent: 0, remaining: 0, clicks: 0, impressions: 0 },
+    );
+  }, [promotions]);
+
+  const createTransaction = (type, label, amount, nextWallet) => {
+    setTransactions((current) => [
+      {
+        id: `WTX-${Math.floor(2400 + Math.random() * 500)}`,
+        type,
+        label,
+        amount,
+        availableAfter: nextWallet.availableBalance,
+        lockedAfter: nextWallet.lockedBalance,
+        time: new Date().toLocaleString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      },
+      ...current,
+    ]);
+  };
+
+  const handleTopUpMock = (amount) => {
+    const nextWallet = {
+      ...wallet,
+      availableBalance: wallet.availableBalance + amount,
+      totalDeposited: wallet.totalDeposited + amount,
+    };
+    setWallet(nextWallet);
+    createTransaction("TOP_UP", "Nạp tiền mô phỏng", amount, nextWallet);
+    onToast({
+      title: "Đã nạp tiền mô phỏng",
+      message: `Số dư khả dụng tăng ${formatCurrency(amount)}. Khi có backend, thao tác này sẽ đi qua payment gateway.`,
+    });
+  };
+
+  const handleCreatePromotion = () => {
+    if (!selectedPost) return;
+    if (!isBalanceSufficient) {
+      onToast({
+        title: "Số dư không đủ",
+        message: `Cần nạp thêm ${formatCurrency(deficit)} để tạo quảng bá.`,
+        type: "error",
+      });
+      return;
+    }
+    if (!canSubmit) {
+      onToast({
+        title: "Chưa thể tạo quảng bá",
+        message: hasRunningPromotion
+          ? "Bài đăng này đã có chiến dịch đang chạy hoặc sắp chạy."
+          : "Vui lòng kiểm tra ngân sách và thời gian quảng bá.",
+        type: "error",
+      });
+      return;
+    }
+
+    const now = new Date();
+    const status = start <= now ? "ACTIVE" : "SCHEDULED";
+    const promotion = {
+      id: `PRM-${Math.floor(9100 + Math.random() * 500)}`,
+      postId: selectedPost.id,
+      postName: selectedPost.name,
+      status,
+      initialBudget: budget,
+      remainingBudget: budget,
+      spentAmount: 0,
+      impressions: 0,
+      clicks: 0,
+      cpcSnapshot: estimatedCpc,
+      startDate,
+      endDate,
+    };
+    const nextWallet = {
+      ...wallet,
+      availableBalance: wallet.availableBalance - budget,
+      lockedBalance: wallet.lockedBalance + budget,
+    };
+    setPromotions((current) => [promotion, ...current]);
+    setWallet(nextWallet);
+    createTransaction(
+      "PROMOTION_RESERVE",
+      `Giữ ngân sách ${promotion.id}`,
+      -budget,
+      nextWallet,
+    );
+    onToast({
+      title: "Đã tạo quảng bá",
+      message: `${selectedPost.name} được ${status === "ACTIVE" ? "kích hoạt" : "lên lịch"} với ngân sách ${formatCurrency(budget)}.`,
+    });
+  };
+
+  const handleTrackClick = (promotionId) => {
+    const promotion = promotions.find((item) => item.id === promotionId);
+    if (!promotion || promotion.status !== "ACTIVE") {
+      onToast({
+        title: "Không ghi nhận click",
+        message: "Chỉ promotion ACTIVE mới bị tính phí click hợp lệ.",
+        type: "error",
+      });
+      return;
+    }
+    const product = eligibleProducts.find((item) => String(item.id) === String(promotion.postId));
+    const cpc = calculatePromotionCpc(product?.reputationScore);
+    if (promotion.remainingBudget < cpc) {
+      setPromotions((current) =>
+        current.map((item) =>
+          item.id === promotionId ? { ...item, status: "EXHAUSTED" } : item,
+        ),
+      );
+      onToast({
+        title: "Promotion hết ngân sách",
+        message: "remaining_budget nhỏ hơn CPC hiện tại nên click không bị charge.",
+        type: "error",
+      });
+      return;
+    }
+    const nextWallet = {
+      ...wallet,
+      lockedBalance: Math.max(0, wallet.lockedBalance - cpc),
+      totalSpent: wallet.totalSpent + cpc,
+    };
+    setWallet(nextWallet);
+    setPromotions((current) =>
+      current.map((item) => {
+        if (item.id !== promotionId) return item;
+        const remainingBudget = item.remainingBudget - cpc;
+        return {
+          ...item,
+          remainingBudget,
+          spentAmount: item.spentAmount + cpc,
+          clicks: item.clicks + 1,
+          impressions: item.impressions + 24,
+          cpcSnapshot: cpc,
+          status: remainingBudget < cpc ? "EXHAUSTED" : item.status,
+        };
+      }),
+    );
+    createTransaction("PROMOTION_CLICK_CHARGE", `Click hợp lệ ${promotionId}`, -cpc, nextWallet);
+  };
+
+  const handleCompletePromotion = (promotionId) => {
+    const promotion = promotions.find((item) => item.id === promotionId);
+    if (!promotion || !["ACTIVE", "SCHEDULED"].includes(promotion.status)) return;
+    const releaseAmount = promotion.remainingBudget;
+    const nextWallet = {
+      ...wallet,
+      availableBalance: wallet.availableBalance + releaseAmount,
+      lockedBalance: Math.max(0, wallet.lockedBalance - releaseAmount),
+    };
+    setWallet(nextWallet);
+    setPromotions((current) =>
+      current.map((item) =>
+        item.id === promotionId
+          ? { ...item, status: "COMPLETED", remainingBudget: 0 }
+          : item,
+      ),
+    );
+    createTransaction("PROMOTION_RELEASE", `Hoàn ngân sách còn lại ${promotionId}`, releaseAmount, nextWallet);
+    onToast({
+      title: "Đã hoàn tất promotion",
+      message: `Phần còn lại ${formatCurrency(releaseAmount)} được release về số dư khả dụng.`,
+    });
+  };
+
   return (
     <div className="space-y-5">
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <InsightCard
-          title="Doanh thu từ ads"
-          icon={BarChart3}
-          value="42,8 triệu"
-          label="ROAS trung bình 5,8x"
-          text="Tăng 12,4% so với 7 ngày trước."
+          title="Số dư khả dụng"
+          icon={WalletCards}
+          value={formatShortCurrency(wallet.availableBalance)}
+          label={`${formatShortCurrency(wallet.lockedBalance)} đang giữ`}
+          text="Chỉ dùng trong hệ thống để tạo quảng bá, MVP chưa hỗ trợ rút tiền."
+          tone="is-green"
+        />
+        <InsightCard
+          title="Promotion active"
+          icon={Megaphone}
+          value={new Intl.NumberFormat("vi-VN").format(summary.active)}
+          label={`${formatShortCurrency(summary.remaining)} ngân sách còn lại`}
+          text="Bài promoted hiển thị ở slot ưu tiên, không dùng đấu giá realtime."
           tone="is-orange"
         />
         <InsightCard
-          title="Voucher đang chạy"
-          icon={TicketPercent}
-          value="12"
-          label="3 voucher sắp hết ngân sách"
-          text="Voucher theo dõi shop có hiệu suất tốt nhất."
-          tone="is-yellow"
-        />
-        <InsightCard
-          title="Lịch livestream"
-          icon={Sparkles}
-          value="18:30"
-          label="8 sản phẩm đã ghim"
-          text="Kịch bản bán hàng đã sẵn sàng."
+          title="Chi phí đã ghi nhận"
+          icon={CircleDollarSign}
+          value={formatShortCurrency(wallet.totalSpent)}
+          label={`${summary.clicks} click hợp lệ`}
+          text="Chỉ trừ tiền khi click hợp lệ, không charge impression."
           tone="is-teal"
         />
+        <InsightCard
+          title="CTR quảng bá"
+          icon={BarChart3}
+          value={summary.impressions ? formatPercent((summary.clicks / summary.impressions) * 100) : "0%"}
+          label={`${new Intl.NumberFormat("vi-VN").format(summary.impressions)} impressions`}
+          text="Seller xem được impression, click, CTR và average CPC."
+          tone="is-yellow"
+        />
       </section>
-      <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+
+      <section className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
         <Panel className="p-5">
           <PanelHeader
-            title="Chiến dịch đang chạy"
-            subtitle="Theo dõi tiến độ ngân sách"
+            title="Tạo quảng bá bài đăng"
+            subtitle="Chọn bài ACTIVE, ngân sách và thời gian. Frontend đang dùng data giả trong lúc chờ API."
           >
             <button
               type="button"
-              className="vendor-primary-button"
-              onClick={() =>
-                onToast({
-                  title: "Tạo chiến dịch",
-                  message: "Đã mở flow thiết lập chiến dịch mới.",
-                })
-              }
+              className="vendor-secondary-button"
+              onClick={() => navigateTo?.("tai-chinh")}
             >
-              <Plus className="h-4 w-4" />
-              Tạo chiến dịch
+              <WalletCards className="h-4 w-4" />
+              Xem tài chính
             </button>
           </PanelHeader>
-          <div className="mt-4 space-y-3">
-            {campaigns.map((campaign) => (
-              <div key={campaign.name} className="vendor-list-item block">
-                <div className="flex items-start justify-between gap-3">
+
+          <div className="mt-5 space-y-4">
+            <label className="block">
+              <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+                Bài đăng đủ điều kiện
+              </span>
+              <select
+                value={selectedPostId}
+                onChange={(event) => setSelectedPostId(event.target.value)}
+                className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
+              >
+                {eligibleProducts.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name} - {product.sku}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {selectedPost && (
+              <div className="rounded-xl border border-stone-100 bg-stone-50/70 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="font-extrabold text-stone-800">
-                      {campaign.name}
+                    <p className="text-sm font-extrabold text-stone-800">
+                      {selectedPost.name}
                     </p>
                     <p className="mt-1 text-xs font-semibold text-stone-400">
-                      {campaign.metric} · Ngân sách {campaign.budget}
+                      {selectedPost.category} · {formatCurrency(selectedPost.price)} · Uy tín {selectedPost.reputationScore}/100
                     </p>
                   </div>
-                  <StatusBadge status="Đang chạy" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge status={selectedPost.status} />
+                    {hasRunningPromotion && <StatusBadge status="Đang chạy">Đã có quảng bá</StatusBadge>}
+                  </div>
                 </div>
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-stone-100">
-                  <div
-                    className="vendor-progress h-full rounded-full bg-orange-500"
-                    style={{ width: `${campaign.progress}%` }}
-                  />
+              </div>
+            )}
+
+            <div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+                  Ngân sách quảng bá
+                </span>
+                <span className="text-xs font-bold text-stone-500">
+                  Min {formatCurrency(PROMOTION_CONFIG.minBudget)}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {PROMOTION_CONFIG.budgetPresets.map((amount) => (
+                  <button
+                    key={amount}
+                    type="button"
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-xs font-extrabold transition-colors",
+                      budget === amount
+                        ? "border-orange-500 bg-orange-50 text-orange-700"
+                        : "border-stone-200 bg-white text-stone-500 hover:border-orange-200 hover:text-orange-600",
+                    )}
+                    onClick={() => setBudget(amount)}
+                  >
+                    {formatCurrency(amount)}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="number"
+                min={PROMOTION_CONFIG.minBudget}
+                max={PROMOTION_CONFIG.maxBudget}
+                step="10000"
+                value={budget}
+                onChange={(event) => setBudget(Number(event.target.value || 0))}
+                className="vendor-input mt-3 h-11 w-full px-3 text-sm font-bold"
+                placeholder="Nhập ngân sách custom"
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+                  Ngày bắt đầu
+                </span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(event) => setStartDate(event.target.value)}
+                  className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+                  Ngày kết thúc
+                </span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <PromotionPreviewItem label="Số dư khả dụng" value={formatCurrency(wallet.availableBalance)} tone="text-teal-700" />
+              <PromotionPreviewItem label="CPC dự kiến" value={formatCurrency(estimatedCpc)} tone="text-orange-700" />
+              <PromotionPreviewItem label="Click tối đa ước tính" value={new Intl.NumberFormat("vi-VN").format(estimatedMaxClicks)} tone="text-stone-800" />
+            </div>
+
+            {!isBalanceSufficient && (
+              <div className="rounded-xl border border-red-100 bg-red-50 p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                  <div>
+                    <p className="text-sm font-extrabold text-red-700">
+                      Số dư không đủ để quảng bá bài đăng
+                    </p>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-red-600">
+                      Cần nạp thêm {formatCurrency(deficit)}. Theo BRD, frontend sẽ điều hướng Seller sang màn nạp thêm và không tạo promotion.
+                    </p>
+                    <button
+                      type="button"
+                      className="vendor-primary-button mt-3 bg-red-600 border-red-600 hover:bg-red-700"
+                      onClick={() => handleTopUpMock(deficit)}
+                    >
+                      <CreditCard className="h-4 w-4" />
+                      Nạp thêm mô phỏng
+                    </button>
+                  </div>
                 </div>
-                <div className="mt-2 flex justify-between text-xs font-bold text-stone-400">
-                  <span>Đã dùng {campaign.progress}%</span>
-                  <span className="text-teal-700">{campaign.revenue}</span>
+              </div>
+            )}
+
+            <div className="rounded-xl border border-orange-100 bg-orange-50/70 p-4 text-xs font-semibold leading-5 text-orange-800">
+              Hệ thống chỉ ghi nhận chi phí khi có click hợp lệ. Duplicate, bot, self-click hoặc click ngoài thời gian chạy sẽ không bị charge.
+            </div>
+
+            <button
+              type="button"
+              disabled={!canSubmit}
+              onClick={handleCreatePromotion}
+              className="vendor-primary-button w-full justify-center disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-stone-200 disabled:text-stone-400 disabled:shadow-none disabled:hover:translate-y-0"
+            >
+              <Megaphone className="h-4 w-4" />
+              Xác nhận quảng bá
+            </button>
+          </div>
+        </Panel>
+
+        <Panel className="p-5">
+          <PanelHeader
+            title="Ví quảng bá & ledger"
+            subtitle="Số dư là nguồn tiền reserve budget, mọi thay đổi cần transaction log."
+          >
+            <button
+              type="button"
+              className="vendor-secondary-button"
+              onClick={() => handleTopUpMock(300000)}
+            >
+              <Plus className="h-4 w-4" />
+              Nạp 300K
+            </button>
+          </PanelHeader>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <PromotionPreviewItem label="Available balance" value={formatCurrency(wallet.availableBalance)} tone="text-teal-700" />
+            <PromotionPreviewItem label="Locked balance" value={formatCurrency(wallet.lockedBalance)} tone="text-orange-700" />
+            <PromotionPreviewItem label="Total deposited" value={formatCurrency(wallet.totalDeposited)} tone="text-stone-800" />
+            <PromotionPreviewItem label="Total spent" value={formatCurrency(wallet.totalSpent)} tone="text-red-600" />
+          </div>
+          <div className="mt-4 divide-y divide-stone-100">
+            {transactions.slice(0, 5).map((transaction) => (
+              <div key={transaction.id} className="flex items-start justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-extrabold text-stone-700">
+                    {transaction.label}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-stone-400">
+                    {transaction.id} · {transaction.type} · {transaction.time}
+                  </p>
                 </div>
+                <p className={cn(
+                  "shrink-0 text-sm font-extrabold",
+                  transaction.amount >= 0 ? "text-teal-700" : "text-red-600",
+                )}>
+                  {transaction.amount >= 0 ? "+" : ""}{formatCurrency(transaction.amount)}
+                </p>
               </div>
             ))}
           </div>
         </Panel>
-        <Panel className="p-5">
-          <PanelHeader
-            title="Gợi ý tăng trưởng"
-            subtitle="Dựa trên hiệu suất shop"
-          />
-          <div className="mt-4 space-y-2">
-            {[
-              "Tạo combo mua 2 giảm 8%",
-              "Bật voucher cho khách mới",
-              "Đẩy tồn cao vào Flash Sale",
-              "Chuẩn bị kịch bản live 30 phút",
-            ].map((item) => (
-              <button
-                key={item}
-                type="button"
-                className="vendor-task"
-                onClick={() =>
-                  onToast({ title: "Đã chọn gợi ý", message: item })
-                }
-              >
-                <Sparkles className="h-4 w-4 text-orange-500" />
-                <span className="text-sm font-bold text-stone-600">{item}</span>
-              </button>
-            ))}
-          </div>
-        </Panel>
       </section>
+
+      <Panel className="overflow-hidden">
+        <div className="p-5">
+          <PanelHeader
+            title="Hiệu suất quảng bá bài đăng"
+            subtitle="Theo dõi budget, remaining, spent, impression, click, CTR và avg CPC."
+          />
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[960px] text-left text-sm">
+            <thead className="vendor-table-head">
+              <tr>
+                {["Bài đăng", "Trạng thái", "Ngân sách", "Đã tiêu", "Impression", "Click/CTR", "Avg CPC", "Thao tác"].map((column) => (
+                  <th key={column} className="px-5 py-3.5">{column}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {promotions.map((promotion) => {
+                const spentPercent = promotion.initialBudget
+                  ? (promotion.spentAmount / promotion.initialBudget) * 100
+                  : 0;
+                const ctr = promotion.impressions
+                  ? (promotion.clicks / promotion.impressions) * 100
+                  : 0;
+                const avgCpc = promotion.clicks
+                  ? Math.round(promotion.spentAmount / promotion.clicks)
+                  : promotion.cpcSnapshot;
+                return (
+                  <tr key={promotion.id} className="vendor-table-row">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+                          <Megaphone className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <p className="font-extrabold text-stone-800">{promotion.postName}</p>
+                          <p className="mt-1 text-xs font-semibold text-stone-400">
+                            {promotion.id} · {promotion.startDate} - {promotion.endDate}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <StatusBadge status={getPromotionStatusLabel(promotion.status)} />
+                    </td>
+                    <td className="px-5 py-4">
+                      <p className="font-extrabold text-stone-700">
+                        {formatCurrency(promotion.remainingBudget)}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-stone-400">
+                        / {formatCurrency(promotion.initialBudget)}
+                      </p>
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-100">
+                        <div
+                          className="h-full rounded-full bg-orange-500"
+                          style={{ width: `${Math.min(100, spentPercent)}%` }}
+                        />
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 font-extrabold text-red-600">
+                      {formatCurrency(promotion.spentAmount)}
+                    </td>
+                    <td className="px-5 py-4 font-bold text-stone-600">
+                      {new Intl.NumberFormat("vi-VN").format(promotion.impressions)}
+                    </td>
+                    <td className="px-5 py-4">
+                      <p className="font-extrabold text-stone-700">
+                        {new Intl.NumberFormat("vi-VN").format(promotion.clicks)}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-teal-700">
+                        CTR {formatPercent(ctr)}
+                      </p>
+                    </td>
+                    <td className="px-5 py-4 font-extrabold text-orange-700">
+                      {formatCurrency(avgCpc)}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="vendor-secondary-button min-h-9 px-3"
+                          onClick={() => handleTrackClick(promotion.id)}
+                        >
+                          <MousePointerClick className="h-4 w-4" />
+                          Click
+                        </button>
+                        {["ACTIVE", "SCHEDULED"].includes(promotion.status) && (
+                          <button
+                            type="button"
+                            className="vendor-secondary-button min-h-9 px-3"
+                            onClick={() => handleCompletePromotion(promotion.id)}
+                          >
+                            <ReceiptText className="h-4 w-4" />
+                            Kết thúc
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function PromotionPreviewItem({ label, value, tone }) {
+  return (
+    <div className="rounded-xl border border-stone-100 bg-white p-3">
+      <p className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-stone-400">
+        {label}
+      </p>
+      <p className={cn("mt-1 text-sm font-extrabold", tone)}>
+        {value}
+      </p>
     </div>
   );
 }
