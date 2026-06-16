@@ -51,7 +51,7 @@ export const sellerApi = {
   },
 
   getProductCategories: async (config = {}) => {
-    const response = await axiosClient.get('/api/admin/market-research/categories', config);
+    const response = await axiosClient.get('/api/market-research/categories', config);
     return unwrap(response);
   },
 
