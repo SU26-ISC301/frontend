@@ -252,8 +252,10 @@ const shipments = [
 ];
 
 const PROMOTION_CONFIG = {
-  minBudget: 50000,
+  minBudget: 1000,
   maxBudget: 50000000,
+  minAmountPerClick: 1,
+  minTopUpAmount: 10000,
   minDurationDays: 1,
   maxDurationDays: 30,
   budgetPresets: [100000, 300000, 500000, 1000000],
@@ -312,6 +314,10 @@ function getVendorInfo() {
 
 function formatCurrency(value) {
   return `${new Intl.NumberFormat("vi-VN").format(value)}đ`;
+}
+
+function formatVndBalance(value) {
+  return `${new Intl.NumberFormat("vi-VN").format(Number(value || 0))} VND`;
 }
 
 function formatShortCurrency(value) {
@@ -595,6 +601,9 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [walletLoading, setWalletLoading] = useState(true);
+  const [walletError, setWalletError] = useState("");
   const vendorInfo = getVendorInfo();
   const navigate = useNavigate();
   const [title, subtitle] = pageTitles[activeSlug] || pageTitles.trangchu;
@@ -633,6 +642,30 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
     setNotificationsOpen(false);
     setQuery("");
   }, [activeSlug]);
+
+  const loadSellerWallet = useCallback(async () => {
+    setWalletLoading(true);
+    setWalletError("");
+    try {
+      const wallet = await promotionApi.getAccountWallet();
+      const balance = typeof wallet === "number"
+        ? wallet
+        : wallet?.availableBalance ?? wallet?.balance ?? wallet?.promotionalBalance ?? 0;
+      setWalletBalance(Number(balance || 0));
+    } catch (err) {
+      console.error("Không thể tải số dư tài khoản seller:", err);
+      setWalletBalance(0);
+      setWalletError(err.response?.data?.message || "");
+    } finally {
+      setWalletLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSellerWallet();
+    window.addEventListener("seller-wallet-refresh", loadSellerWallet);
+    return () => window.removeEventListener("seller-wallet-refresh", loadSellerWallet);
+  }, [loadSellerWallet]);
 
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
@@ -815,6 +848,18 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
             )}
           </div>
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            <button
+              type="button"
+              className="inline-flex max-w-[150px] items-center gap-2 rounded-full border border-orange-100 bg-orange-50/70 px-3 py-2 text-xs font-extrabold text-stone-800 transition-colors hover:border-orange-200 hover:bg-orange-50 sm:max-w-none"
+              title={walletError || "Số dư tài khoản"}
+              onClick={loadSellerWallet}
+            >
+              <WalletCards className="h-4 w-4 text-orange-600" />
+              <span className="hidden text-stone-500 md:inline">Số dư</span>
+              <span className="truncate text-orange-700">
+                {walletLoading ? "Đang tải..." : formatVndBalance(walletBalance)}
+              </span>
+            </button>
             <div className="relative">
               <button
                 type="button"
@@ -4681,7 +4726,7 @@ function MarketingPage({ onToast, navigateTo }) {
     setError('');
     try {
       const [walletResult, transactionResult, promotionResult, productResult] = await Promise.allSettled([
-        promotionApi.getWallet(),
+        promotionApi.getPromotionWallet(),
         promotionApi.getWalletTransactions(20),
         promotionApi.getPromotions(),
         sellerApi.getProductsByVendor(vendorId),
@@ -4734,7 +4779,7 @@ function MarketingPage({ onToast, navigateTo }) {
   const durationDays = Math.max(0, Math.ceil((end - start) / 86400000));
   const isDurationValid = startDate && endDate && end >= start && durationDays >= PROMOTION_CONFIG.minDurationDays && durationDays <= PROMOTION_CONFIG.maxDurationDays;
   const isBudgetValid = budget >= PROMOTION_CONFIG.minBudget && budget <= PROMOTION_CONFIG.maxBudget;
-  const isRoiValid = [1000, 2000, 3000].includes(Number(roiPerClick));
+  const isRoiValid = roiPerClick >= PROMOTION_CONFIG.minAmountPerClick && roiPerClick <= budget;
   const canSubmit = selectedPost && isBudgetValid && isRoiValid && isDurationValid && isBalanceSufficient && !runningPromotion;
 
   const summary = useMemo(() => promotions.reduce(
@@ -4753,7 +4798,12 @@ function MarketingPage({ onToast, navigateTo }) {
   const toApiDate = (date, isEnd = false) => `${date}T${isEnd ? '23:59:59' : '00:00:00'}+07:00`;
 
   const handleTopUp = async (amount) => {
-    const normalizedAmount = Math.max(10000, Number(amount || 0));
+    const requestedAmount = Number(amount || 0);
+    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
+      onToast({ title: 'Số tiền nạp chưa hợp lệ', message: `Số tiền nạp tối thiểu là ${formatCurrency(PROMOTION_CONFIG.minTopUpAmount)}.`, type: 'error' });
+      return;
+    }
+    const normalizedAmount = Math.max(PROMOTION_CONFIG.minTopUpAmount, requestedAmount);
     setActionLoading(true);
     try {
       const order = await promotionApi.createTopUp({ amount: normalizedAmount });
@@ -4810,7 +4860,7 @@ function MarketingPage({ onToast, navigateTo }) {
       setEditPromotion(null);
       setSelectedPromotion(updated);
       await loadPromotionData();
-      onToast({ title: 'Đã cập nhật quảng bá', message: 'ROI/click và ngân sách đã được cập nhật từ backend.' });
+      onToast({ title: 'Đã cập nhật quảng bá', message: 'Số tiền cho mỗi lượt được click và ngân sách đã được cập nhật từ backend.' });
     } catch (err) {
       onToast({ title: 'Không thể cập nhật quảng bá', message: err.response?.data?.message || err.message, type: 'error' });
     } finally {
@@ -4869,7 +4919,7 @@ function MarketingPage({ onToast, navigateTo }) {
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <InsightCard title="Số dư khả dụng" icon={WalletCards} value={formatShortCurrency(availableBalance)} label={`${formatShortCurrency(lockedBalance)} đang giữ`} text="Dữ liệu thật từ ví quảng bá Seller." tone="is-green" />
           <InsightCard title="Promotion active" icon={Megaphone} value={new Intl.NumberFormat('vi-VN').format(summary.active)} label={`${formatShortCurrency(summary.remaining)} còn lại`} text="Danh sách promotion lấy từ database." tone="is-orange" />
-          <InsightCard title="Chi phí ROI/click" icon={CircleDollarSign} value={formatShortCurrency(totalSpent || summary.spent)} label={`${summary.clicks} click khách hàng`} text="Chỉ trừ tiền khi click hợp lệ." tone="is-teal" />
+          <InsightCard title="Chi phí lượt click" icon={CircleDollarSign} value={formatShortCurrency(totalSpent || summary.spent)} label={`${summary.clicks} click khách hàng`} text="Chỉ trừ tiền khi click hợp lệ." tone="is-teal" />
           <InsightCard title="CTR quảng bá" icon={BarChart3} value={summary.impressions ? formatPercent((summary.clicks / summary.impressions) * 100) : '0%'} label={`${new Intl.NumberFormat('vi-VN').format(summary.impressions)} impressions`} text="Từ impression/click backend ghi nhận." tone="is-yellow" />
         </section>
 
@@ -4907,8 +4957,8 @@ function MarketingPage({ onToast, navigateTo }) {
                           </div>
                           <p className="mt-1 text-xs font-semibold text-stone-400">SKU {product.sku} · {product.category} · {formatCurrency(product.price)}</p>
                           <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                            <PromotionPreviewItem label="ROI/click mặc định" value={formatCurrency(roiPerClick)} tone="text-orange-700" />
-                            <PromotionPreviewItem label="Click ước tính" value={new Intl.NumberFormat('vi-VN').format(Math.floor(budget / roiPerClick))} tone="text-teal-700" />
+                            <PromotionPreviewItem label="Số tiền cho mỗi lượt được click" value={formatCurrency(roiPerClick)} tone="text-orange-700" />
+                            <PromotionPreviewItem label="Click ước tính" value={new Intl.NumberFormat('vi-VN').format(roiPerClick > 0 ? Math.floor(budget / roiPerClick) : 0)} tone="text-teal-700" />
                             <PromotionPreviewItem label="Đã bán" value={new Intl.NumberFormat('vi-VN').format(product.sold || 0)} tone="text-stone-800" />
                           </div>
                         </div>
@@ -4939,8 +4989,8 @@ function MarketingPage({ onToast, navigateTo }) {
                 <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-orange-700">Nạp tiền vào số dư quảng bá</span>
                 <input
                   type="number"
-                  min="10000"
-                  step="10000"
+                  min={PROMOTION_CONFIG.minTopUpAmount}
+                  step="1000"
                   value={topUpAmount}
                   onChange={(event) => setTopUpAmount(Number(event.target.value || 0))}
                   className="vendor-input mt-2 h-11 w-full bg-white px-3 text-sm font-bold"
@@ -4961,7 +5011,7 @@ function MarketingPage({ onToast, navigateTo }) {
                   </button>
                 ))}
               </div>
-              <button type="button" className="vendor-primary-button mt-3 w-full justify-center" disabled={actionLoading || topUpAmount < 10000} onClick={() => handleTopUp(topUpAmount)}>
+              <button type="button" className="vendor-primary-button mt-3 w-full justify-center" disabled={actionLoading || topUpAmount < PROMOTION_CONFIG.minTopUpAmount} onClick={() => handleTopUp(topUpAmount)}>
                 <CreditCard className="h-4 w-4" />
                 Nạp vào ví quảng bá
               </button>
@@ -4995,7 +5045,7 @@ function MarketingPage({ onToast, navigateTo }) {
     <div className="space-y-5">
       <section className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
         <Panel className="p-5">
-          <PanelHeader title="Thiết lập tiếp thị quảng cáo" subtitle="Nhập số tiền quảng bá, ROI/click và thời gian theo BRD v1.2.">
+          <PanelHeader title="Thiết lập tiếp thị quảng cáo" subtitle="Nhập số tiền quảng bá, số tiền cho mỗi lượt được click và thời gian chạy.">
             <button type="button" className="vendor-secondary-button" onClick={() => setSelectedPostId('')}>
               <ChevronLeft className="h-4 w-4" />
               Đổi bài đăng
@@ -5029,16 +5079,27 @@ function MarketingPage({ onToast, navigateTo }) {
               <input type="number" min={PROMOTION_CONFIG.minBudget} max={PROMOTION_CONFIG.maxBudget} step="10000" value={budget} onChange={(event) => setBudget(Number(event.target.value || 0))} className="vendor-input mt-3 h-11 w-full px-3 text-sm font-bold" />
             </div>
 
-            <div>
-              <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">ROI/click</span>
-              <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                {[1000, 2000, 3000].map((amount) => (
-                  <button key={amount} type="button" className={cn('rounded-lg border px-3 py-2 text-xs font-extrabold transition-colors', roiPerClick === amount ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-stone-200 bg-white text-stone-500 hover:border-orange-200 hover:text-orange-600')} onClick={() => setRoiPerClick(amount)}>
-                    {formatCurrency(amount)} / click
-                  </button>
-                ))}
+            <label className="block">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">Số tiền cho mỗi lượt được click</span>
+                <span className="text-xs font-bold text-stone-500">Tối đa {formatCurrency(budget)}</span>
               </div>
-            </div>
+              <input
+                type="number"
+                min={PROMOTION_CONFIG.minAmountPerClick}
+                max={budget}
+                step="1000"
+                value={roiPerClick}
+                onChange={(event) => setRoiPerClick(Number(event.target.value || 0))}
+                className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
+                placeholder="Nhập số tiền trả cho mỗi lượt click"
+              />
+              {!isRoiValid && (
+                <p className="mt-2 text-xs font-semibold text-red-600">
+                  Số tiền cho mỗi lượt được click phải lớn hơn 0 và không vượt quá số tiền quảng bá.
+                </p>
+              )}
+            </label>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block">
@@ -5053,14 +5114,16 @@ function MarketingPage({ onToast, navigateTo }) {
 
             <div className="grid gap-3 sm:grid-cols-3">
               <PromotionPreviewItem label="Số dư khả dụng" value={formatCurrency(availableBalance)} tone="text-teal-700" />
-              <PromotionPreviewItem label="ROI/click" value={formatCurrency(roiPerClick)} tone="text-orange-700" />
+              <PromotionPreviewItem label="Số tiền cho mỗi lượt được click" value={formatCurrency(roiPerClick)} tone="text-orange-700" />
               <PromotionPreviewItem label="Estimated clicks" value={new Intl.NumberFormat('vi-VN').format(estimatedClicks)} tone="text-stone-800" />
             </div>
 
             {!isBalanceSufficient && (
               <div className="rounded-xl border border-red-100 bg-red-50 p-4">
                 <p className="text-sm font-extrabold text-red-700">Số dư không đủ để quảng bá bài đăng</p>
-                <p className="mt-1 text-xs font-semibold leading-5 text-red-600">Cần nạp thêm {formatCurrency(deficit)} để reserve ngân sách.</p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-red-600">
+                  Cần nạp thêm {formatCurrency(deficit)} để reserve ngân sách. API nạp ví yêu cầu tối thiểu {formatCurrency(PROMOTION_CONFIG.minTopUpAmount)} mỗi giao dịch.
+                </p>
                 <button type="button" className="vendor-primary-button mt-3 bg-red-600 border-red-600 hover:bg-red-700" disabled={actionLoading} onClick={() => handleTopUp(deficit)}>
                   <CreditCard className="h-4 w-4" />
                   Nạp thêm
@@ -5080,7 +5143,7 @@ function MarketingPage({ onToast, navigateTo }) {
           <div className="mt-4 space-y-3">
             <PromotionPreviewItem label="Công thức estimated clicks" value={`${formatCurrency(budget)} / ${formatCurrency(roiPerClick)} = ${new Intl.NumberFormat('vi-VN').format(estimatedClicks)} click`} tone="text-stone-800" />
             <PromotionPreviewItem label="Reserve budget" value="available balance giảm, locked balance tăng" tone="text-orange-700" />
-            <PromotionPreviewItem label="Charge" value="Mỗi click hợp lệ trừ ROI/click snapshot" tone="text-teal-700" />
+            <PromotionPreviewItem label="Charge" value="Mỗi click hợp lệ trừ đúng số tiền đã nhập" tone="text-teal-700" />
           </div>
         </Panel>
       </section>
@@ -5115,7 +5178,7 @@ function PromotionPerformanceTable({ promotions, onOpenDetail }) {
         <table className="w-full min-w-[960px] text-left text-sm">
           <thead className="vendor-table-head">
             <tr>
-              {["Bài đăng", "Trạng thái", "Ngân sách", "ROI/click", "Estimated/Customer click", "Impression/CTR", "Thao tác"].map((column) => (
+              {["Bài đăng", "Trạng thái", "Ngân sách", "Số tiền cho mỗi lượt được click", "Estimated/Customer click", "Impression/CTR", "Thao tác"].map((column) => (
                 <th key={column} className="px-5 py-3.5">{column}</th>
               ))}
             </tr>
@@ -5200,7 +5263,7 @@ function PromotionDetailModal({ promotion, onClose, onEdit, onStop }) {
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <PromotionPreviewItem label="Initial budget" value={formatCurrency(Number(promotion.initialBudget || 0))} tone="text-stone-800" />
           <PromotionPreviewItem label="Remaining amount" value={formatCurrency(Number(promotion.remainingBudget || 0))} tone="text-teal-700" />
-          <PromotionPreviewItem label="ROI/click" value={formatCurrency(Number(promotion.roiPerClick || 0))} tone="text-orange-700" />
+          <PromotionPreviewItem label="Số tiền cho mỗi lượt được click" value={formatCurrency(Number(promotion.roiPerClick || 0))} tone="text-orange-700" />
           <PromotionPreviewItem label="Estimated clicks" value={new Intl.NumberFormat('vi-VN').format(Number(promotion.estimatedClicks || 0))} tone="text-stone-800" />
           <PromotionPreviewItem label="Customer clicks" value={new Intl.NumberFormat('vi-VN').format(Number(promotion.customerClicks || 0))} tone="text-teal-700" />
           <PromotionPreviewItem label="Impressions" value={new Intl.NumberFormat('vi-VN').format(Number(promotion.impressions || 0))} tone="text-stone-800" />
@@ -5221,17 +5284,15 @@ function PromotionEditModal({ promotion, onChange, onClose, onSubmit, loading })
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-stone-950/45 p-4">
       <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
         <h3 className="text-lg font-extrabold text-stone-900">Chỉnh sửa quảng bá</h3>
-        <p className="mt-1 text-xs font-semibold text-stone-400">Có thể đổi ROI/click hoặc số tiền quảng bá theo BRD v1.2.</p>
+        <p className="mt-1 text-xs font-semibold text-stone-400">Có thể đổi số tiền cho mỗi lượt được click hoặc số tiền quảng bá.</p>
         <div className="mt-5 space-y-4">
           <label className="block">
             <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">Số tiền quảng bá</span>
             <input type="number" className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold" value={promotion.initialBudget || ''} onChange={(event) => onChange({ ...promotion, initialBudget: Number(event.target.value || 0) })} />
           </label>
           <label className="block">
-            <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">ROI/click</span>
-            <select className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold" value={promotion.roiPerClick || 1000} onChange={(event) => onChange({ ...promotion, roiPerClick: Number(event.target.value) })}>
-              {[1000, 2000, 3000].map((amount) => <option key={amount} value={amount}>{formatCurrency(amount)} / click</option>)}
-            </select>
+            <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">Số tiền cho mỗi lượt được click</span>
+            <input type="number" min="1" step="1000" className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold" value={promotion.roiPerClick || ''} onChange={(event) => onChange({ ...promotion, roiPerClick: Number(event.target.value || 0) })} />
           </label>
         </div>
         <div className="mt-5 flex justify-end gap-2">
@@ -5267,13 +5328,11 @@ function PromotionStopConfirm({ promotion, onClose, onConfirm, loading }) {
 function PromotionTopUpModal({ payment, onClose, onPaid }) {
   const [status, setStatus] = useState('pending');
   const [pollCount, setPollCount] = useState(0);
-  const [iframeLoading, setIframeLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setStatus('pending');
     setPollCount(0);
-    setIframeLoading(true);
   }, [payment?.orderCode]);
 
   useEffect(() => {
@@ -5290,6 +5349,7 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
         if (nextStatus === 'paid' || nextStatus === 'success') {
           setStatus('paid');
           onPaid?.();
+          window.dispatchEvent(new Event("seller-wallet-refresh"));
         } else if (nextStatus === 'cancelled' || nextStatus === 'failed') {
           setStatus(nextStatus);
         } else {
@@ -5314,7 +5374,7 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
   const statusMeta = {
     pending: {
       title: 'Đang chờ thanh toán',
-      text: 'Sau khi PayOS ghi nhận giao dịch, số dư ví quảng bá sẽ được backend cập nhật.',
+      text: 'Hoàn tất thanh toán trên PayOS, hệ thống sẽ tự làm mới số dư tài khoản quảng cáo.',
       className: 'border-amber-100 bg-amber-50 text-amber-800',
       icon: <RefreshCw className="h-4 w-4 animate-spin" />,
     },
@@ -5346,26 +5406,26 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-950/45 p-4">
-      <div className="grid max-h-[92vh] w-full max-w-5xl gap-5 overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl lg:grid-cols-[360px_minmax(0,1fr)]">
-        <div className="space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange-600">Nạp tiền ví quảng bá</p>
-              <h3 className="mt-1 text-lg font-extrabold text-stone-900">Thanh toán qua PayOS</h3>
-              <p className="mt-1 text-xs font-semibold text-stone-400">Kế thừa luồng thanh toán đang dùng cho nâng cấp gói.</p>
-            </div>
-            <button type="button" className="vendor-icon-button" onClick={onClose}><X className="h-4 w-4" /></button>
+      <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-stone-100 p-5">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange-600">Nạp tiền tài khoản quảng cáo</p>
+            <h3 className="mt-1 text-lg font-extrabold text-stone-900">Thanh toán qua PayOS</h3>
+            <p className="mt-1 text-xs font-semibold text-stone-400">Link thanh toán được tạo từ API ví seller, số dư dùng để chạy tiếp thị quảng cáo.</p>
           </div>
+          <button type="button" className="vendor-icon-button" onClick={onClose}><X className="h-4 w-4" /></button>
+        </div>
 
-          <div className="rounded-2xl border border-stone-100 bg-stone-50 p-4">
+        <div className="space-y-4 p-5">
+          <div className="rounded-2xl border border-orange-100 bg-orange-50/60 p-4">
             <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="font-semibold text-stone-500">Mã đơn hàng</span>
+              <span className="font-semibold text-orange-800">Mã thanh toán</span>
               <span className="font-mono font-extrabold text-stone-900">{payment.orderCode}</span>
             </div>
-            <div className="mt-3 flex items-end justify-between gap-3 border-t border-dashed border-stone-200 pt-3">
+            <div className="mt-4 flex items-end justify-between gap-3 border-t border-dashed border-orange-200 pt-4">
               <div>
                 <p className="text-sm font-extrabold text-stone-900">Số tiền nạp</p>
-                <p className="text-[11px] font-semibold text-stone-400">Cộng vào số dư ví quảng bá sau khi paid</p>
+                <p className="text-[11px] font-semibold text-stone-500">Cộng vào số dư tài khoản quảng cáo sau khi thanh toán thành công</p>
               </div>
               <button type="button" className="text-right" onClick={copyAmount}>
                 <span className="block text-2xl font-black text-stone-900">{formatCurrency(Number(payment.amount || 0))}</span>
@@ -5384,46 +5444,26 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
             </div>
           </div>
 
-          {payment.paymentUrl && (
-            <a href={payment.paymentUrl} target="_blank" rel="noopener noreferrer" className="vendor-primary-button w-full justify-center">
-              Mở trang thanh toán
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          )}
+          <div className="grid gap-2 sm:grid-cols-2">
+            {payment.paymentUrl ? (
+              <a href={payment.paymentUrl} target="_blank" rel="noopener noreferrer" className="vendor-primary-button justify-center">
+                Mở PayOS
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            ) : (
+              <button type="button" className="vendor-primary-button justify-center" disabled>
+                Chưa có link thanh toán
+              </button>
+            )}
+            <button type="button" className="vendor-secondary-button justify-center" onClick={onPaid}>
+              <RefreshCw className="h-4 w-4" />
+              Làm mới số dư
+            </button>
+          </div>
 
           <div className="flex items-center justify-center gap-2 text-xs font-semibold text-stone-400">
             <Lock className="h-3.5 w-3.5" />
-            PayOS bảo mật, không lưu thông tin thẻ trên frontend.
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-100">
-          <div className="flex items-center gap-2 border-b border-stone-200 bg-stone-50 px-4 py-3">
-            <span className="h-3 w-3 rounded-full bg-red-400" />
-            <span className="h-3 w-3 rounded-full bg-yellow-400" />
-            <span className="h-3 w-3 rounded-full bg-green-400" />
-            <span className="ml-3 truncate rounded-lg border border-stone-200 bg-white px-3 py-1 text-xs font-bold text-stone-500">pay.payos.vn/secure</span>
-          </div>
-          <div className="relative h-[560px] bg-white">
-            {iframeLoading && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-white/95">
-                <RefreshCw className="h-6 w-6 animate-spin text-orange-500" />
-                <p className="text-xs font-bold text-stone-500">Đang hiển thị cổng PayOS...</p>
-              </div>
-            )}
-            {payment.paymentUrl ? (
-              <iframe
-                src={payment.paymentUrl}
-                title="PayOS wallet top up"
-                className="h-full w-full border-none"
-                onLoad={() => setIframeLoading(false)}
-                sandbox="allow-scripts allow-same-origin allow-forms"
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center p-6 text-center text-sm font-semibold text-stone-500">
-                Backend chưa trả paymentUrl cho giao dịch này.
-              </div>
-            )}
+            Frontend chỉ mở link PayOS do backend trả về, không xử lý thông tin thanh toán.
           </div>
         </div>
       </div>

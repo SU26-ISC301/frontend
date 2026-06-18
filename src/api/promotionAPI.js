@@ -3,7 +3,12 @@ import axiosClient from './axiosClient';
 const unwrap = (response) => response.data?.data ?? response.data;
 
 export const promotionApi = {
-  getWallet: async () => {
+  getAccountWallet: async () => {
+    const response = await axiosClient.get('/api/seller/wallet/balance');
+    return unwrap(response);
+  },
+
+  getPromotionWallet: async () => {
     const response = await axiosClient.get('/api/seller/wallet/balance');
     return unwrap(response);
   },
