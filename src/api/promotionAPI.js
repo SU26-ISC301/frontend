@@ -41,27 +41,33 @@ export const promotionApi = {
   },
 
   createPromotion: async (payload) => {
-    const response = await axiosClient.post('/api/seller/promotions', payload);
+    const response = await axiosClient.post('/api/promotions/create', {
+      productId: payload.productId ?? payload.postId,
+      promotionAmount: payload.promotionAmount ?? payload.budget,
+      roiPerClick: payload.roiPerClick,
+      startDate: payload.startDate,
+      endDate: payload.endDate,
+    });
     return unwrap(response);
   },
 
   getPromotions: async () => {
-    const response = await axiosClient.get('/api/seller/promotions');
+    const response = await axiosClient.get('/api/promotions/mine');
     return unwrap(response);
   },
 
   getPromotionDetail: async (promotionId) => {
-    const response = await axiosClient.get(`/api/seller/promotions/${promotionId}`);
+    const response = await axiosClient.get(`/api/promotions/${promotionId}`);
     return unwrap(response);
   },
 
   updatePromotion: async (promotionId, payload) => {
-    const response = await axiosClient.patch(`/api/seller/promotions/${promotionId}`, payload);
+    const response = await axiosClient.patch(`/api/promotions/${promotionId}`, payload);
     return unwrap(response);
   },
 
   stopPromotion: async (promotionId, reason = 'Seller stopped from promotion popup') => {
-    const response = await axiosClient.post(`/api/seller/promotions/${promotionId}/stop`, {
+    const response = await axiosClient.post(`/api/promotions/${promotionId}/stop`, {
       confirm: true,
       reason,
     });

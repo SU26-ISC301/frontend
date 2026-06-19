@@ -90,6 +90,11 @@ export const sellerApi = {
     return unwrap(response);
   },
 
+  getPublicProducts: async () => {
+    const response = await axiosClient.get('/api/products');
+    return unwrap(response);
+  },
+
   getVendorByProfileId: async (profileId) => {
     const response = await axiosClient.get(`/vendors/profile/${profileId}`);
     return unwrap(response);
@@ -129,4 +134,3 @@ export const sellerApi = {
     return unwrap(response);
   },
 };
-

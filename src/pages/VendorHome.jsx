@@ -76,9 +76,7 @@ import PostingQuotaBanner from "../components/Seller/PostingQuotaBanner";
 
 const navItems = [
   { slug: "trangchu", label: "Tổng quan", icon: LayoutDashboard },
-  { slug: "don-hang", label: "Đơn hàng", icon: ShoppingBag, badge: "12" },
   { slug: "san-pham", label: "Sản phẩm", icon: PackageSearch },
-  { slug: "van-chuyen", label: "Vận chuyển", icon: Truck },
   { slug: "kho-hang", label: "Kho hàng", icon: Warehouse },
   { slug: "tin-nhan", label: "Tin nhắn", icon: MessageSquareText },
   {
@@ -252,7 +250,7 @@ const shipments = [
 ];
 
 const PROMOTION_CONFIG = {
-  minBudget: 1000,
+  minBudget: 10000,
   maxBudget: 50000000,
   minAmountPerClick: 1,
   minTopUpAmount: 10000,
@@ -604,6 +602,10 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
   const [walletBalance, setWalletBalance] = useState(0);
   const [walletLoading, setWalletLoading] = useState(true);
   const [walletError, setWalletError] = useState("");
+  const [headerTopUpPayment, setHeaderTopUpPayment] = useState(null);
+  const [headerTopUpModalOpen, setHeaderTopUpModalOpen] = useState(false);
+  const [headerTopUpAmount, setHeaderTopUpAmount] = useState(10000);
+  const [headerTopUpLoading, setHeaderTopUpLoading] = useState(false);
   const vendorInfo = getVendorInfo();
   const navigate = useNavigate();
   const [title, subtitle] = pageTitles[activeSlug] || pageTitles.trangchu;
@@ -676,21 +678,33 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
     navigate("/seller");
   };
 
-  const handleAddProduct = async () => {
+  const handleHeaderTopUp = async () => {
+    const amount = Number(headerTopUpAmount || 0);
+    if (!Number.isFinite(amount) || amount < PROMOTION_CONFIG.minTopUpAmount) {
+      onToast?.({
+        title: "Số tiền nạp chưa hợp lệ",
+        message: `Số tiền nạp tối thiểu là ${formatCurrency(PROMOTION_CONFIG.minTopUpAmount)}.`,
+        type: "error",
+      });
+      return;
+    }
+
+    setHeaderTopUpLoading(true);
     try {
-      const status = await getSubscriptionStatus();
-      if (status?.canPost === false || status?.remainingSlots === 0) {
-        onOpenPlanModal?.({ blocksNavigation: true });
-        return;
-      }
-      navigate("/vendor/products/add");
-    } catch {
-      const remaining = getRemainingSlots();
-      if (remaining <= 0) {
-        onOpenPlanModal?.({ blocksNavigation: true });
-      } else {
-        navigate("/vendor/products/add");
-      }
+      const payment = await promotionApi.createTopUp({ amount });
+      setHeaderTopUpPayment(payment);
+      onToast?.({
+        title: "Đã tạo yêu cầu nạp tiền",
+        message: "Mở PayOS để hoàn tất nạp tiền vào tài khoản quảng cáo.",
+      });
+    } catch (err) {
+      onToast?.({
+        title: "Không thể tạo yêu cầu nạp tiền",
+        message: err.response?.data?.message || err.message,
+        type: "error",
+      });
+    } finally {
+      setHeaderTopUpLoading(false);
     }
   };
 
@@ -921,24 +935,14 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
             >
               <CircleHelp className="h-5 w-5" />
             </button>
-            {hasWarehouseConfigured || !VENDOR_FEATURES.warehouse ? (
-              <button
-                type="button"
-                className="vendor-primary-button hidden sm:inline-flex"
-                onClick={handleAddProduct}
-              >
-                <Plus className="h-4 w-4" />
-                Đăng tin sản phẩm
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="vendor-secondary-button hidden sm:inline-flex border-orange-200 text-orange-600 bg-orange-50/50 hover:bg-orange-50"
-                onClick={() => navigate("/vendor/kho-hang")}
-              >
-                Thiết lập kho hàng
-              </button>
-            )}
+            <button
+              type="button"
+              className="vendor-primary-button hidden sm:inline-flex"
+              onClick={() => setHeaderTopUpModalOpen(true)}
+            >
+              <CreditCard className="h-4 w-4" />
+              Nạp tiền
+            </button>
           </div>
         </header>
         <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -956,6 +960,19 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
           {children}
         </main>
       </div>
+      <HeaderTopUpModal
+        open={headerTopUpModalOpen}
+        amount={headerTopUpAmount}
+        loading={headerTopUpLoading}
+        onAmountChange={setHeaderTopUpAmount}
+        onClose={() => {
+          setHeaderTopUpModalOpen(false);
+          setHeaderTopUpPayment(null);
+        }}
+        onSubmit={handleHeaderTopUp}
+        payment={headerTopUpPayment}
+        onPaid={loadSellerWallet}
+      />
     </div>
   );
 }
@@ -963,6 +980,66 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
 function Panel({ className, children }) {
   return (
     <section className={cn("vendor-panel", className)}>{children}</section>
+  );
+}
+
+function HeaderTopUpModal({ open, amount, loading, onAmountChange, onClose, onSubmit, payment, onPaid }) {
+  if (!open) return null;
+
+  const quickAmounts = [10000, 50000, 100000];
+
+  return (
+    <>
+      <div className="fixed inset-0 z-[95] flex items-center justify-center bg-stone-950/45 p-4">
+        <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange-600">Nạp tiền tài khoản</p>
+              <h3 className="mt-1 text-lg font-extrabold text-stone-900">Nạp tiền chạy quảng cáo</h3>
+              <p className="mt-1 text-xs font-semibold text-stone-400">Số dư này dùng để tạo và chạy tiếp thị quảng cáo.</p>
+            </div>
+            <button type="button" className="vendor-icon-button" onClick={onClose}><X className="h-4 w-4" /></button>
+          </div>
+
+          <label className="mt-5 block">
+            <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">Số tiền nạp</span>
+            <input
+              type="number"
+              min={PROMOTION_CONFIG.minTopUpAmount}
+              step="10000"
+              value={amount}
+              onChange={(event) => onAmountChange(Number(event.target.value || 0))}
+              className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
+            />
+          </label>
+
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {quickAmounts.map((quickAmount) => (
+              <button
+                key={quickAmount}
+                type="button"
+                className={cn(
+                  'rounded-lg border px-3 py-2 text-xs font-extrabold transition-colors',
+                  amount === quickAmount ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-stone-200 bg-white text-stone-500 hover:border-orange-200',
+                )}
+                onClick={() => onAmountChange(quickAmount)}
+              >
+                {formatCurrency(quickAmount)}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-5 flex justify-end gap-2">
+            <button type="button" className="vendor-secondary-button" onClick={onClose}>Hủy</button>
+            <button type="button" className="vendor-primary-button" disabled={loading || amount < PROMOTION_CONFIG.minTopUpAmount} onClick={onSubmit}>
+              <CreditCard className="h-4 w-4" />
+              Tạo link nạp tiền
+            </button>
+          </div>
+        </div>
+      </div>
+      <PromotionTopUpModal payment={payment} onClose={onClose} onPaid={onPaid} />
+    </>
   );
 }
 
@@ -4700,9 +4777,10 @@ function MarketingPage({ onToast, navigateTo }) {
     return toInputDate(date);
   });
 
-  const mapProductCandidate = (product) => {
+  const mapProductCandidate = useCallback((product) => {
     const mainMedia = product.mediaList?.find((media) => media.isMain) || product.mediaList?.[0];
     const firstVariant = product.variants?.[0];
+    const promotionId = product.promotionId ?? product.postPromotionId ?? product.promotion?.id ?? null;
     return {
       id: product.id,
       sku: firstVariant?.sku || firstVariant?.sellerSku || product.slug || `POST-${product.id}`,
@@ -4712,8 +4790,40 @@ function MarketingPage({ onToast, navigateTo }) {
       status: String(product.status || '').toUpperCase(),
       sold: Number(product.soldCount || 0),
       imageUrl: mainMedia?.mediaUrl || firstVariant?.imageUrl || '',
+      vendorId: product.vendorId,
+      isPromoted: Boolean(product.isPromoted || promotionId),
+      promotionId,
+      promotion: product.promotion || null,
     };
-  };
+  }, []);
+
+  const mapPromotedProduct = useCallback((product, detail = null) => {
+    const candidate = mapProductCandidate(product);
+    const promotionId = detail?.promotionId ?? candidate.promotionId;
+    const initialBudget = Number(detail?.initialBudget ?? product.promotionAmount ?? product.initialBudget ?? 0);
+    const remainingBudget = Number(detail?.remainingBudget ?? product.remainingBudget ?? initialBudget);
+    const roiAmount = Number(detail?.roiPerClick ?? product.roiPerClick ?? 0);
+    return {
+      promotionId,
+      postId: candidate.id,
+      postTitle: candidate.name,
+      postImageUrl: candidate.imageUrl,
+      category: candidate.category,
+      price: candidate.price,
+      status: detail?.status || product.promotionStatus || 'ACTIVE',
+      initialBudget,
+      remainingBudget,
+      spentAmount: Number(detail?.spentAmount ?? Math.max(0, initialBudget - remainingBudget)),
+      roiPerClick: roiAmount,
+      estimatedClicks: Number(detail?.estimatedClicks ?? (initialBudget && roiAmount ? Math.floor(initialBudget / roiAmount) : 0)),
+      customerClicks: Number(detail?.customerClicks ?? 0),
+      impressions: Number(detail?.impressions ?? 0),
+      ctr: Number(detail?.ctr ?? 0),
+      startDate: detail?.startDate || product.promotionStartDate || null,
+      endDate: detail?.endDate || product.promotionEndDate || null,
+      dataSource: detail?.dataSource || 'PRODUCTS_API',
+    };
+  }, [mapProductCandidate]);
 
   const loadPromotionData = useCallback(async () => {
     if (!vendorId) {
@@ -4725,24 +4835,30 @@ function MarketingPage({ onToast, navigateTo }) {
     setLoading(true);
     setError('');
     try {
-      const [walletResult, transactionResult, promotionResult, productResult] = await Promise.allSettled([
+      const [walletResult, productResult] = await Promise.allSettled([
         promotionApi.getPromotionWallet(),
-        promotionApi.getWalletTransactions(20),
-        promotionApi.getPromotions(),
-        sellerApi.getProductsByVendor(vendorId),
+        sellerApi.getPublicProducts(),
       ]);
 
       const walletData = walletResult.status === 'fulfilled' ? walletResult.value : null;
-      const transactionData = transactionResult.status === 'fulfilled' ? transactionResult.value : [];
-      const promotionData = promotionResult.status === 'fulfilled' ? promotionResult.value : [];
       const productData = productResult.status === 'fulfilled' ? productResult.value : [];
+      const vendorProducts = (Array.isArray(productData) ? productData : [])
+        .filter((product) => String(product.vendorId || '') === String(vendorId));
+      const activeVendorProducts = vendorProducts
+        .filter((product) => String(product.status || '').toLowerCase() === 'active');
+      const promotedProducts = activeVendorProducts
+        .filter((product) => Boolean(product.isPromoted || product.promotionId || product.postPromotionId || product.promotion?.id));
+      const productPromotions = promotedProducts
+        .map((product) => mapPromotedProduct(product))
+        .filter((promotion) => promotion.promotionId);
+      const promotedPostIds = new Set(productPromotions.map((promotion) => String(promotion.postId)));
 
       setWallet(walletData || null);
-      setTransactions(Array.isArray(transactionData) ? transactionData : []);
-      setPromotions(Array.isArray(promotionData) ? promotionData : []);
+      setTransactions([]);
+      setPromotions(productPromotions);
       setEligibleProducts(
-        (Array.isArray(productData) ? productData : [])
-          .filter((product) => String(product.status || '').toLowerCase() === 'active')
+        activeVendorProducts
+          .filter((product) => !promotedPostIds.has(String(product.id)))
           .map(mapProductCandidate),
       );
       if (walletResult.status === 'rejected') {
@@ -4754,7 +4870,7 @@ function MarketingPage({ onToast, navigateTo }) {
     } finally {
       setLoading(false);
     }
-  }, [vendorId]);
+  }, [mapProductCandidate, mapPromotedProduct, vendorId]);
 
   useEffect(() => {
     loadPromotionData();
@@ -4829,6 +4945,7 @@ function MarketingPage({ onToast, navigateTo }) {
       });
       onToast({ title: 'Đã tạo quảng bá', message: 'Bài đăng đã được đưa vào danh sách tiếp thị quảng cáo bằng dữ liệu thật.' });
       setSelectedPostId('');
+      window.dispatchEvent(new Event("seller-wallet-refresh"));
       await loadPromotionData();
     } catch (err) {
       onToast({ title: 'Không thể tạo quảng bá', message: err.response?.data?.message || err.message, type: 'error' });
@@ -4838,15 +4955,7 @@ function MarketingPage({ onToast, navigateTo }) {
   };
 
   const openPromotionDetail = async (promotion) => {
-    setActionLoading(true);
-    try {
-      const detail = await promotionApi.getPromotionDetail(promotion.promotionId);
-      setSelectedPromotion(detail);
-    } catch (err) {
-      onToast({ title: 'Không thể tải chi tiết quảng bá', message: err.response?.data?.message || err.message, type: 'error' });
-    } finally {
-      setActionLoading(false);
-    }
+    setSelectedPromotion(promotion);
   };
 
   const handleUpdatePromotion = async () => {
@@ -4860,7 +4969,7 @@ function MarketingPage({ onToast, navigateTo }) {
       setEditPromotion(null);
       setSelectedPromotion(updated);
       await loadPromotionData();
-      onToast({ title: 'Đã cập nhật quảng bá', message: 'Số tiền cho mỗi lượt được click và ngân sách đã được cập nhật từ backend.' });
+      onToast({ title: 'Đã cập nhật quảng bá', message: 'Dữ liệu đã được cập nhật từ bảng post_promotions.' });
     } catch (err) {
       onToast({ title: 'Không thể cập nhật quảng bá', message: err.response?.data?.message || err.message, type: 'error' });
     } finally {
@@ -5191,8 +5300,11 @@ function PromotionPerformanceTable({ promotions, onOpenDetail }) {
                 </td>
               </tr>
             ) : promotions.map((promotion) => {
-              const spentPercent = Number(promotion.initialBudget)
-                ? (Number(promotion.spentAmount || 0) / Number(promotion.initialBudget)) * 100
+              const initialBudget = Number(promotion.initialBudget || 0);
+              const remainingBudget = Number(promotion.remainingBudget || 0);
+              const roiAmount = Number(promotion.roiPerClick || 0);
+              const spentPercent = initialBudget
+                ? (Number(promotion.spentAmount || 0) / initialBudget) * 100
                 : 0;
               return (
                 <tr key={promotion.promotionId} className="vendor-table-row">
@@ -5213,14 +5325,20 @@ function PromotionPerformanceTable({ promotions, onOpenDetail }) {
                     <StatusBadge status={getPromotionStatusLabel(promotion.status)} />
                   </td>
                   <td className="px-5 py-4">
-                    <p className="font-extrabold text-stone-700">{formatCurrency(Number(promotion.remainingBudget || 0))}</p>
-                    <p className="mt-1 text-xs font-semibold text-stone-400">/ {formatCurrency(Number(promotion.initialBudget || 0))}</p>
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-100">
-                      <div className="h-full rounded-full bg-orange-500" style={{ width: `${Math.min(100, spentPercent)}%` }} />
-                    </div>
+                    {initialBudget ? (
+                      <>
+                        <p className="font-extrabold text-stone-700">{formatCurrency(remainingBudget)}</p>
+                        <p className="mt-1 text-xs font-semibold text-stone-400">/ {formatCurrency(initialBudget)}</p>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-100">
+                          <div className="h-full rounded-full bg-orange-500" style={{ width: `${Math.min(100, spentPercent)}%` }} />
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-xs font-bold text-stone-400">Chưa đồng bộ từ post_promotions</p>
+                    )}
                   </td>
                   <td className="px-5 py-4 font-extrabold text-orange-700">
-                    {formatCurrency(Number(promotion.roiPerClick || 0))}
+                    {roiAmount ? formatCurrency(roiAmount) : <span className="text-xs text-stone-400">Chưa đồng bộ</span>}
                   </td>
                   <td className="px-5 py-4">
                     <p className="font-extrabold text-stone-700">{new Intl.NumberFormat('vi-VN').format(Number(promotion.estimatedClicks || 0))}</p>
@@ -5249,6 +5367,8 @@ function PromotionPerformanceTable({ promotions, onOpenDetail }) {
 function PromotionDetailModal({ promotion, onClose, onEdit, onStop }) {
   if (!promotion) return null;
   const canEdit = ['ACTIVE', 'SCHEDULED', 'PAUSED'].includes(String(promotion.status || '').toUpperCase());
+  const renderMoneyOrPending = (value) => Number(value || 0) ? formatCurrency(Number(value)) : 'Chưa đồng bộ';
+  const renderNumberOrPending = (value) => Number(value || 0) ? new Intl.NumberFormat('vi-VN').format(Number(value)) : 'Chưa đồng bộ';
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-stone-950/45 p-4">
       <div className="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-2xl">
@@ -5261,12 +5381,14 @@ function PromotionDetailModal({ promotion, onClose, onEdit, onStop }) {
           <button type="button" className="vendor-icon-button" onClick={onClose}><X className="h-4 w-4" /></button>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <PromotionPreviewItem label="Initial budget" value={formatCurrency(Number(promotion.initialBudget || 0))} tone="text-stone-800" />
-          <PromotionPreviewItem label="Remaining amount" value={formatCurrency(Number(promotion.remainingBudget || 0))} tone="text-teal-700" />
-          <PromotionPreviewItem label="Số tiền cho mỗi lượt được click" value={formatCurrency(Number(promotion.roiPerClick || 0))} tone="text-orange-700" />
-          <PromotionPreviewItem label="Estimated clicks" value={new Intl.NumberFormat('vi-VN').format(Number(promotion.estimatedClicks || 0))} tone="text-stone-800" />
-          <PromotionPreviewItem label="Customer clicks" value={new Intl.NumberFormat('vi-VN').format(Number(promotion.customerClicks || 0))} tone="text-teal-700" />
-          <PromotionPreviewItem label="Impressions" value={new Intl.NumberFormat('vi-VN').format(Number(promotion.impressions || 0))} tone="text-stone-800" />
+          <PromotionPreviewItem label="Promotion ID" value={`PRM-${promotion.promotionId}`} tone="text-stone-800" />
+          <PromotionPreviewItem label="Initial budget" value={renderMoneyOrPending(promotion.initialBudget)} tone="text-stone-800" />
+          <PromotionPreviewItem label="Remaining amount" value={renderMoneyOrPending(promotion.remainingBudget)} tone="text-teal-700" />
+          <PromotionPreviewItem label="Số tiền cho mỗi lượt được click" value={renderMoneyOrPending(promotion.roiPerClick)} tone="text-orange-700" />
+          <PromotionPreviewItem label="Estimated clicks" value={renderNumberOrPending(promotion.estimatedClicks)} tone="text-stone-800" />
+          <PromotionPreviewItem label="Customer clicks" value={renderNumberOrPending(promotion.customerClicks)} tone="text-teal-700" />
+          <PromotionPreviewItem label="Impressions" value={renderNumberOrPending(promotion.impressions)} tone="text-stone-800" />
+          <PromotionPreviewItem label="CTR" value={Number(promotion.ctr || 0) ? formatPercent(Number(promotion.ctr)) : 'Chưa đồng bộ'} tone="text-stone-800" />
         </div>
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button type="button" className="vendor-secondary-button" onClick={onClose}>Đóng</button>
