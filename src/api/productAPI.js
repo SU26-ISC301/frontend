@@ -3,8 +3,8 @@ import axiosClient from './axiosClient';
 const unwrap = (response) => response.data?.data ?? response.data;
 
 export const productApi = {
-  getPublicProducts: async () => {
-    const response = await axiosClient.get('/api/products');
+  getPublicProducts: async (params = {}) => {
+    const response = await axiosClient.get('/api/products', { params });
     return unwrap(response);
   },
 

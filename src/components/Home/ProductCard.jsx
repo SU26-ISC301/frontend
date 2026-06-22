@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Crown, Heart, Star } from 'lucide-react';
+import { Crown, Heart, Megaphone, Star } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { BuyerAuthModal } from '../Auth/BuyerAuthModal';
 import { wishlistApi } from '../../api/wishlistAPI';
@@ -14,7 +14,7 @@ function hasBuyerSession() {
   );
 }
 
-export function ProductCard({ id, index, title, price, oldPrice, sold, rating, image, badge, isPremiumHighlighted, initialFavorite = false, vendorId }) {
+export function ProductCard({ id, index, title, price, oldPrice, sold, rating, image, badge, isPremiumHighlighted, isPromoted, initialFavorite = false, vendorId }) {
   const [authOpen, setAuthOpen] = useState(false);
   const [favorite, setFavorite] = useState(initialFavorite);
   const [pendingFavorite, setPendingFavorite] = useState(false);
@@ -116,11 +116,21 @@ export function ProductCard({ id, index, title, price, oldPrice, sold, rating, i
         >
           {badge}
         </span>
-        {isPremiumHighlighted && (
-          <span className="absolute left-2 bottom-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white shadow-lg shadow-orange-500/25">
-            <Crown className="h-3 w-3" />
-            Tin nổi bật
-          </span>
+        {(isPromoted || isPremiumHighlighted) && (
+          <div className="absolute left-2 bottom-2 flex flex-col items-start gap-1">
+            {isPromoted && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#ff4d2e] to-[#ff7a45] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white shadow-lg shadow-orange-500/25">
+                <Megaphone className="h-3 w-3" />
+                Quảng bá
+              </span>
+            )}
+            {isPremiumHighlighted && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white shadow-lg shadow-orange-500/25">
+                <Crown className="h-3 w-3" />
+                Tin nổi bật
+              </span>
+            )}
+          </div>
         )}
       </div>
       <CardContent className="p-3.5">

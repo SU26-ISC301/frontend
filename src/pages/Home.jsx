@@ -35,6 +35,67 @@ function formatPrice(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value || 0));
 }
 
+const APPROVED_PRODUCT_STATUSES = new Set(['active', 'approved', 'đã duyệt', 'da duyet']);
+const ACTIVE_PROMOTION_STATUSES = new Set(['active', 'scheduled']);
+const PRODUCTS_PAGE_SIZE = 20;
+
+const defaultPageMeta = {
+  page: 0,
+  size: PRODUCTS_PAGE_SIZE,
+  totalPages: 1,
+  totalElements: 0,
+  first: true,
+  last: true,
+};
+
+function toNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function normalizeStatus(value) {
+  return normalizeText(value);
+}
+
+function isApprovedProduct(product) {
+  const status = normalizeStatus(product?.status);
+  return !status || APPROVED_PRODUCT_STATUSES.has(status);
+}
+
+function getPromotionId(product) {
+  return product?.promotionId
+    ?? product?.postPromotionId
+    ?? product?.promotion?.id
+    ?? product?.postPromotion?.id
+    ?? null;
+}
+
+function getPromotionStatus(product) {
+  return normalizeStatus(
+    product?.promotionStatus
+      ?? product?.promotion?.status
+      ?? product?.postPromotion?.status
+      ?? ''
+  );
+}
+
+function getPromotionRoi(product) {
+  return toNumber(
+    product?.roiPerClick
+      ?? product?.promotion?.roiPerClick
+      ?? product?.postPromotion?.roiPerClick
+      ?? product?.promotion?.roiAmount
+      ?? product?.postPromotion?.roiAmount
+  );
+}
+
+function isPromotedProduct(product) {
+  const promotionId = getPromotionId(product);
+  const promotionStatus = getPromotionStatus(product);
+  const hasActiveStatus = !promotionStatus || ACTIVE_PROMOTION_STATUSES.has(promotionStatus);
+  return Boolean((product?.isPromoted || promotionId) && hasActiveStatus);
+}
+
 function mapProductCard(product) {
   const images = (product.mediaList || [])
     .filter((media) => (media.mediaType || media.media_type) === 'image')
@@ -42,6 +103,7 @@ function mapProductCard(product) {
   const variants = product.variants || [];
   const prices = variants.map((variant) => Number(variant.price)).filter((price) => Number.isFinite(price) && price > 0);
   const lowestPrice = prices.length ? Math.min(...prices) : 0;
+  const roiPerClick = getPromotionRoi(product);
 
   return {
     id: product.id,
@@ -55,7 +117,52 @@ function mapProductCard(product) {
     categoryId: product.categoryId || product.category_id || null,
     categoryName: product.categoryName || '',
     isPremiumHighlighted: Boolean(product.premiumHighlighted),
+    isPromoted: isPromotedProduct(product),
+    roiPerClick,
+    createdAt: product.createdAt || product.updatedAt || null,
     vendorId: product.vendorId || product.vendor_id || null,
+  };
+}
+
+function sortPublicProducts(left, right) {
+  const promotedDelta = Number(Boolean(right.isPromoted)) - Number(Boolean(left.isPromoted));
+  if (promotedDelta !== 0) return promotedDelta;
+
+  if (left.isPromoted && right.isPromoted) {
+    const roiDelta = toNumber(right.roiPerClick) - toNumber(left.roiPerClick);
+    if (roiDelta !== 0) return roiDelta;
+  }
+
+  return new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime();
+}
+
+function getPageContent(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.content)) return data.content;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.data)) return data.data;
+  return [];
+}
+
+function getPageMeta(data, fallbackPage = 0) {
+  if (Array.isArray(data)) {
+    return {
+      ...defaultPageMeta,
+      page: fallbackPage,
+      totalPages: 1,
+      totalElements: data.length,
+      first: true,
+      last: true,
+    };
+  }
+
+  return {
+    page: Number(data?.number ?? data?.page ?? fallbackPage) || 0,
+    size: Number(data?.size ?? PRODUCTS_PAGE_SIZE) || PRODUCTS_PAGE_SIZE,
+    totalPages: Math.max(1, Number(data?.totalPages ?? 1) || 1),
+    totalElements: Number(data?.totalElements ?? data?.total ?? getPageContent(data).length) || 0,
+    first: Boolean(data?.first ?? (Number(data?.number ?? data?.page ?? fallbackPage) <= 0)),
+    last: Boolean(data?.last ?? (Number(data?.number ?? data?.page ?? fallbackPage) >= (Number(data?.totalPages ?? 1) - 1))),
   };
 }
 
@@ -88,6 +195,8 @@ export default function Home() {
   const [searchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [productsPage, setProductsPage] = useState(0);
+  const [pageMeta, setPageMeta] = useState(defaultPageMeta);
   const [categories, setCategories] = useState([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -97,16 +206,34 @@ export default function Home() {
   useEffect(() => {
     let isMounted = true;
 
-    productApi.getPublicProducts()
+    const params = {
+      page: productsPage,
+      size: PRODUCTS_PAGE_SIZE,
+    };
+
+    if (searchQuery.trim()) {
+      params.keyword = searchQuery.trim();
+    }
+    if (selectedCategory?.id) {
+      params.categoryId = selectedCategory.id;
+    }
+
+    setIsLoadingProducts(true);
+    productApi.getPublicProducts(params)
       .then((data) => {
         if (!isMounted) return;
-        const mapped = Array.isArray(data) ? data.map(mapProductCard) : [];
-        mapped.sort((a, b) => Number(b.isPremiumHighlighted) - Number(a.isPremiumHighlighted));
+        const pageContent = getPageContent(data);
+        const mapped = pageContent
+              .filter(isApprovedProduct)
+              .map(mapProductCard)
+              .sort(sortPublicProducts);
         setProducts(mapped);
+        setPageMeta(getPageMeta(data, productsPage));
       })
       .catch((error) => {
         console.warn('Không thể tải sản phẩm thật:', error);
         if (isMounted) setProducts([]);
+        if (isMounted) setPageMeta({ ...defaultPageMeta, page: productsPage });
       })
       .finally(() => {
         if (isMounted) setIsLoadingProducts(false);
@@ -115,7 +242,11 @@ export default function Home() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [productsPage, searchQuery, selectedCategory]);
+
+  useEffect(() => {
+    setProductsPage(0);
+  }, [searchQuery, selectedCategory]);
 
   const allCategories = useMemo(() => flattenCategories(categories), [categories]);
 
@@ -151,6 +282,14 @@ export default function Home() {
       return haystack.includes(normalizedSearchQuery);
     });
   }, [products, selectedCategory, selectedCategoryIds, normalizedSearchQuery]);
+
+  const pageButtons = useMemo(() => {
+    const totalPages = Math.max(1, pageMeta.totalPages || 1);
+    const currentPage = Math.min(Math.max(0, pageMeta.page || 0), totalPages - 1);
+    const start = Math.max(0, Math.min(currentPage - 2, totalPages - 5));
+    const end = Math.min(totalPages, start + 5);
+    return Array.from({ length: end - start }, (_, index) => start + index);
+  }, [pageMeta.page, pageMeta.totalPages]);
 
   useEffect(() => {
     let isMounted = true;
@@ -204,7 +343,7 @@ export default function Home() {
           selectedCategoryId={selectedCategory?.id ?? null}
           onSelectCategory={setSelectedCategory}
           productCounts={categoryProductCounts}
-          totalProductCount={products.length}
+          totalProductCount={pageMeta.totalElements || products.length}
         />
 
         <section className="pb-8">
@@ -235,11 +374,55 @@ export default function Home() {
               Đang tải sản phẩm thật...
             </div>
           ) : visibleProducts.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {visibleProducts.map((product, i) => (
-                <ProductCard key={`${product.id || product.title}-${i}`} index={i} {...product} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {visibleProducts.map((product, i) => (
+                  <ProductCard key={`${product.id || product.title}-${i}`} index={i} {...product} />
+                ))}
+              </div>
+              {pageMeta.totalPages > 1 && (
+                <div className="mt-8 flex flex-col items-center justify-between gap-4 rounded-2xl border border-white/80 bg-white/85 px-4 py-4 shadow-sm sm:flex-row">
+                  <p className="text-sm font-semibold text-slate-500">
+                    Trang <span className="font-extrabold text-slate-800">{pageMeta.page + 1}</span> / {pageMeta.totalPages}
+                    <span className="mx-2 text-slate-300">|</span>
+                    {new Intl.NumberFormat('vi-VN').format(pageMeta.totalElements)} sản phẩm
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      disabled={pageMeta.first || isLoadingProducts}
+                      onClick={() => setProductsPage((page) => Math.max(0, page - 1))}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:border-[#ff4d2e]/40 hover:text-[#ff4d2e] disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      Trước
+                    </button>
+                    {pageButtons.map((pageNumber) => (
+                      <button
+                        key={pageNumber}
+                        type="button"
+                        disabled={isLoadingProducts}
+                        onClick={() => setProductsPage(pageNumber)}
+                        className={`h-10 min-w-10 rounded-xl px-3 text-sm font-extrabold transition ${
+                          pageNumber === pageMeta.page
+                            ? 'bg-gradient-to-r from-[#ff4d2e] to-[#ff7a45] text-white shadow-md shadow-orange-500/20'
+                            : 'border border-slate-200 bg-white text-slate-600 hover:border-[#ff4d2e]/40 hover:text-[#ff4d2e]'
+                        }`}
+                      >
+                        {pageNumber + 1}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      disabled={pageMeta.last || isLoadingProducts}
+                      onClick={() => setProductsPage((page) => Math.min(pageMeta.totalPages - 1, page + 1))}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:border-[#ff4d2e]/40 hover:text-[#ff4d2e] disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      Sau
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="rounded-2xl border border-white/80 bg-white/80 px-5 py-10 text-center shadow-sm">
               <p className="text-base font-extrabold text-slate-700">
