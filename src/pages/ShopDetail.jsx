@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   Mail,
@@ -8,12 +8,24 @@ import {
   Store,
   Loader2,
   AlertTriangle,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { Header } from '../components/Home/Header';
 import { Footer } from '../components/layout/Footer';
 import { ProductCard } from '../components/Home/ProductCard';
 import { Card, CardContent } from '../components/ui/card';
 import { sellerApi } from '../api/sellerAPI';
+import { productApi } from '../api/productAPI';
+
+const PRODUCT_PAGE_SIZE = 20;
+const SHOP_PRODUCTS_PAGE_SIZE = 10;
+
+const sortOptions = [
+  { value: 'newest', label: 'Mới nhất đến cũ nhất' },
+  { value: 'oldest', label: 'Cũ nhất đến mới nhất' },
+  { value: 'price-desc', label: 'Giá từ cao đến thấp' },
+  { value: 'price-asc', label: 'Giá từ thấp đến cao' },
+];
 
 function formatPrice(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value || 0));
@@ -30,6 +42,19 @@ function getMainPrice(product) {
   return prices.length ? Math.min(...prices) : 0;
 }
 
+function getPageContent(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.content)) return data.content;
+  return [];
+}
+
+function getPageMeta(data) {
+  if (Array.isArray(data)) {
+    return { totalPages: 1 };
+  }
+  return { totalPages: Math.max(1, Number(data?.totalPages || 1)) };
+}
+
 function getProductImage(product) {
   const images = (product?.mediaList || [])
     .filter((media) => (media.mediaType || media.media_type) === 'image')
@@ -43,6 +68,7 @@ function mapProductCard(product) {
     id: product.id,
     title: product.name,
     price: formatPrice(price),
+    priceValue: price,
     oldPrice: null,
     sold: formatPrice(product.soldCount || 0),
     rating: product.avgRating ? Number(product.avgRating).toFixed(1) : '0.0',
@@ -57,6 +83,9 @@ export default function ShopDetail() {
   const { id } = useParams();
   const [vendor, setVendor] = useState(null);
   const [products, setProducts] = useState([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('all');
+  const [sortMode, setSortMode] = useState('newest');
+  const [productPage, setProductPage] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -71,10 +100,29 @@ export default function ShopDetail() {
         if (!mounted) return;
         setVendor(vendorData);
 
-        // Fetch products by vendor
-        const productList = await sellerApi.getProductsByVendor(id);
+        const firstPage = await productApi.getPublicProducts({
+          page: 0,
+          size: PRODUCT_PAGE_SIZE,
+        });
+        const allProducts = [...getPageContent(firstPage)];
+        const { totalPages } = getPageMeta(firstPage);
+
+        if (totalPages > 1) {
+          const remainingPages = await Promise.all(
+            Array.from({ length: totalPages - 1 }, (_, index) =>
+              productApi.getPublicProducts({
+                page: index + 1,
+                size: PRODUCT_PAGE_SIZE,
+              }).catch(() => null)
+            )
+          );
+          remainingPages.forEach((page) => {
+            allProducts.push(...getPageContent(page));
+          });
+        }
+
         if (!mounted) return;
-        setProducts(Array.isArray(productList) ? productList : []);
+        setProducts(allProducts.filter((product) => String(product.vendorId || product.vendor_id) === String(id)));
 
         // Record public shop profile visit
         try {
@@ -102,6 +150,71 @@ export default function ShopDetail() {
     };
   }, [id]);
 
+  const activeProducts = useMemo(
+    () => products.filter((product) => product.isActive !== false),
+    [products]
+  );
+
+  const categoryOptions = useMemo(() => {
+    const categoryMap = new Map();
+    activeProducts.forEach((product) => {
+      const categoryId = product.categoryId || product.category_id;
+      if (categoryId == null) return;
+      categoryMap.set(String(categoryId), {
+        id: String(categoryId),
+        name: product.categoryName || `Danh mục #${categoryId}`,
+      });
+    });
+    return Array.from(categoryMap.values()).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+  }, [activeProducts]);
+
+  const visibleProducts = useMemo(() => {
+    const filtered = selectedCategoryId === 'all'
+      ? activeProducts
+      : activeProducts.filter((product) => String(product.categoryId || product.category_id) === String(selectedCategoryId));
+
+    return [...filtered].sort((left, right) => {
+      if (sortMode === 'price-desc') {
+        return getMainPrice(right) - getMainPrice(left);
+      }
+      if (sortMode === 'price-asc') {
+        return getMainPrice(left) - getMainPrice(right);
+      }
+      const leftTime = new Date(left.createdAt || left.updatedAt || 0).getTime();
+      const rightTime = new Date(right.createdAt || right.updatedAt || 0).getTime();
+      if (sortMode === 'oldest') {
+        return leftTime - rightTime;
+      }
+      return rightTime - leftTime;
+    });
+  }, [activeProducts, selectedCategoryId, sortMode]);
+
+  const totalProductPages = Math.max(1, Math.ceil(visibleProducts.length / SHOP_PRODUCTS_PAGE_SIZE));
+  const pagedProducts = useMemo(
+    () => visibleProducts.slice(
+      productPage * SHOP_PRODUCTS_PAGE_SIZE,
+      (productPage + 1) * SHOP_PRODUCTS_PAGE_SIZE
+    ),
+    [visibleProducts, productPage]
+  );
+
+  const pageButtons = useMemo(() => {
+    const currentPage = Math.min(Math.max(0, productPage), totalProductPages - 1);
+    const start = Math.max(0, Math.min(currentPage - 2, totalProductPages - 5));
+    const end = Math.min(totalProductPages, start + 5);
+    return Array.from({ length: end - start }, (_, index) => start + index);
+  }, [productPage, totalProductPages]);
+
+  useEffect(() => {
+    setProductPage(0);
+  }, [selectedCategoryId, sortMode]);
+
+  useEffect(() => {
+    if (productPage > totalProductPages - 1) {
+      setProductPage(Math.max(0, totalProductPages - 1));
+    }
+  }, [productPage, totalProductPages]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#f6f4ef]">
@@ -128,8 +241,6 @@ export default function ShopDetail() {
       </div>
     );
   }
-
-  const activeProducts = products.filter(p => p.isActive !== false);
 
   return (
     <div className="min-h-screen bg-[#f6f4ef] text-[#16202a]">
@@ -207,23 +318,104 @@ export default function ShopDetail() {
 
         {/* Shop Products Listing */}
         <section className="space-y-4">
-          <h2 className="text-xl font-extrabold text-slate-950 flex items-center gap-2">
-            <Store className="h-5 w-5 text-orange-500" />
-            Sản phẩm đang bán ({activeProducts.length})
-          </h2>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="text-xl font-extrabold text-slate-950 flex items-center gap-2">
+                <Store className="h-5 w-5 text-orange-500" />
+                Sản phẩm đang bán ({activeProducts.length})
+              </h2>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                Đang hiển thị {pagedProducts.length}/{visibleProducts.length} sản phẩm phù hợp.
+              </p>
+            </div>
 
-          {activeProducts.length === 0 ? (
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/80 bg-white/90 p-3 shadow-sm sm:flex-row sm:items-center">
+              <span className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-wide text-slate-500">
+                <SlidersHorizontal className="h-4 w-4 text-orange-500" />
+                Bộ lọc
+              </span>
+              <label className="sr-only" htmlFor="shop-category-filter">Lọc theo danh mục</label>
+              <select
+                id="shop-category-filter"
+                value={selectedCategoryId}
+                onChange={(event) => setSelectedCategoryId(event.target.value)}
+                className="h-11 min-w-48 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
+              >
+                <option value="all">Tất cả danh mục</option>
+                {categoryOptions.map((category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+
+              <label className="sr-only" htmlFor="shop-sort-filter">Sắp xếp</label>
+              <select
+                id="shop-sort-filter"
+                value={sortMode}
+                onChange={(event) => setSortMode(event.target.value)}
+                className="h-11 min-w-52 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
+              >
+                {sortOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {visibleProducts.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-slate-200 bg-white/50 p-12 text-center text-slate-400 font-semibold">
-              Cửa hàng hiện tại chưa đăng bán sản phẩm nào.
+              {activeProducts.length === 0
+                ? 'Cửa hàng hiện tại chưa đăng bán sản phẩm nào.'
+                : 'Không có sản phẩm phù hợp với bộ lọc hiện tại.'}
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {activeProducts.map((p, index) => {
+              {pagedProducts.map((p, index) => {
                 const mapped = mapProductCard(p);
                 return (
                   <ProductCard key={p.id} index={index} {...mapped} />
                 );
               })}
+            </div>
+          )}
+          {visibleProducts.length > SHOP_PRODUCTS_PAGE_SIZE && (
+            <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-white/80 bg-white/85 px-4 py-4 shadow-sm sm:flex-row">
+              <p className="text-sm font-semibold text-slate-500">
+                Trang <span className="font-extrabold text-slate-800">{productPage + 1}</span> / {totalProductPages}
+                <span className="mx-2 text-slate-300">|</span>
+                {new Intl.NumberFormat('vi-VN').format(visibleProducts.length)} sản phẩm
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  disabled={productPage === 0}
+                  onClick={() => setProductPage((page) => Math.max(0, page - 1))}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:border-[#ff4d2e]/40 hover:text-[#ff4d2e] disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Trước
+                </button>
+                {pageButtons.map((pageNumber) => (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    onClick={() => setProductPage(pageNumber)}
+                    className={`h-10 min-w-10 rounded-xl px-3 text-sm font-extrabold transition ${
+                      pageNumber === productPage
+                        ? 'bg-gradient-to-r from-[#ff4d2e] to-[#ff7a45] text-white shadow-md shadow-orange-500/20'
+                        : 'border border-slate-200 bg-white text-slate-600 hover:border-[#ff4d2e]/40 hover:text-[#ff4d2e]'
+                    }`}
+                  >
+                    {pageNumber + 1}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  disabled={productPage >= totalProductPages - 1}
+                  onClick={() => setProductPage((page) => Math.min(totalProductPages - 1, page + 1))}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:border-[#ff4d2e]/40 hover:text-[#ff4d2e] disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Sau
+                </button>
+              </div>
             </div>
           )}
         </section>

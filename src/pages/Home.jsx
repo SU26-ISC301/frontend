@@ -6,7 +6,7 @@ import { CategoryStrip } from '../components/Home/CategoryStrip';
 import { ProductCard } from '../components/Home/ProductCard';
 import { Footer } from '../components/layout/Footer';
 import { Card, CardContent } from '../components/ui/card';
-import { BarChart3, Clock3, Flame, ShieldCheck, Truck } from 'lucide-react';
+import { BarChart3, Clock3, Flame, ShieldCheck, SlidersHorizontal, Truck, X } from 'lucide-react';
 import { productApi } from '../api/productAPI';
 import { categoryApi } from '../api/categoryAPI';
 
@@ -38,6 +38,14 @@ function formatPrice(value) {
 const APPROVED_PRODUCT_STATUSES = new Set(['active', 'approved', 'đã duyệt', 'da duyet']);
 const ACTIVE_PROMOTION_STATUSES = new Set(['active', 'scheduled']);
 const PRODUCTS_PAGE_SIZE = 20;
+const PRICE_FILTER_MAX = 73000000;
+const PRODUCT_FETCH_SIZE_FOR_PRICE_FILTER = 100;
+const MENU_SORT_OPTIONS = [
+  { value: 'newest', label: 'Mới nhất đến cũ nhất' },
+  { value: 'oldest', label: 'Cũ nhất đến mới nhất' },
+  { value: 'price-desc', label: 'Giá từ cao đến thấp' },
+  { value: 'price-asc', label: 'Giá từ thấp đến cao' },
+];
 
 const defaultPageMeta = {
   page: 0,
@@ -51,6 +59,24 @@ const defaultPageMeta = {
 function toNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;
+}
+
+function formatCurrencyInput(value) {
+  const number = Number(value || 0);
+  if (!number) return '';
+  return new Intl.NumberFormat('vi-VN').format(number);
+}
+
+function parseCurrencyInput(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function getProductLowestPrice(product) {
+  const variants = product?.variants || [];
+  const prices = variants
+    .map((variant) => Number(variant.price))
+    .filter((price) => Number.isFinite(price) && price > 0);
+  return prices.length ? Math.min(...prices) : 0;
 }
 
 function normalizeStatus(value) {
@@ -101,14 +127,14 @@ function mapProductCard(product) {
     .filter((media) => (media.mediaType || media.media_type) === 'image')
     .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   const variants = product.variants || [];
-  const prices = variants.map((variant) => Number(variant.price)).filter((price) => Number.isFinite(price) && price > 0);
-  const lowestPrice = prices.length ? Math.min(...prices) : 0;
+  const lowestPrice = getProductLowestPrice(product);
   const roiPerClick = getPromotionRoi(product);
 
   return {
     id: product.id,
     title: product.name,
     price: formatPrice(lowestPrice),
+    priceValue: lowestPrice,
     oldPrice: null,
     sold: formatPrice(product.soldCount || 0),
     rating: product.avgRating ? Number(product.avgRating).toFixed(1) : '0.0',
@@ -124,7 +150,38 @@ function mapProductCard(product) {
   };
 }
 
-function sortPublicProducts(left, right) {
+function isProductInPriceRange(product, priceRange) {
+  const min = Number(priceRange?.min || 0);
+  const max = Number(priceRange?.max || 0);
+  if (!min && !max) return true;
+
+  const price = getProductLowestPrice(product);
+  if (!price) return false;
+  if (min && price < min) return false;
+  if (max && price > max) return false;
+  return true;
+}
+
+function compareByMenuSort(left, right, sortMode) {
+  if (sortMode === 'price-desc') {
+    return toNumber(right.priceValue) - toNumber(left.priceValue);
+  }
+
+  if (sortMode === 'price-asc') {
+    return toNumber(left.priceValue) - toNumber(right.priceValue);
+  }
+
+  const leftTime = new Date(left.createdAt || 0).getTime();
+  const rightTime = new Date(right.createdAt || 0).getTime();
+
+  if (sortMode === 'oldest') {
+    return leftTime - rightTime;
+  }
+
+  return rightTime - leftTime;
+}
+
+function sortPublicProducts(left, right, sortMode = 'newest') {
   const promotedDelta = Number(Boolean(right.isPromoted)) - Number(Boolean(left.isPromoted));
   if (promotedDelta !== 0) return promotedDelta;
 
@@ -133,7 +190,7 @@ function sortPublicProducts(left, right) {
     if (roiDelta !== 0) return roiDelta;
   }
 
-  return new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime();
+  return compareByMenuSort(left, right, sortMode);
 }
 
 function getPageContent(data) {
@@ -166,11 +223,68 @@ function getPageMeta(data, fallbackPage = 0) {
   };
 }
 
-function flattenCategories(categories = []) {
-  return categories.flatMap((category) => [
-    category,
-    ...flattenCategories(category.children || []),
-  ]);
+function normalizeCategory(category) {
+  if (!category) return null;
+
+  return {
+    ...category,
+    id: category.id,
+    name: category.name || category.categoryName || category.slug || `Danh mục #${category.id}`,
+    slug: category.slug || '',
+    imageUrl: category.imageUrl || category.image_url || '',
+    parentId: category.parentId ?? category.parent_id ?? category.parent?.id ?? null,
+    isActive: category.isActive ?? category.is_active ?? true,
+    children: (category.children || category.subCategories || category.sub_categories || [])
+      .map(normalizeCategory)
+      .filter(Boolean),
+  };
+}
+
+function buildCategoryTree(categories = []) {
+  const normalized = categories
+    .map(normalizeCategory)
+    .filter((category) => category && category.isActive !== false);
+
+  const hasTreeChildren = normalized.some((category) => category.children?.length);
+  if (hasTreeChildren) return normalized;
+
+  const categoryById = new Map();
+  normalized.forEach((category) => {
+    categoryById.set(String(category.id), { ...category, children: [] });
+  });
+
+  const roots = [];
+  categoryById.forEach((category) => {
+    const parentKey = category.parentId == null ? null : String(category.parentId);
+    const parent = parentKey ? categoryById.get(parentKey) : null;
+    if (parent) {
+      parent.children.push(category);
+    } else {
+      roots.push(category);
+    }
+  });
+
+  return roots;
+}
+
+function flattenCategories(categories = [], depth = 0, parentPath = '') {
+  return categories.flatMap((category) => {
+    const normalized = normalizeCategory(category);
+    if (!normalized || normalized.isActive === false) return [];
+
+    const path = parentPath ? `${parentPath} > ${normalized.name}` : normalized.name;
+    const item = {
+      ...normalized,
+      depth,
+      path,
+      optionLabel: depth > 0 ? `${'— '.repeat(depth)}${normalized.name}` : normalized.name,
+    };
+
+    return [
+      item,
+      ...flattenCategories(normalized.children || [], depth + 1, path),
+    ];
+  });
 }
 
 function collectCategoryIds(category) {
@@ -200,33 +314,98 @@ export default function Home() {
   const [categories, setCategories] = useState([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [priceDraft, setPriceDraft] = useState({ min: '', max: '' });
+  const [appliedPrice, setAppliedPrice] = useState({ min: null, max: null });
+  const [menuSortMode, setMenuSortMode] = useState('newest');
   const searchQuery = searchParams.get('search') || '';
-  const normalizedSearchQuery = normalizeText(searchQuery);
+  const hasPriceFilter = Boolean(Number(appliedPrice.min || 0) || Number(appliedPrice.max || 0));
+
+  const allCategories = useMemo(() => flattenCategories(categories), [categories]);
 
   useEffect(() => {
     let isMounted = true;
 
-    const params = {
-      page: productsPage,
-      size: PRODUCTS_PAGE_SIZE,
-    };
+    const filterParams = {};
 
     if (searchQuery.trim()) {
-      params.keyword = searchQuery.trim();
+      filterParams.keyword = searchQuery.trim();
     }
     if (selectedCategory?.id) {
-      params.categoryId = selectedCategory.id;
+      filterParams.categoryId = selectedCategory.id;
     }
 
     setIsLoadingProducts(true);
-    productApi.getPublicProducts(params)
+
+    const loadProducts = async () => {
+      if (!hasPriceFilter) {
+        return productApi.getPublicProducts({
+          ...filterParams,
+          page: productsPage,
+          size: PRODUCTS_PAGE_SIZE,
+        });
+      }
+
+      const firstPage = await productApi.getPublicProducts({
+        ...filterParams,
+        page: 0,
+        size: PRODUCT_FETCH_SIZE_FOR_PRICE_FILTER,
+      });
+      const firstMeta = getPageMeta(firstPage, 0);
+      const allContent = [...getPageContent(firstPage)];
+
+      if (firstMeta.totalPages > 1) {
+        const remainingPages = await Promise.all(
+          Array.from({ length: firstMeta.totalPages - 1 }, (_, index) =>
+            productApi.getPublicProducts({
+              ...filterParams,
+              page: index + 1,
+              size: PRODUCT_FETCH_SIZE_FOR_PRICE_FILTER,
+            }).catch(() => null)
+          )
+        );
+        remainingPages.forEach((page) => {
+          allContent.push(...getPageContent(page));
+        });
+      }
+
+      const uniqueProducts = Array.from(
+        allContent.reduce((map, product) => {
+          if (product?.id != null) {
+            map.set(String(product.id), product);
+          }
+          return map;
+        }, new Map()).values()
+      );
+
+      const filteredContent = uniqueProducts
+        .filter(isApprovedProduct)
+        .filter((product) => isProductInPriceRange(product, appliedPrice))
+        .map(mapProductCard)
+        .sort((left, right) => sortPublicProducts(left, right, menuSortMode));
+      const totalElements = filteredContent.length;
+      const totalPages = Math.max(1, Math.ceil(totalElements / PRODUCTS_PAGE_SIZE));
+
+      return {
+        content: filteredContent.slice(productsPage * PRODUCTS_PAGE_SIZE, (productsPage + 1) * PRODUCTS_PAGE_SIZE),
+        number: productsPage,
+        size: PRODUCTS_PAGE_SIZE,
+        totalElements,
+        totalPages,
+        first: productsPage === 0,
+        last: productsPage >= totalPages - 1,
+      };
+    };
+
+    loadProducts()
       .then((data) => {
         if (!isMounted) return;
         const pageContent = getPageContent(data);
-        const mapped = pageContent
+        const mapped = hasPriceFilter
+          ? pageContent
+          : pageContent
               .filter(isApprovedProduct)
               .map(mapProductCard)
-              .sort(sortPublicProducts);
+              .sort((left, right) => sortPublicProducts(left, right, menuSortMode));
         setProducts(mapped);
         setPageMeta(getPageMeta(data, productsPage));
       })
@@ -242,18 +421,11 @@ export default function Home() {
     return () => {
       isMounted = false;
     };
-  }, [productsPage, searchQuery, selectedCategory]);
+  }, [productsPage, searchQuery, selectedCategory, appliedPrice, hasPriceFilter, menuSortMode]);
 
   useEffect(() => {
     setProductsPage(0);
-  }, [searchQuery, selectedCategory]);
-
-  const allCategories = useMemo(() => flattenCategories(categories), [categories]);
-
-  const selectedCategoryIds = useMemo(
-    () => new Set(collectCategoryIds(selectedCategory).map((id) => String(id))),
-    [selectedCategory]
-  );
+  }, [searchQuery, selectedCategory, appliedPrice, menuSortMode]);
 
   const categoryProductCounts = useMemo(() => {
     const counts = {};
@@ -266,22 +438,7 @@ export default function Home() {
     return counts;
   }, [allCategories, products]);
 
-  const visibleProducts = useMemo(() => {
-    const categoryProducts = selectedCategory
-      ? products.filter((product) => selectedCategoryIds.has(String(product.categoryId)))
-      : products;
-
-    if (!normalizedSearchQuery) return categoryProducts;
-
-    return categoryProducts.filter((product) => {
-      const haystack = normalizeText([
-        product.title,
-        product.badge,
-        product.categoryName,
-      ].join(' '));
-      return haystack.includes(normalizedSearchQuery);
-    });
-  }, [products, selectedCategory, selectedCategoryIds, normalizedSearchQuery]);
+  const visibleProducts = products;
 
   const pageButtons = useMemo(() => {
     const totalPages = Math.max(1, pageMeta.totalPages || 1);
@@ -291,13 +448,41 @@ export default function Home() {
     return Array.from({ length: end - start }, (_, index) => start + index);
   }, [pageMeta.page, pageMeta.totalPages]);
 
+  const updatePriceDraft = (field, value) => {
+    const normalizedValue = Math.max(0, Math.min(PRICE_FILTER_MAX, Number(parseCurrencyInput(value) || 0)));
+    setPriceDraft((current) => {
+      const next = { ...current, [field]: normalizedValue ? String(normalizedValue) : '' };
+      const min = Number(next.min || 0);
+      const max = Number(next.max || 0);
+      if (field === 'min' && max && min > max) {
+        next.max = String(min);
+      }
+      if (field === 'max' && max && min > max) {
+        next.min = String(max);
+      }
+      return next;
+    });
+  };
+
+  const applyPriceFilter = () => {
+    setAppliedPrice({
+      min: Number(priceDraft.min || 0) || null,
+      max: Number(priceDraft.max || 0) || null,
+    });
+  };
+
+  const clearPriceFilter = () => {
+    setPriceDraft({ min: '', max: '' });
+    setAppliedPrice({ min: null, max: null });
+  };
+
   useEffect(() => {
     let isMounted = true;
 
     categoryApi.getPublicCategories()
       .then((data) => {
         if (!isMounted) return;
-        setCategories(Array.isArray(data) ? data : []);
+        setCategories(buildCategoryTree(Array.isArray(data) ? data : []));
       })
       .catch((error) => {
         console.warn('Không thể tải hạng mục thật:', error);
@@ -369,78 +554,214 @@ export default function Home() {
               Cập nhật trực tiếp
             </span>
           </div>
-          {isLoadingProducts ? (
-            <div className="rounded-2xl border border-white/80 bg-white/80 px-5 py-10 text-center text-sm font-semibold text-slate-500 shadow-sm">
-              Đang tải sản phẩm thật...
-            </div>
-          ) : visibleProducts.length > 0 ? (
-            <>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                {visibleProducts.map((product, i) => (
-                  <ProductCard key={`${product.id || product.title}-${i}`} index={i} {...product} />
-                ))}
+          <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <aside className="h-fit rounded-2xl border border-white/80 bg-white/90 p-4 shadow-sm lg:sticky lg:top-28">
+              <div className="flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-2 rounded-full border border-red-100 bg-red-50 px-3 py-2 text-sm font-extrabold text-red-600">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Xem theo giá
+                </span>
+                {hasPriceFilter && (
+                  <button
+                    type="button"
+                    onClick={clearPriceFilter}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    aria-label="Xóa lọc giá"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
-              {pageMeta.totalPages > 1 && (
-                <div className="mt-8 flex flex-col items-center justify-between gap-4 rounded-2xl border border-white/80 bg-white/85 px-4 py-4 shadow-sm sm:flex-row">
-                  <p className="text-sm font-semibold text-slate-500">
-                    Trang <span className="font-extrabold text-slate-800">{pageMeta.page + 1}</span> / {pageMeta.totalPages}
-                    <span className="mx-2 text-slate-300">|</span>
-                    {new Intl.NumberFormat('vi-VN').format(pageMeta.totalElements)} sản phẩm
-                  </p>
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      disabled={pageMeta.first || isLoadingProducts}
-                      onClick={() => setProductsPage((page) => Math.max(0, page - 1))}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:border-[#ff4d2e]/40 hover:text-[#ff4d2e] disabled:cursor-not-allowed disabled:opacity-45"
-                    >
-                      Trước
-                    </button>
-                    {pageButtons.map((pageNumber) => (
-                      <button
-                        key={pageNumber}
-                        type="button"
-                        disabled={isLoadingProducts}
-                        onClick={() => setProductsPage(pageNumber)}
-                        className={`h-10 min-w-10 rounded-xl px-3 text-sm font-extrabold transition ${
-                          pageNumber === pageMeta.page
-                            ? 'bg-gradient-to-r from-[#ff4d2e] to-[#ff7a45] text-white shadow-md shadow-orange-500/20'
-                            : 'border border-slate-200 bg-white text-slate-600 hover:border-[#ff4d2e]/40 hover:text-[#ff4d2e]'
-                        }`}
-                      >
-                        {pageNumber + 1}
-                      </button>
+              <p className="mt-4 text-sm font-extrabold text-slate-800">Hãy chọn mức giá phù hợp với bạn</p>
+
+              <div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                <label className="sr-only" htmlFor="min-price-filter">Giá thấp nhất</label>
+                <input
+                  id="min-price-filter"
+                  type="text"
+                  inputMode="numeric"
+                  value={formatCurrencyInput(priceDraft.min)}
+                  onChange={(event) => updatePriceDraft('min', event.target.value)}
+                  placeholder="0"
+                  className="h-12 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-right text-sm font-bold text-slate-700 outline-none transition focus:border-red-400 focus:ring-4 focus:ring-red-100"
+                />
+                <span className="font-extrabold text-slate-400">-</span>
+                <label className="sr-only" htmlFor="max-price-filter">Giá cao nhất</label>
+                <input
+                  id="max-price-filter"
+                  type="text"
+                  inputMode="numeric"
+                  value={formatCurrencyInput(priceDraft.max)}
+                  onChange={(event) => updatePriceDraft('max', event.target.value)}
+                  placeholder={formatCurrencyInput(PRICE_FILTER_MAX)}
+                  className="h-12 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-right text-sm font-bold text-slate-700 outline-none transition focus:border-red-400 focus:ring-4 focus:ring-red-100"
+                />
+              </div>
+
+              <div className="mt-5 space-y-3">
+                <input
+                  type="range"
+                  min="0"
+                  max={PRICE_FILTER_MAX}
+                  step="10000"
+                  value={Number(priceDraft.max || PRICE_FILTER_MAX)}
+                  onChange={(event) => updatePriceDraft('max', event.target.value)}
+                  className="h-2 w-full accent-red-600"
+                  aria-label="Chọn giá cao nhất"
+                />
+                <div className="flex justify-between text-xs font-bold text-slate-400">
+                  <span>0đ</span>
+                  <span>{formatCurrencyInput(PRICE_FILTER_MAX)}đ</span>
+                </div>
+              </div>
+
+              {hasPriceFilter && (
+                <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
+                  Đang lọc: {formatCurrencyInput(appliedPrice.min || 0)}đ - {appliedPrice.max ? `${formatCurrencyInput(appliedPrice.max)}đ` : 'không giới hạn'}
+                </p>
+              )}
+
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={clearPriceFilter}
+                  className="h-12 rounded-xl border border-slate-200 bg-white text-sm font-extrabold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="button"
+                  onClick={applyPriceFilter}
+                  className="h-12 rounded-xl bg-red-600 text-sm font-extrabold text-white shadow-lg shadow-red-500/20 transition hover:bg-red-700"
+                >
+                  Xem kết quả
+                </button>
+              </div>
+            </aside>
+
+            <div className="min-w-0">
+              <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-white/80 bg-white/90 p-4 shadow-sm sm:flex-row sm:items-center">
+                <div className="inline-flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-slate-500 sm:w-auto">
+                  <SlidersHorizontal className="h-5 w-5 text-[#ff6b2c]" />
+                  Bộ lọc
+                </div>
+                <div className="grid flex-1 gap-3 sm:grid-cols-2">
+                  <label className="sr-only" htmlFor="menu-category-filter">Lọc theo danh mục</label>
+                  <select
+                    id="menu-category-filter"
+                    value={selectedCategory?.id != null ? String(selectedCategory.id) : 'all'}
+                    onChange={(event) => {
+                      const categoryId = event.target.value;
+                      setSelectedCategory(
+                        categoryId === 'all'
+                          ? null
+                          : allCategories.find((category) => String(category.id) === categoryId) || null
+                      );
+                    }}
+                    className="h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base font-extrabold text-slate-700 outline-none transition focus:border-[#ff7a45] focus:ring-4 focus:ring-orange-100"
+                  >
+                    <option value="all">Tất cả danh mục</option>
+                    {allCategories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.optionLabel || category.name}
+                      </option>
                     ))}
-                    <button
-                      type="button"
-                      disabled={pageMeta.last || isLoadingProducts}
-                      onClick={() => setProductsPage((page) => Math.min(pageMeta.totalPages - 1, page + 1))}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:border-[#ff4d2e]/40 hover:text-[#ff4d2e] disabled:cursor-not-allowed disabled:opacity-45"
-                    >
-                      Sau
-                    </button>
+                  </select>
+
+                  <label className="sr-only" htmlFor="menu-sort-filter">Sắp xếp sản phẩm</label>
+                  <select
+                    id="menu-sort-filter"
+                    value={menuSortMode}
+                    onChange={(event) => setMenuSortMode(event.target.value)}
+                    className="h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base font-extrabold text-slate-700 outline-none transition focus:border-[#ff7a45] focus:ring-4 focus:ring-orange-100"
+                  >
+                    {MENU_SORT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {isLoadingProducts ? (
+                <div className="rounded-2xl border border-white/80 bg-white/80 px-5 py-10 text-center text-sm font-semibold text-slate-500 shadow-sm">
+                  Đang tải sản phẩm thật...
+                </div>
+              ) : visibleProducts.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                    {visibleProducts.map((product, i) => (
+                      <ProductCard key={`${product.id || product.title}-${i}`} index={i} {...product} />
+                    ))}
                   </div>
+                  {pageMeta.totalPages > 1 && (
+                    <div className="mt-8 flex flex-col items-center justify-between gap-4 rounded-2xl border border-white/80 bg-white/85 px-4 py-4 shadow-sm sm:flex-row">
+                      <p className="text-sm font-semibold text-slate-500">
+                        Trang <span className="font-extrabold text-slate-800">{pageMeta.page + 1}</span> / {pageMeta.totalPages}
+                        <span className="mx-2 text-slate-300">|</span>
+                        {new Intl.NumberFormat('vi-VN').format(pageMeta.totalElements)} sản phẩm
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          disabled={pageMeta.first || isLoadingProducts}
+                          onClick={() => setProductsPage((page) => Math.max(0, page - 1))}
+                          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:border-[#ff4d2e]/40 hover:text-[#ff4d2e] disabled:cursor-not-allowed disabled:opacity-45"
+                        >
+                          Trước
+                        </button>
+                        {pageButtons.map((pageNumber) => (
+                          <button
+                            key={pageNumber}
+                            type="button"
+                            disabled={isLoadingProducts}
+                            onClick={() => setProductsPage(pageNumber)}
+                            className={`h-10 min-w-10 rounded-xl px-3 text-sm font-extrabold transition ${
+                              pageNumber === pageMeta.page
+                                ? 'bg-gradient-to-r from-[#ff4d2e] to-[#ff7a45] text-white shadow-md shadow-orange-500/20'
+                                : 'border border-slate-200 bg-white text-slate-600 hover:border-[#ff4d2e]/40 hover:text-[#ff4d2e]'
+                            }`}
+                          >
+                            {pageNumber + 1}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          disabled={pageMeta.last || isLoadingProducts}
+                          onClick={() => setProductsPage((page) => Math.min(pageMeta.totalPages - 1, page + 1))}
+                          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:border-[#ff4d2e]/40 hover:text-[#ff4d2e] disabled:cursor-not-allowed disabled:opacity-45"
+                        >
+                          Sau
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="rounded-2xl border border-white/80 bg-white/80 px-5 py-10 text-center shadow-sm">
+                  <p className="text-base font-extrabold text-slate-700">
+                    {hasPriceFilter
+                      ? 'Không có sản phẩm trong khoảng giá này'
+                      : searchQuery
+                      ? 'Không tìm thấy sản phẩm phù hợp'
+                      : selectedCategory
+                      ? 'Chưa có sản phẩm trong danh mục này'
+                      : 'Chưa có sản phẩm thật đang bán'}
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-slate-500">
+                    {hasPriceFilter
+                      ? 'Bạn thử mở rộng khoảng giá hoặc xóa lọc để xem thêm sản phẩm.'
+                      : searchQuery
+                      ? 'Bạn thử đổi từ khóa, tên shop hoặc chọn một danh mục gợi ý khác nhé.'
+                      : selectedCategory
+                      ? 'Bạn có thể chọn danh mục khác hoặc xem tất cả sản phẩm.'
+                      : 'Sản phẩm sẽ xuất hiện ở đây sau khi Admin phê duyệt.'}
+                  </p>
                 </div>
               )}
-            </>
-          ) : (
-            <div className="rounded-2xl border border-white/80 bg-white/80 px-5 py-10 text-center shadow-sm">
-              <p className="text-base font-extrabold text-slate-700">
-                {searchQuery
-                  ? 'Không tìm thấy sản phẩm phù hợp'
-                  : selectedCategory
-                  ? 'Chưa có sản phẩm trong danh mục này'
-                  : 'Chưa có sản phẩm thật đang bán'}
-              </p>
-              <p className="mt-2 text-sm font-semibold text-slate-500">
-                {searchQuery
-                  ? 'Bạn thử đổi từ khóa, tên shop hoặc chọn một danh mục gợi ý khác nhé.'
-                  : selectedCategory
-                  ? 'Bạn có thể chọn danh mục khác hoặc xem tất cả sản phẩm.'
-                  : 'Sản phẩm sẽ xuất hiện ở đây sau khi Admin phê duyệt.'}
-              </p>
             </div>
-          )}
+          </div>
         </section>
       </main>
 
