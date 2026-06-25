@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Header } from '../components/Home/Header';
 import { HeroBanner } from '../components/Home/HeroBanner';
@@ -6,9 +6,33 @@ import { CategoryStrip } from '../components/Home/CategoryStrip';
 import { ProductCard } from '../components/Home/ProductCard';
 import { Footer } from '../components/layout/Footer';
 import { Card, CardContent } from '../components/ui/card';
-import { BarChart3, Clock3, Flame, ShieldCheck, SlidersHorizontal, Truck, X } from 'lucide-react';
+import {
+  BadgePercent,
+  BarChart3,
+  Cable,
+  Camera,
+  ChevronDown,
+  ChevronRight,
+  Clock3,
+  Flame,
+  Grid2X2,
+  Headphones,
+  Laptop,
+  MonitorSmartphone,
+  Newspaper,
+  PackageOpen,
+  RefreshCw,
+  ShieldCheck,
+  SlidersHorizontal,
+  Smartphone,
+  Truck,
+  Tv,
+  Watch,
+  X,
+} from 'lucide-react';
 import { productApi } from '../api/productAPI';
 import { categoryApi } from '../api/categoryAPI';
+import { TECH_BRANDS } from '../utils/productStorage';
 
 const highlights = [
   {
@@ -45,6 +69,30 @@ const MENU_SORT_OPTIONS = [
   { value: 'oldest', label: 'Cũ nhất đến mới nhất' },
   { value: 'price-desc', label: 'Giá từ cao đến thấp' },
   { value: 'price-asc', label: 'Giá từ thấp đến cao' },
+];
+
+const MENU_PRICE_RANGES = [
+  { label: 'Dưới 2 triệu', min: null, max: 2000000 },
+  { label: 'Từ 2 - 4 triệu', min: 2000000, max: 4000000 },
+  { label: 'Từ 4 - 7 triệu', min: 4000000, max: 7000000 },
+  { label: 'Từ 7 - 13 triệu', min: 7000000, max: 13000000 },
+  { label: 'Từ 13 - 20 triệu', min: 13000000, max: 20000000 },
+  { label: 'Trên 20 triệu', min: 20000000, max: null },
+];
+
+const CATEGORY_ICON_PRESETS = [
+  { icon: Smartphone, keywords: ['điện thoại', 'tablet', 'dien thoai', 'máy tính bảng', 'may tinh bang'] },
+  { icon: Laptop, keywords: ['laptop', 'máy tính', 'may tinh', 'văn phòng', 'van phong'] },
+  { icon: Headphones, keywords: ['âm thanh', 'am thanh', 'audio', 'mic', 'loa', 'tai nghe'] },
+  { icon: Camera, keywords: ['camera', 'nhiếp ảnh', 'nhiep anh'] },
+  { icon: Watch, keywords: ['đồng hồ', 'dong ho', 'thiết bị đeo', 'thiet bi deo'] },
+  { icon: Cable, keywords: ['phụ kiện', 'phu kien', 'cáp', 'cap', 'sạc', 'sac'] },
+  { icon: MonitorSmartphone, keywords: ['pc', 'màn hình', 'man hinh', 'máy in', 'may in'] },
+  { icon: Tv, keywords: ['tivi', 'tv', 'điện máy', 'dien may', 'giải trí', 'giai tri'] },
+  { icon: RefreshCw, keywords: ['thu cũ', 'thu cu', 'đổi mới', 'doi moi'] },
+  { icon: PackageOpen, keywords: ['hàng cũ', 'hang cu'] },
+  { icon: BadgePercent, keywords: ['khuyến mãi', 'khuyen mai'] },
+  { icon: Newspaper, keywords: ['tin công nghệ', 'tin cong nghe'] },
 ];
 
 const defaultPageMeta = {
@@ -115,6 +163,24 @@ function getPromotionRoi(product) {
   );
 }
 
+function getProductBrandName(product) {
+  const directBrand = product?.brandName
+    ?? product?.brand_name
+    ?? product?.brand?.name
+    ?? product?.brand;
+
+  if (directBrand && Number.isNaN(Number(directBrand))) {
+    return String(directBrand);
+  }
+
+  const brandAttribute = (product?.attributes || []).find((attribute) => {
+    const name = normalizeText(attribute?.name);
+    return name.includes('brand') || name.includes('hang') || name.includes('thuong hieu');
+  });
+
+  return brandAttribute?.values?.[0]?.value || '';
+}
+
 function isPromotedProduct(product) {
   const promotionId = getPromotionId(product);
   const promotionStatus = getPromotionStatus(product);
@@ -142,6 +208,7 @@ function mapProductCard(product) {
     badge: product.vendorName || product.categoryName || 'ShopVN',
     categoryId: product.categoryId || product.category_id || null,
     categoryName: product.categoryName || '',
+    brandName: getProductBrandName(product),
     isPremiumHighlighted: Boolean(product.premiumHighlighted),
     isPromoted: isPromotedProduct(product),
     roiPerClick,
@@ -305,8 +372,16 @@ function normalizeText(value) {
     .trim();
 }
 
+function getCategoryMenuIcon(category, index = 0) {
+  const text = normalizeText(`${category?.name || ''} ${category?.slug || ''}`);
+  const preset = CATEGORY_ICON_PRESETS.find((item) =>
+    item.keywords.some((keyword) => text.includes(normalizeText(keyword)))
+  );
+  return preset?.icon || CATEGORY_ICON_PRESETS[index % CATEGORY_ICON_PRESETS.length]?.icon || Grid2X2;
+}
+
 export default function Home() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [productsPage, setProductsPage] = useState(0);
@@ -317,10 +392,26 @@ export default function Home() {
   const [priceDraft, setPriceDraft] = useState({ min: '', max: '' });
   const [appliedPrice, setAppliedPrice] = useState({ min: null, max: null });
   const [menuSortMode, setMenuSortMode] = useState('newest');
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
+  const [activeRootCategoryId, setActiveRootCategoryId] = useState(null);
+  const [selectedBrand, setSelectedBrand] = useState('');
+  const categoryMenuRef = useRef(null);
   const searchQuery = searchParams.get('search') || '';
   const hasPriceFilter = Boolean(Number(appliedPrice.min || 0) || Number(appliedPrice.max || 0));
 
   const allCategories = useMemo(() => flattenCategories(categories), [categories]);
+  const rootCategories = categories;
+  const activeRootCategory = rootCategories.find((category) => String(category.id) === String(activeRootCategoryId))
+    || rootCategories[0]
+    || null;
+
+  const brandOptions = useMemo(() => {
+    const productBrands = products
+      .map((product) => product.brandName)
+      .filter(Boolean);
+    const brands = productBrands.length ? productBrands : TECH_BRANDS;
+    return Array.from(new Set(brands)).slice(0, 16);
+  }, [products]);
 
   useEffect(() => {
     let isMounted = true;
@@ -427,6 +518,26 @@ export default function Home() {
     setProductsPage(0);
   }, [searchQuery, selectedCategory, appliedPrice, menuSortMode]);
 
+  useEffect(() => {
+    if (!activeRootCategoryId && rootCategories.length > 0) {
+      setActiveRootCategoryId(rootCategories[0].id);
+    }
+  }, [activeRootCategoryId, rootCategories]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (categoryMenuRef.current && !categoryMenuRef.current.contains(event.target)) {
+        setIsCategoryMenuOpen(false);
+      }
+    };
+
+    if (isCategoryMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isCategoryMenuOpen]);
+
   const categoryProductCounts = useMemo(() => {
     const counts = {};
 
@@ -471,9 +582,41 @@ export default function Home() {
     });
   };
 
+  const applyMenuPriceRange = (range) => {
+    const min = range.min || null;
+    const max = range.max || null;
+    setPriceDraft({
+      min: min ? String(min) : '',
+      max: max ? String(max) : '',
+    });
+    setAppliedPrice({ min, max });
+    setIsCategoryMenuOpen(false);
+  };
+
   const clearPriceFilter = () => {
     setPriceDraft({ min: '', max: '' });
     setAppliedPrice({ min: null, max: null });
+  };
+
+  const selectMenuCategory = (category) => {
+    setSelectedCategory(category);
+    if (category?.id) {
+      const root = rootCategories.find((rootCategory) =>
+        collectCategoryIds(rootCategory).map(String).includes(String(category.id))
+      );
+      setActiveRootCategoryId(root?.id || category.id);
+    }
+    setIsCategoryMenuOpen(false);
+  };
+
+  const selectMenuBrand = (brand) => {
+    setSelectedBrand(brand);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set('search', brand);
+      return next;
+    });
+    setIsCategoryMenuOpen(false);
   };
 
   useEffect(() => {
@@ -645,28 +788,150 @@ export default function Home() {
                   <SlidersHorizontal className="h-5 w-5 text-[#ff6b2c]" />
                   Bộ lọc
                 </div>
-                <div className="grid flex-1 gap-3 sm:grid-cols-2">
-                  <label className="sr-only" htmlFor="menu-category-filter">Lọc theo danh mục</label>
-                  <select
-                    id="menu-category-filter"
-                    value={selectedCategory?.id != null ? String(selectedCategory.id) : 'all'}
-                    onChange={(event) => {
-                      const categoryId = event.target.value;
-                      setSelectedCategory(
-                        categoryId === 'all'
-                          ? null
-                          : allCategories.find((category) => String(category.id) === categoryId) || null
-                      );
-                    }}
-                    className="h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base font-extrabold text-slate-700 outline-none transition focus:border-[#ff7a45] focus:ring-4 focus:ring-orange-100"
-                  >
-                    <option value="all">Tất cả danh mục</option>
-                    {allCategories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.optionLabel || category.name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid flex-1 gap-3 sm:grid-cols-[minmax(280px,1fr)_minmax(260px,1fr)]">
+                  <div ref={categoryMenuRef} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsCategoryMenuOpen((open) => !open)}
+                      className="flex h-14 w-full items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-[#e60023] to-[#f45b68] px-5 text-left text-base font-extrabold text-white shadow-lg shadow-red-500/20 transition hover:brightness-105 focus:outline-none focus:ring-4 focus:ring-red-200"
+                      aria-expanded={isCategoryMenuOpen}
+                    >
+                      <span className="flex min-w-0 items-center gap-3">
+                        <Grid2X2 className="h-6 w-6 shrink-0" strokeWidth={2.5} />
+                        <span className="truncate">{selectedCategory?.name || 'Danh mục'}</span>
+                      </span>
+                      <ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${isCategoryMenuOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isCategoryMenuOpen && (
+                      <div className="absolute left-0 top-full z-50 mt-3 w-[min(92vw,780px)] overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl shadow-slate-900/18">
+                        <div className="grid max-h-[560px] grid-cols-1 overflow-hidden md:grid-cols-[280px_minmax(0,1fr)]">
+                          <div className="border-b border-slate-100 bg-white py-2 md:border-b-0 md:border-r">
+                            <button
+                              type="button"
+                              onClick={() => selectMenuCategory(null)}
+                              className={`flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-red-50 ${
+                                !selectedCategory ? 'bg-red-50 text-red-600' : 'text-slate-700'
+                              }`}
+                            >
+                              <Grid2X2 className="h-6 w-6 shrink-0 text-red-500" />
+                              <span className="flex-1 text-base font-extrabold">Tất cả danh mục</span>
+                              <ChevronRight className="h-5 w-5 text-slate-400" />
+                            </button>
+
+                            <div className="max-h-[480px] overflow-y-auto py-1">
+                              {rootCategories.map((category, index) => {
+                                const Icon = getCategoryMenuIcon(category, index);
+                                const isActive = String(activeRootCategory?.id) === String(category.id);
+
+                                return (
+                                  <button
+                                    key={category.id}
+                                    type="button"
+                                    onMouseEnter={() => setActiveRootCategoryId(category.id)}
+                                    onFocus={() => setActiveRootCategoryId(category.id)}
+                                    onClick={() => setActiveRootCategoryId(category.id)}
+                                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition ${
+                                      isActive ? 'bg-red-50 text-red-600' : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950'
+                                    }`}
+                                  >
+                                    <Icon className="h-7 w-7 shrink-0 text-red-500" strokeWidth={1.9} />
+                                    <span className="min-w-0 flex-1 truncate text-base font-extrabold">{category.name}</span>
+                                    <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" />
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <div className="grid max-h-[560px] gap-6 overflow-y-auto p-5 md:grid-cols-2">
+                            <div>
+                              <div className="mb-3 flex items-center justify-between gap-3">
+                                <h3 className="text-lg font-extrabold text-slate-900">
+                                  {activeRootCategory?.name || 'Danh mục con'}
+                                </h3>
+                                {activeRootCategory && (
+                                  <button
+                                    type="button"
+                                    onClick={() => selectMenuCategory(activeRootCategory)}
+                                    className="text-xs font-extrabold text-red-600 hover:text-red-700"
+                                  >
+                                    Xem tất cả
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="space-y-1">
+                                {(activeRootCategory?.children || []).length > 0 ? (
+                                  activeRootCategory.children.map((subcategory) => (
+                                    <button
+                                      key={subcategory.id}
+                                      type="button"
+                                      onClick={() => selectMenuCategory(subcategory)}
+                                      className={`block w-full rounded-xl px-3 py-2 text-left text-sm font-bold transition ${
+                                        String(selectedCategory?.id) === String(subcategory.id)
+                                          ? 'bg-red-50 text-red-600'
+                                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
+                                      }`}
+                                    >
+                                      {subcategory.name}
+                                      {subcategory.children?.length > 0 && (
+                                        <span className="ml-2 text-xs font-semibold text-slate-400">
+                                          {subcategory.children.length} nhóm
+                                        </span>
+                                      )}
+                                    </button>
+                                  ))
+                                ) : (
+                                  <p className="rounded-xl bg-slate-50 px-3 py-4 text-sm font-semibold text-slate-400">
+                                    Danh mục này chưa có nhóm con.
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="space-y-6">
+                              <div>
+                                <h3 className="mb-3 text-lg font-extrabold text-slate-900">Hãng</h3>
+                                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                                  {brandOptions.map((brand) => (
+                                    <button
+                                      key={brand}
+                                      type="button"
+                                      onClick={() => selectMenuBrand(brand)}
+                                      className={`truncate rounded-lg px-2 py-1.5 text-left text-sm font-semibold transition ${
+                                        selectedBrand === brand
+                                          ? 'bg-red-50 text-red-600'
+                                          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                                      }`}
+                                    >
+                                      {brand}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div>
+                                <h3 className="mb-3 text-lg font-extrabold text-slate-900">Mức giá</h3>
+                                <div className="space-y-1">
+                                  {MENU_PRICE_RANGES.map((range) => (
+                                    <button
+                                      key={range.label}
+                                      type="button"
+                                      onClick={() => applyMenuPriceRange(range)}
+                                      className="block w-full rounded-lg px-2 py-1.5 text-left text-sm font-semibold text-slate-500 transition hover:bg-red-50 hover:text-red-600"
+                                    >
+                                      {range.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   <label className="sr-only" htmlFor="menu-sort-filter">Sắp xếp sản phẩm</label>
                   <select

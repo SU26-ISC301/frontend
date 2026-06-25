@@ -83,7 +83,7 @@ export function ThemeToggle() {
   }, [open]);
 
   return (
-    <div ref={wrapperRef} className="theme-toggle fixed bottom-4 right-4 z-[90] sm:bottom-5 sm:right-5">
+    <div ref={wrapperRef} className="theme-toggle fixed bottom-5 right-6 z-[90]">
       {open && (
         <div className="theme-toggle-menu mb-2 w-44 overflow-hidden rounded-lg border p-1 shadow-xl backdrop-blur-xl">
           {OPTIONS.map(({ value, label, icon: Icon }) => {

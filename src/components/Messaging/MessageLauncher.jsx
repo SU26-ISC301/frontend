@@ -1,0 +1,229 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ExternalLink, Maximize2, MessageCircle, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { buyerMessageApi } from '../../api/buyerMessageAPI';
+import { vendorMessageApi } from '../../api/vendorMessageAPI';
+import { ChatWorkspace } from './ChatWorkspace';
+
+function getApiMessage(error) {
+  return error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Không thể tải tin nhắn';
+}
+
+export function MessageLauncher({ mode = 'buyer' }) {
+  const navigate = useNavigate();
+  const isVendor = mode === 'vendor';
+  const api = isVendor ? vendorMessageApi : buyerMessageApi;
+  const [open, setOpen] = useState(false);
+  const [vendors, setVendors] = useState([]);
+  const [conversations, setConversations] = useState([]);
+  const [activeConversationId, setActiveConversationId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [message, setMessage] = useState('');
+  const [loadingConversations, setLoadingConversations] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [startingVendorId, setStartingVendorId] = useState(null);
+  const [error, setError] = useState('');
+  const activeChat = conversations.find((conversation) => conversation.id === activeConversationId);
+
+  const unreadCount = useMemo(
+    () => conversations.reduce((sum, conversation) => sum + Number(conversation.unreadCount || 0), 0),
+    [conversations],
+  );
+
+  const loadConversations = useCallback(async () => {
+    setLoadingConversations(true);
+    try {
+      const data = await api.getConversations();
+      const nextConversations = Array.isArray(data) ? data : [];
+      setConversations(nextConversations);
+      setActiveConversationId((current) =>
+        current && nextConversations.some((conversation) => conversation.id === current)
+          ? current
+          : nextConversations[0]?.id ?? null,
+      );
+      setError('');
+    } catch (requestError) {
+      setError(getApiMessage(requestError));
+    } finally {
+      setLoadingConversations(false);
+    }
+  }, [api]);
+
+  const loadVendors = useCallback(async () => {
+    if (isVendor || !buyerMessageApi.getVendors) return;
+    try {
+      const data = await buyerMessageApi.getVendors();
+      setVendors(Array.isArray(data) ? data : []);
+    } catch (requestError) {
+      setError(getApiMessage(requestError));
+    }
+  }, [isVendor]);
+
+  const loadMessages = useCallback(async (conversationId, silent = false) => {
+    if (!conversationId) {
+      setMessages([]);
+      return;
+    }
+    if (!silent) setLoadingMessages(true);
+    try {
+      const data = await api.getMessages(conversationId);
+      setMessages(Array.isArray(data) ? data : []);
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation,
+        ),
+      );
+      setError('');
+    } catch (requestError) {
+      setError(getApiMessage(requestError));
+    } finally {
+      if (!silent) setLoadingMessages(false);
+    }
+  }, [api]);
+
+  useEffect(() => {
+    loadConversations();
+    if (!isVendor) loadVendors();
+    const intervalId = window.setInterval(loadConversations, open ? 10000 : 30000);
+    return () => window.clearInterval(intervalId);
+  }, [isVendor, loadConversations, loadVendors, open]);
+
+  useEffect(() => {
+    if (!open || !activeConversationId) return undefined;
+    loadMessages(activeConversationId);
+    const intervalId = window.setInterval(() => loadMessages(activeConversationId, true), 10000);
+    return () => window.clearInterval(intervalId);
+  }, [activeConversationId, loadMessages, open]);
+
+  const selectConversation = (conversationId) => {
+    setActiveConversationId(conversationId);
+    setConversations((current) =>
+      current.map((conversation) =>
+        conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation,
+      ),
+    );
+  };
+
+  const startConversation = async (vendorId) => {
+    setStartingVendorId(vendorId);
+    try {
+      const conversation = await buyerMessageApi.startConversation(vendorId);
+      await loadConversations();
+      setActiveConversationId(conversation.id);
+      setOpen(true);
+      setError('');
+    } catch (requestError) {
+      setError(getApiMessage(requestError));
+    } finally {
+      setStartingVendorId(null);
+    }
+  };
+
+  const sendMessage = async () => {
+    const content = message.trim();
+    if (!content || !activeChat || sending) return;
+    setSending(true);
+    try {
+      const sentMessage = await api.sendMessage(activeChat.id, content);
+      setMessages((current) =>
+        current.some((item) => item.id === sentMessage.id) ? current : [...current, sentMessage],
+      );
+      setMessage('');
+      await loadConversations();
+    } catch (requestError) {
+      setError(getApiMessage(requestError));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const openFullPage = () => {
+    navigate(isVendor ? '/vendor/tin-nhan' : '/buyer/ho-tro');
+    setOpen(false);
+  };
+
+  return (
+    <div className="fixed bottom-24 right-6 z-[80]">
+      {!open && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="group flex h-14 w-14 items-center justify-center rounded-2xl border border-orange-100 bg-white text-orange-500 shadow-xl shadow-orange-500/15 ring-1 ring-orange-100 transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
+          aria-label="Mở tin nhắn"
+        >
+          <span className="relative flex h-11 w-11 items-center justify-center">
+            <MessageCircle className="h-8 w-8" strokeWidth={2.2} />
+            {unreadCount > 0 && (
+              <span className="absolute -bottom-1 -right-1 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-orange-500 px-1.5 text-xs font-black text-white ring-4 ring-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </span>
+        </button>
+      )}
+
+      {open && (
+        <div className="w-[min(calc(100vw-2rem),980px)] overflow-hidden rounded-[1.6rem] border border-slate-700/50 bg-[#20232a] shadow-2xl shadow-slate-950/35">
+          <div className="flex h-16 items-center justify-between border-b border-white/10 px-5 text-white">
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-black tracking-tight">Messages</h2>
+              {unreadCount > 0 && (
+                <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-[#ff304c] px-2 text-sm font-black">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={openFullPage}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+                aria-label="Mở trang tin nhắn"
+              >
+                <ExternalLink className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={openFullPage}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+                aria-label="Phóng to tin nhắn"
+              >
+                <Maximize2 className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+                aria-label="Đóng tin nhắn"
+              >
+                <X className="h-7 w-7" />
+              </button>
+            </div>
+          </div>
+          <div className="h-[min(78vh,720px)] bg-white">
+            <ChatWorkspace
+              mode={mode}
+              variant="popup"
+              conversations={conversations}
+              activeConversationId={activeConversationId}
+              messages={messages}
+              message={message}
+              loadingConversations={loadingConversations}
+              loadingMessages={loadingMessages}
+              sending={sending}
+              error={error}
+              directory={vendors}
+              startingId={startingVendorId}
+              onRefresh={loadConversations}
+              onSelectConversation={selectConversation}
+              onStartConversation={startConversation}
+              onMessageChange={setMessage}
+              onSend={sendMessage}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

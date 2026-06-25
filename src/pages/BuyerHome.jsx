@@ -12,13 +12,9 @@ import {
   LogOut,
   MapPin,
   MessageSquareText,
-  Plus,
-  RefreshCw,
-  Send,
   ShieldCheck,
   ShoppingBag,
   Star,
-  Store,
   TicketPercent,
   Truck,
   User,
@@ -30,6 +26,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { DateInput } from '../components/ui/date-input';
 import { Modal } from '../components/ui/modal';
+import { ChatWorkspace } from '../components/Messaging/ChatWorkspace';
+import { MessageLauncher } from '../components/Messaging/MessageLauncher';
 import { authApi } from '../api/authAPI';
 import { buyerMessageApi } from '../api/buyerMessageAPI';
 import { cn } from '../lib/utils';
@@ -75,20 +73,6 @@ function unwrap(response) {
 function formatDateInput(value) {
   if (!value) return '';
   return value.slice(0, 10);
-}
-
-function formatChatTime(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const sameDay = date.toDateString() === new Date().toDateString();
-  return new Intl.DateTimeFormat('vi-VN', sameDay
-    ? { hour: '2-digit', minute: '2-digit' }
-    : { day: '2-digit', month: '2-digit' }).format(date);
-}
-
-function getInitials(value = 'Shop') {
-  return value.split(' ').filter(Boolean).slice(-2).map((part) => part[0]).join('').toUpperCase();
 }
 
 function BuyerLayout({ profile, activeSlug, children }) {
@@ -157,6 +141,7 @@ function BuyerLayout({ profile, activeSlug, children }) {
         </section>
       </main>
       <Footer />
+      <MessageLauncher mode="buyer" />
     </div>
   );
 }
@@ -667,57 +652,24 @@ function BuyerMessagesPage() {
   };
 
   return (
-    <div className="grid min-h-[620px] gap-4 xl:grid-cols-[280px_1fr_260px]">
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="font-bold text-gray-950">Hộp thư</h2>
-            <p className="mt-1 text-xs text-gray-500">{conversations.length} hội thoại</p>
-          </div>
-          <button type="button" aria-label="Tải lại hội thoại" onClick={loadConversations} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-shopee"><RefreshCw className="h-4 w-4" /></button>
-        </div>
-        {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">{error}</p>}
-        <div className="mt-4 space-y-2">
-          {loadingConversations && !conversations.length && <p className="py-8 text-center text-xs text-gray-400">Đang tải hộp thư...</p>}
-          {!loadingConversations && !conversations.length && <div className="py-10 text-center"><MessageSquareText className="mx-auto h-8 w-8 text-gray-300" /><p className="mt-3 text-sm font-bold text-gray-700">Chưa có hội thoại</p><p className="mt-1 text-xs leading-5 text-gray-400">Chọn một shop để bắt đầu trao đổi.</p></div>}
-          {conversations.map((chat) => (
-            <button key={chat.id} type="button" onClick={() => selectConversation(chat.id)} className={cn('w-full rounded-lg border p-3 text-left transition-colors', activeConversationId === chat.id ? 'border-shopee bg-shopee-light/60' : 'border-gray-100 hover:border-shopee/40 hover:bg-shopee-light/30')}>
-              <div className="flex items-center gap-2">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-xs font-bold text-orange-700">{getInitials(chat.shopName)}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center justify-between gap-2"><span className="truncate text-sm font-bold text-gray-800">{chat.shopName}</span><span className="shrink-0 text-[11px] text-gray-400">{formatChatTime(chat.lastMessageAt)}</span></span>
-                  <span className="mt-1 block truncate text-xs text-gray-500">{chat.lastMessage || 'Chưa có tin nhắn'}</span>
-                </span>
-              </div>
-              {chat.unreadCount > 0 && <span className="mt-2 inline-flex rounded-full bg-shopee px-2 py-0.5 text-[10px] font-bold text-white">{chat.unreadCount}</span>}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="flex min-h-[560px] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-        {activeChat ? <>
-          <div className="border-b border-gray-100 p-4"><p className="font-bold text-gray-900">{activeChat.shopName}</p><p className="mt-1 text-xs text-gray-500">Trao đổi trực tiếp với shop</p></div>
-          <div className="flex-1 space-y-3 overflow-y-auto bg-gray-50/70 p-4">
-            {loadingMessages && <p className="py-8 text-center text-xs text-gray-400">Đang tải tin nhắn...</p>}
-            {!loadingMessages && !messages.length && <p className="py-8 text-center text-xs text-gray-400">Hãy gửi lời chào tới shop.</p>}
-            {messages.map((item) => <div key={item.id} className={cn('max-w-[78%] rounded-xl px-3 py-2 text-sm shadow-sm', item.sentByBuyer ? 'ml-auto bg-shopee text-white' : 'bg-white text-gray-700')}><p>{item.content}</p><p className={cn('mt-1 text-[10px]', item.sentByBuyer ? 'text-orange-100' : 'text-gray-400')}>{formatChatTime(item.createdAt)}</p></div>)}
-          </div>
-          <div className="border-t border-gray-100 p-4"><div className="flex gap-2"><input value={message} maxLength={2000} disabled={sending} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && sendMessage()} className="h-11 min-w-0 flex-1 rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-shopee" placeholder="Nhập tin nhắn..." /><Button type="button" disabled={sending || !message.trim()} onClick={sendMessage}>{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</Button></div></div>
-        </> : <div className="flex flex-1 items-center justify-center p-8 text-center"><div><MessageSquareText className="mx-auto h-10 w-10 text-gray-300" /><p className="mt-3 text-sm font-bold text-gray-700">Chọn một hội thoại</p><p className="mt-1 text-xs text-gray-400">Hoặc bắt đầu chat với shop ở danh sách bên cạnh.</p></div></div>}
-      </section>
-
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="font-bold text-gray-950">Chat với shop</h2>
-        <p className="mt-1 text-xs text-gray-500">Chọn shop cần hỗ trợ</p>
-        <div className="mt-4 space-y-2">
-          {vendors.map((vendor) => {
-            const existingConversation = conversations.find((conversation) => conversation.vendorId === vendor.id);
-            return <button key={vendor.id} type="button" disabled={startingVendorId === vendor.id} onClick={() => startConversation(vendor.id)} className="flex w-full items-center gap-3 rounded-lg border border-gray-100 p-3 text-left hover:border-shopee/40 hover:bg-shopee-light/30 disabled:opacity-60"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-shopee-light text-shopee"><Store className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-gray-800">{vendor.shopName}</span><span className="mt-1 block text-xs text-gray-500">{existingConversation ? 'Mở hội thoại' : 'Bắt đầu chat'}</span></span>{startingVendorId === vendor.id ? <Loader2 className="h-4 w-4 animate-spin text-shopee" /> : <Plus className="h-4 w-4 text-shopee" />}</button>;
-          })}
-        </div>
-      </section>
-    </div>
+    <ChatWorkspace
+      mode="buyer"
+      conversations={conversations}
+      activeConversationId={activeConversationId}
+      messages={messages}
+      message={message}
+      loadingConversations={loadingConversations}
+      loadingMessages={loadingMessages}
+      sending={sending}
+      error={error}
+      directory={vendors}
+      startingId={startingVendorId}
+      onRefresh={loadConversations}
+      onSelectConversation={selectConversation}
+      onStartConversation={startConversation}
+      onMessageChange={setMessage}
+      onSend={sendMessage}
+    />
   );
 }
 

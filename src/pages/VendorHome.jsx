@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { NavLink, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
+import {
+  NavLink,
+  Navigate,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import {
   ArrowUpRight,
   AlertTriangle,
@@ -35,7 +41,6 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Send,
   Settings,
   ShieldCheck,
   ShoppingBag,
@@ -59,7 +64,13 @@ import { sellerApi } from "../api/sellerAPI";
 import { categoryApi } from "../api/categoryAPI";
 import { promotionApi } from "../api/promotionAPI";
 import { getSubscriptionStatus } from "../api/subscriptionApi";
-import { productStorage, mapBackendProductToLocal, buildBackendPayloadFromLocal, flattenCategoryTree, mergeProductData } from "../utils/productStorage";
+import {
+  productStorage,
+  mapBackendProductToLocal,
+  buildBackendPayloadFromLocal,
+  flattenCategoryTree,
+  mergeProductData,
+} from "../utils/productStorage";
 import {
   CategorySelectorField,
   ELECTRONICS_CATEGORIES,
@@ -73,6 +84,8 @@ import SubscriptionPlanModal, {
   getRemainingSlots,
 } from "../components/Seller/SubscriptionPlanModal";
 import PostingQuotaBanner from "../components/Seller/PostingQuotaBanner";
+import { ChatWorkspace } from "../components/Messaging/ChatWorkspace";
+import { MessageLauncher } from "../components/Messaging/MessageLauncher";
 
 const navItems = [
   { slug: "trangchu", label: "Tổng quan", icon: LayoutDashboard },
@@ -85,7 +98,7 @@ const navItems = [
     icon: TrendingUp,
   },
   { slug: "marketing", label: "Tiếp thị quảng cáo", icon: Megaphone },
-  { slug: "tai-chinh", label: "Tài chính", icon: WalletCards },
+  { slug: "tai-chinh", label: "Báo cáo tài chính", icon: WalletCards },
   { slug: "nhat-ky-hoat-dong", label: "Nhật ký hoạt động", icon: History },
   { slug: "cai-dat-shop", label: "Cài đặt shop", icon: Settings },
 ];
@@ -128,7 +141,7 @@ const pageTitles = {
     "Chọn bài đăng, thiết lập ngân sách và theo dõi hiệu quả quảng bá theo CPC.",
   ],
   "tai-chinh": [
-    "Tài chính",
+    "Báo cáo tài chính",
     "Kiểm soát dòng tiền, đối soát và tài khoản nhận thanh toán.",
   ],
   "nhat-ky-hoat-dong": [
@@ -334,13 +347,15 @@ function formatPercent(value) {
 }
 
 function getPromotionStatusLabel(status) {
-  return {
-    ACTIVE: "Đang chạy",
-    SCHEDULED: "Sắp chạy",
-    EXHAUSTED: "Hết ngân sách",
-    COMPLETED: "Đã hoàn tất",
-    CANCELLED: "Đã hủy",
-  }[status] || status;
+  return (
+    {
+      ACTIVE: "Đang chạy",
+      SCHEDULED: "Sắp chạy",
+      EXHAUSTED: "Hết ngân sách",
+      COMPLETED: "Đã hoàn tất",
+      CANCELLED: "Đã hủy",
+    }[status] || status
+  );
 }
 
 function toInputDate(date) {
@@ -454,30 +469,6 @@ function getApiMessage(error) {
   );
 }
 
-function getInitials(name = "Khách hàng") {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(-2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
-}
-
-function formatChatTime(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const today = new Date();
-  const sameDay = date.toDateString() === today.toDateString();
-  return new Intl.DateTimeFormat(
-    "vi-VN",
-    sameDay
-      ? { hour: "2-digit", minute: "2-digit" }
-      : { day: "2-digit", month: "2-digit" },
-  ).format(date);
-}
-
 function downloadCsv(filename, columns, rows) {
   const content = [columns, ...rows]
     .map((row) =>
@@ -546,7 +537,7 @@ function StatusBadge({ children, status, className }) {
       "Cảnh báo": "is-red",
       "Trả hàng": "is-red",
       "Tạm ẩn": "is-gray",
-      "Nháp": "is-gray",
+      Nháp: "is-gray",
       "Bản nháp": "is-gray",
       "Dự phòng": "is-gray",
       "Chưa có": "is-gray",
@@ -567,15 +558,25 @@ function VendorToast({ toast, onClose }) {
   const isError = toast.type === "error" || toast.tone === "red";
 
   return (
-    <div className={cn(
-      "vendor-toast fixed bottom-5 right-5 z-[70] flex max-w-sm items-start gap-3 rounded-xl border bg-white p-4 shadow-xl",
-      isError ? "border-red-100 shadow-red-950/10" : "border-orange-100 shadow-orange-950/10"
-    )}>
-      <span className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-        isError ? "bg-red-50 text-red-600" : "bg-teal-50 text-teal-700"
-      )}>
-        {isError ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+    <div
+      className={cn(
+        "vendor-toast fixed bottom-5 right-5 z-[70] flex max-w-sm items-start gap-3 rounded-xl border bg-white p-4 shadow-xl",
+        isError
+          ? "border-red-100 shadow-red-950/10"
+          : "border-orange-100 shadow-orange-950/10",
+      )}
+    >
+      <span
+        className={cn(
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+          isError ? "bg-red-50 text-red-600" : "bg-teal-50 text-teal-700",
+        )}
+      >
+        {isError ? (
+          <AlertTriangle className="h-4 w-4" />
+        ) : (
+          <CheckCircle2 className="h-4 w-4" />
+        )}
       </span>
       <div className="min-w-0">
         <p className="text-sm font-extrabold text-stone-800">{toast.title}</p>
@@ -595,7 +596,13 @@ function VendorToast({ toast, onClose }) {
   );
 }
 
-function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, onOpenPlanModal }) {
+function VendorLayout({
+  activeSlug,
+  children,
+  onToast,
+  hasWarehouseConfigured,
+  onOpenPlanModal,
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -650,9 +657,13 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
     setWalletError("");
     try {
       const wallet = await promotionApi.getAccountWallet();
-      const balance = typeof wallet === "number"
-        ? wallet
-        : wallet?.availableBalance ?? wallet?.balance ?? wallet?.promotionalBalance ?? 0;
+      const balance =
+        typeof wallet === "number"
+          ? wallet
+          : (wallet?.availableBalance ??
+            wallet?.balance ??
+            wallet?.promotionalBalance ??
+            0);
       setWalletBalance(Number(balance || 0));
     } catch (err) {
       console.error("Không thể tải số dư tài khoản seller:", err);
@@ -666,7 +677,8 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
   useEffect(() => {
     loadSellerWallet();
     window.addEventListener("seller-wallet-refresh", loadSellerWallet);
-    return () => window.removeEventListener("seller-wallet-refresh", loadSellerWallet);
+    return () =>
+      window.removeEventListener("seller-wallet-refresh", loadSellerWallet);
   }, [loadSellerWallet]);
 
   const handleLogout = () => {
@@ -752,13 +764,19 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
         </div>
         <nav className="scrollbar-hide flex-1 space-y-1 overflow-y-auto px-3 py-5">
           {visibleNavItems.map(({ slug, label, icon: Icon, badge }) => {
-            const isLocked = slug === 'nghien-cuu-thi-truong' && getVendorPlan().planId === 'free';
+            const isLocked =
+              slug === "nghien-cuu-thi-truong" &&
+              getVendorPlan().planId === "free";
             return (
               <NavLink
                 key={slug}
                 to={`/vendor/${slug}`}
                 className={({ isActive }) =>
-                  cn("vendor-nav-item", isActive && "is-active", isLocked && "opacity-75 hover:opacity-100")
+                  cn(
+                    "vendor-nav-item",
+                    isActive && "is-active",
+                    isLocked && "opacity-75 hover:opacity-100",
+                  )
                 }
               >
                 <Icon className="h-[18px] w-[18px]" />
@@ -871,7 +889,9 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
               <WalletCards className="h-4 w-4 text-orange-600" />
               <span className="hidden text-stone-500 md:inline">Số dư</span>
               <span className="truncate text-orange-700">
-                {walletLoading ? "Đang tải..." : formatVndBalance(walletBalance)}
+                {walletLoading
+                  ? "Đang tải..."
+                  : formatVndBalance(walletBalance)}
               </span>
             </button>
             <div className="relative">
@@ -960,6 +980,7 @@ function VendorLayout({ activeSlug, children, onToast, hasWarehouseConfigured, o
           {children}
         </main>
       </div>
+      <MessageLauncher mode="vendor" />
       <HeaderTopUpModal
         open={headerTopUpModalOpen}
         amount={headerTopUpAmount}
@@ -983,7 +1004,16 @@ function Panel({ className, children }) {
   );
 }
 
-function HeaderTopUpModal({ open, amount, loading, onAmountChange, onClose, onSubmit, payment, onPaid }) {
+function HeaderTopUpModal({
+  open,
+  amount,
+  loading,
+  onAmountChange,
+  onClose,
+  onSubmit,
+  payment,
+  onPaid,
+}) {
   if (!open) return null;
 
   const quickAmounts = [10000, 50000, 100000];
@@ -994,21 +1024,37 @@ function HeaderTopUpModal({ open, amount, loading, onAmountChange, onClose, onSu
         <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange-600">Nạp tiền tài khoản</p>
-              <h3 className="mt-1 text-lg font-extrabold text-stone-900">Nạp tiền chạy quảng cáo</h3>
-              <p className="mt-1 text-xs font-semibold text-stone-400">Số dư này dùng để tạo và chạy tiếp thị quảng cáo.</p>
+              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange-600">
+                Nạp tiền tài khoản
+              </p>
+              <h3 className="mt-1 text-lg font-extrabold text-stone-900">
+                Nạp tiền chạy quảng cáo
+              </h3>
+              <p className="mt-1 text-xs font-semibold text-stone-400">
+                Số dư này dùng để tạo và chạy tiếp thị quảng cáo.
+              </p>
             </div>
-            <button type="button" className="vendor-icon-button" onClick={onClose}><X className="h-4 w-4" /></button>
+            <button
+              type="button"
+              className="vendor-icon-button"
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
           <label className="mt-5 block">
-            <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">Số tiền nạp</span>
+            <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+              Số tiền nạp
+            </span>
             <input
               type="number"
               min={PROMOTION_CONFIG.minTopUpAmount}
               step="10000"
               value={amount}
-              onChange={(event) => onAmountChange(Number(event.target.value || 0))}
+              onChange={(event) =>
+                onAmountChange(Number(event.target.value || 0))
+              }
               className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
             />
           </label>
@@ -1019,8 +1065,10 @@ function HeaderTopUpModal({ open, amount, loading, onAmountChange, onClose, onSu
                 key={quickAmount}
                 type="button"
                 className={cn(
-                  'rounded-lg border px-3 py-2 text-xs font-extrabold transition-colors',
-                  amount === quickAmount ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-stone-200 bg-white text-stone-500 hover:border-orange-200',
+                  "rounded-lg border px-3 py-2 text-xs font-extrabold transition-colors",
+                  amount === quickAmount
+                    ? "border-orange-500 bg-orange-50 text-orange-700"
+                    : "border-stone-200 bg-white text-stone-500 hover:border-orange-200",
                 )}
                 onClick={() => onAmountChange(quickAmount)}
               >
@@ -1030,15 +1078,30 @@ function HeaderTopUpModal({ open, amount, loading, onAmountChange, onClose, onSu
           </div>
 
           <div className="mt-5 flex justify-end gap-2">
-            <button type="button" className="vendor-secondary-button" onClick={onClose}>Hủy</button>
-            <button type="button" className="vendor-primary-button" disabled={loading || amount < PROMOTION_CONFIG.minTopUpAmount} onClick={onSubmit}>
+            <button
+              type="button"
+              className="vendor-secondary-button"
+              onClick={onClose}
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              className="vendor-primary-button"
+              disabled={loading || amount < PROMOTION_CONFIG.minTopUpAmount}
+              onClick={onSubmit}
+            >
               <CreditCard className="h-4 w-4" />
               Tạo link nạp tiền
             </button>
           </div>
         </div>
       </div>
-      <PromotionTopUpModal payment={payment} onClose={onClose} onPaid={onPaid} />
+      <PromotionTopUpModal
+        payment={payment}
+        onClose={onClose}
+        onPaid={onPaid}
+      />
     </>
   );
 }
@@ -1090,7 +1153,9 @@ function StatCard({ stat, onClick }) {
       </div>
       <p className="mt-4 text-xs font-semibold text-stone-400">
         {stat.isLocked ? (
-          <span className="text-stone-400 font-bold">Yêu cầu gói Plus/Premium</span>
+          <span className="text-stone-400 font-bold">
+            Yêu cầu gói Plus/Premium
+          </span>
         ) : (
           <>
             <span className="mr-1.5 font-extrabold text-teal-700">
@@ -1102,7 +1167,8 @@ function StatCard({ stat, onClick }) {
       </p>
       {onClick && (
         <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-extrabold text-orange-600 opacity-0 transition-opacity group-hover:opacity-100">
-          {stat.isLocked ? "Nâng cấp ngay" : "Xem chi tiết"} <ArrowUpRight className="h-3 w-3" />
+          {stat.isLocked ? "Nâng cấp ngay" : "Xem chi tiết"}{" "}
+          <ArrowUpRight className="h-3 w-3" />
         </span>
       )}
     </button>
@@ -1117,17 +1183,17 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
   const [customStartDate, setCustomStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 29); // Default to last 30 days
-    return d.toISOString().split('T')[0];
+    return d.toISOString().split("T")[0];
   });
   const [customEndDate, setCustomEndDate] = useState(() => {
-    return new Date().toISOString().split('T')[0];
+    return new Date().toISOString().split("T")[0];
   });
   const [isCustomMode, setIsCustomMode] = useState(false);
 
   // Range state for quick filter (7, 14, 30 days)
   const [range, setRange] = useState(() => {
-    if (planId === 'free') return 7;
-    if (planId === 'plus') return 30; // Plus defaults to 30 days
+    if (planId === "free") return 7;
+    if (planId === "plus") return 30; // Plus defaults to 30 days
     return 7; // Premium defaults to 7 days
   });
 
@@ -1141,8 +1207,8 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
 
   // Formatter for display
   const formatDisplayDate = (iso) => {
-    if (!iso) return '';
-    const [y, m, d] = iso.split('-');
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-");
     return `${d}/${m}/${y}`;
   };
 
@@ -1157,10 +1223,15 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
 
     const fetchStats = async () => {
       try {
-        const queryRange = isCustomMode ? null : (planId === 'free' ? 7 : range);
+        const queryRange = isCustomMode ? null : planId === "free" ? 7 : range;
         const queryStart = isCustomMode ? customStartDate : null;
         const queryEnd = isCustomMode ? customEndDate : null;
-        const data = await sellerApi.getVisitsStats(vendorId, queryRange, queryStart, queryEnd);
+        const data = await sellerApi.getVisitsStats(
+          vendorId,
+          queryRange,
+          queryStart,
+          queryEnd,
+        );
         if (mounted) {
           setStatsData(data);
         }
@@ -1182,69 +1253,88 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
       return statsData.trend;
     }
     // If premium and in custom date mode
-    if (planId === 'premium' && isCustomMode) {
+    if (planId === "premium" && isCustomMode) {
       if (customStartDate && customEndDate) {
         const start = new Date(customStartDate);
         start.setHours(0, 0, 0, 0);
         const end = new Date(customEndDate);
         end.setHours(23, 59, 59, 999);
-        
+
         const filtered = salesTrend.filter((item) => {
           const itemDate = new Date(item.date);
           return itemDate >= start && itemDate <= end;
         });
-        
+
         return filtered.length >= 2 ? filtered : salesTrend.slice(-7);
       }
     }
-    
+
     // Quick filters
-    if (planId === 'free') {
+    if (planId === "free") {
       return salesTrend.slice(-7); // Free is locked to 7 days
     }
-    
-    if (planId === 'plus') {
+
+    if (planId === "plus") {
       // Plus can select up to 30 days (7, 14, 30)
       return salesTrend.slice(-Math.min(range, 30));
     }
-    
+
     // Premium can use quick filters or custom range
     return salesTrend.slice(-range);
-  }, [planId, isCustomMode, customStartDate, customEndDate, range, isRealData, statsData]);
+  }, [
+    planId,
+    isCustomMode,
+    customStartDate,
+    customEndDate,
+    range,
+    isRealData,
+    statsData,
+  ]);
 
   const latest = trend.at(-1) || { revenue: 0, orders: 0 };
   const previous = trend.at(-2) || { revenue: 1, orders: 0 };
-  const change = previous.revenue > 0 ? ((latest.revenue - previous.revenue) / previous.revenue) * 100 : 0;
-  
+  const change =
+    previous.revenue > 0
+      ? ((latest.revenue - previous.revenue) / previous.revenue) * 100
+      : 0;
+
   const stats = [
     {
       label: "Lượt truy cập hôm nay",
       value: new Intl.NumberFormat("vi-VN").format(
-        isRealData && statsData ? statsData.todayVisits : Math.round(latest.revenue * 240)
+        isRealData && statsData
+          ? statsData.todayVisits
+          : Math.round(latest.revenue * 240),
       ),
       change: `${change >= 0 ? "+" : ""}${change.toFixed(1).replace(".", ",")}%`,
       note: "so với hôm qua",
       icon: Eye,
       tone: "is-orange",
       target: "trangchu",
-      isLocked: planId === 'free',
+      isLocked: planId === "free",
     },
     {
       label: "Tổng lượt truy cập",
       value: new Intl.NumberFormat("vi-VN").format(
-        isRealData && statsData ? statsData.totalVisits : Math.round(trend.reduce((sum, item) => sum + item.revenue * 240, 0))
+        isRealData && statsData
+          ? statsData.totalVisits
+          : Math.round(
+              trend.reduce((sum, item) => sum + item.revenue * 240, 0),
+            ),
       ),
       change: "+14,2%",
       note: "so với tuần trước",
       icon: Users,
       tone: "is-teal",
       target: "trangchu",
-      isLocked: planId === 'free',
+      isLocked: planId === "free",
     },
     {
       label: "Tổng tin nhắn",
       value: new Intl.NumberFormat("vi-VN").format(
-        isRealData && statsData ? Math.round(statsData.todayVisits * 0.08) : Math.round(latest.revenue * 15)
+        isRealData && statsData
+          ? Math.round(statsData.todayVisits * 0.08)
+          : Math.round(latest.revenue * 15),
       ),
       change: "+5,3%",
       note: "so với tuần trước",
@@ -1266,10 +1356,11 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
   ];
 
   const handlePeriodClick = (period) => {
-    if (planId === 'free' && period > 7) {
+    if (planId === "free" && period > 7) {
       onToast({
         title: "Tính năng bị giới hạn",
-        message: "Gói Free chỉ hiển thị tối đa 7 ngày gần nhất. Hãy nâng cấp để xem báo cáo xa hơn!",
+        message:
+          "Gói Free chỉ hiển thị tối đa 7 ngày gần nhất. Hãy nâng cấp để xem báo cáo xa hơn!",
       });
       onOpenPlanModal();
       return;
@@ -1283,7 +1374,11 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
     downloadCsv(
       "seller-visits.csv",
       ["Ngày", "Lượt truy cập", "Số đơn"],
-      trend.map((item) => [item.label, Math.round(item.revenue * factor), item.orders]),
+      trend.map((item) => [
+        item.label,
+        Math.round(item.revenue * factor),
+        item.orders,
+      ]),
     );
     onToast({
       title: "Đã tải báo cáo",
@@ -1320,13 +1415,13 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
             title="Lượt truy cập vào shop"
             subtitle={
               isCustomMode
-                ? `Lượt truy cập từ ${new Date(customStartDate).toLocaleDateString('vi-VN')} đến ${new Date(customEndDate).toLocaleDateString('vi-VN')}`
-                : `Lượt truy cập trong ${planId === 'free' ? 7 : range} ngày gần nhất`
+                ? `Lượt truy cập từ ${new Date(customStartDate).toLocaleDateString("vi-VN")} đến ${new Date(customEndDate).toLocaleDateString("vi-VN")}`
+                : `Lượt truy cập trong ${planId === "free" ? 7 : range} ngày gần nhất`
             }
           >
             <div className="flex flex-wrap items-center gap-2 mr-2">
               {/* Pulsing indicator for Premium */}
-              {planId === 'premium' && (
+              {planId === "premium" && (
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[10px] font-extrabold text-emerald-700 mr-2">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -1339,33 +1434,40 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
               {/* Quick Period Buttons */}
               <div className="flex bg-stone-100/80 p-0.5 rounded-lg border border-stone-200/40">
                 {[7, 14, 30].map((period) => {
-                  const isLocked = planId === 'free' && period > 7;
-                  const isActive = !isCustomMode && (planId === 'free' ? period === 7 : range === period);
+                  const isLocked = planId === "free" && period > 7;
+                  const isActive =
+                    !isCustomMode &&
+                    (planId === "free" ? period === 7 : range === period);
                   return (
                     <button
                       key={period}
                       type="button"
-                      disabled={planId === 'free' && period > 7}
+                      disabled={planId === "free" && period > 7}
                       className={cn(
                         "px-2.5 py-1 text-[11px] font-bold rounded-md transition-all duration-150 flex items-center gap-1",
                         isActive
                           ? "bg-white text-stone-800 shadow-sm"
-                          : "text-stone-500 hover:text-stone-800 disabled:opacity-50"
+                          : "text-stone-500 hover:text-stone-800 disabled:opacity-50",
                       )}
                       onClick={() => handlePeriodClick(period)}
                     >
                       <span>{period} ngày</span>
-                      {isLocked && <Lock className="h-2.5 w-2.5 text-stone-400" />}
+                      {isLocked && (
+                        <Lock className="h-2.5 w-2.5 text-stone-400" />
+                      )}
                     </button>
                   );
                 })}
               </div>
 
               {/* Custom Range Selector */}
-              {planId === 'premium' ? (
+              {planId === "premium" ? (
                 <div className="flex items-center bg-white px-3 py-1.5 rounded-full border border-stone-200 shadow-sm gap-2">
                   {/* Start Date */}
-                  <div className="relative flex items-center gap-2" ref={startRef}>
+                  <div
+                    className="relative flex items-center gap-2"
+                    ref={startRef}
+                  >
                     <button
                       type="button"
                       onClick={() => setStartCalendarOpen((prev) => !prev)}
@@ -1395,10 +1497,15 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
                     />
                   </div>
 
-                  <span className="text-[11px] font-semibold text-stone-400">đến</span>
+                  <span className="text-[11px] font-semibold text-stone-400">
+                    đến
+                  </span>
 
                   {/* End Date */}
-                  <div className="relative flex items-center gap-2" ref={endRef}>
+                  <div
+                    className="relative flex items-center gap-2"
+                    ref={endRef}
+                  >
                     <button
                       type="button"
                       onClick={() => setEndCalendarOpen((prev) => !prev)}
@@ -1434,7 +1541,8 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
                   onClick={() => {
                     onToast({
                       title: "Yêu cầu nâng cấp",
-                      message: "Tính năng chọn khoảng thời gian tùy chỉnh chỉ dành cho gói Premium. Hãy nâng cấp ngay để trải nghiệm!",
+                      message:
+                        "Tính năng chọn khoảng thời gian tùy chỉnh chỉ dành cho gói Premium. Hãy nâng cấp ngay để trải nghiệm!",
                     });
                     onOpenPlanModal();
                   }}
@@ -1455,14 +1563,17 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
               <Download className="h-4 w-4" />
             </button>
           </PanelHeader>
-          {planId === 'free' && (
+          {planId === "free" && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[3px] rounded-3xl p-6 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-500 shadow-sm border border-orange-100 mb-3">
                 <Lock className="h-6 w-6" />
               </div>
-              <h3 className="text-sm font-extrabold text-stone-900">Biểu đồ lượt truy cập bị giới hạn</h3>
+              <h3 className="text-sm font-extrabold text-stone-900">
+                Biểu đồ lượt truy cập bị giới hạn
+              </h3>
               <p className="mt-1 max-w-xs text-xs font-semibold text-stone-500 leading-normal">
-                Xem biểu đồ xu hướng lượt truy cập hàng ngày của cửa hàng khi nâng cấp lên gói Plus hoặc Premium.
+                Xem biểu đồ xu hướng lượt truy cập hàng ngày của cửa hàng khi
+                nâng cấp lên gói Plus hoặc Premium.
               </p>
               <button
                 type="button"
@@ -1499,14 +1610,17 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
             title="Bài đăng thịnh hành"
             subtitle="Top 3 sản phẩm có lượt truy cập cao nhất"
           />
-          {planId !== 'premium' && (
+          {planId !== "premium" && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[3px] rounded-3xl p-5 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-500 shadow-sm border border-orange-100 mb-3">
                 <Lock className="h-6 w-6" />
               </div>
-              <h3 className="text-sm font-extrabold text-stone-900">Bài đăng thịnh hành bị giới hạn</h3>
+              <h3 className="text-sm font-extrabold text-stone-900">
+                Bài đăng thịnh hành bị giới hạn
+              </h3>
               <p className="mt-1 max-w-xs text-xs font-semibold text-stone-500 leading-normal">
-                Thống kê Top 3 sản phẩm thịnh hành nhất chỉ áp dụng cho gói Premium.
+                Thống kê Top 3 sản phẩm thịnh hành nhất chỉ áp dụng cho gói
+                Premium.
               </p>
               <button
                 type="button"
@@ -1522,18 +1636,35 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
               statsData.topProducts.map((prod, idx) => (
                 <div
                   key={prod.id || idx}
-                  onClick={() => prod.id && window.open(`/products/${prod.id}`, '_blank', 'noopener,noreferrer')}
+                  onClick={() =>
+                    prod.id &&
+                    window.open(
+                      `/products/${prod.id}`,
+                      "_blank",
+                      "noopener,noreferrer",
+                    )
+                  }
                   className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-stone-50 cursor-pointer transition-colors border border-stone-100 bg-white"
                 >
-                  <span className={cn(
-                    "flex h-6 w-6 items-center justify-center rounded-full text-xs font-black text-white shrink-0 shadow-sm",
-                    idx === 0 ? "bg-amber-500" : idx === 1 ? "bg-slate-400" : "bg-orange-400"
-                  )}>
+                  <span
+                    className={cn(
+                      "flex h-6 w-6 items-center justify-center rounded-full text-xs font-black text-white shrink-0 shadow-sm",
+                      idx === 0
+                        ? "bg-amber-500"
+                        : idx === 1
+                          ? "bg-slate-400"
+                          : "bg-orange-400",
+                    )}
+                  >
                     {idx + 1}
                   </span>
                   <div className="h-12 w-12 rounded-xl bg-stone-100 overflow-hidden border border-stone-200/60 shrink-0">
                     {prod.imageUrl ? (
-                      <img src={prod.imageUrl} alt={prod.name} className="h-full w-full object-cover" />
+                      <img
+                        src={prod.imageUrl}
+                        alt={prod.name}
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-stone-400">
                         No image
@@ -1545,11 +1676,14 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
                       {prod.name}
                     </p>
                     <p className="mt-1 text-[11px] font-black text-orange-600">
-                      {prod.price > 0 ? `₫${new Intl.NumberFormat('vi-VN').format(prod.price)}` : 'Liên hệ'}
+                      {prod.price > 0
+                        ? `₫${new Intl.NumberFormat("vi-VN").format(prod.price)}`
+                        : "Liên hệ"}
                     </p>
                   </div>
                   <span className="shrink-0 rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-extrabold text-[#ff5a2f] ring-1 ring-orange-100">
-                    {new Intl.NumberFormat('vi-VN').format(prod.visits)} lượt xem
+                    {new Intl.NumberFormat("vi-VN").format(prod.visits)} lượt
+                    xem
                   </span>
                 </div>
               ))
@@ -1595,14 +1729,20 @@ function VendorRevenueChart({ data }) {
   const [hoverIndex, setHoverIndex] = useState(null);
   const width = 760;
   const height = 230;
-  const visitsFactor = (data && data.length > 0 && (data[0].visits !== undefined || data[0].visits === 0)) ? 1 : 240;
+  const visitsFactor =
+    data &&
+    data.length > 0 &&
+    (data[0].visits !== undefined || data[0].visits === 0)
+      ? 1
+      : 240;
 
   const chartData = data.map((item) => ({
     ...item,
     visits: Math.round(item.revenue * visitsFactor),
   }));
 
-  const max = Math.ceil(Math.max(...chartData.map((item) => item.visits)) / 500) * 500;
+  const max =
+    Math.ceil(Math.max(...chartData.map((item) => item.visits)) / 500) * 500;
   const points = chartData.map((item, index) => ({
     ...item,
     x: (index / (chartData.length - 1)) * width,
@@ -1642,7 +1782,9 @@ function VendorRevenueChart({ data }) {
     <div className="mt-5 grid grid-cols-[45px_1fr] gap-3">
       <div className="flex h-64 flex-col justify-between pb-6 text-[10px] font-bold text-stone-400 text-right pr-1">
         {[1, 0.75, 0.5, 0.25].map((ratio) => (
-          <span key={ratio}>{new Intl.NumberFormat("vi-VN").format(Math.round(max * ratio))}</span>
+          <span key={ratio}>
+            {new Intl.NumberFormat("vi-VN").format(Math.round(max * ratio))}
+          </span>
         ))}
         <span>0</span>
       </div>
@@ -2017,19 +2159,29 @@ function OrdersPage({ onToast }) {
   );
 }
 
-function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanModal }) {
+function ProductsPage({
+  onToast,
+  navigate,
+  hasWarehouseConfigured,
+  onOpenPlanModal,
+}) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [planRefreshKey, setPlanRefreshKey] = useState(0);
-  const [productsList, setProductsList] = useState(() => productStorage.getStoredProducts());
+  const [productsList, setProductsList] = useState(() =>
+    productStorage.getStoredProducts(),
+  );
   const [activeDropdownSku, setActiveDropdownSku] = useState(null);
-  const [rejectReasonModalProduct, setRejectReasonModalProduct] = useState(null);
+  const [rejectReasonModalProduct, setRejectReasonModalProduct] =
+    useState(null);
   const pageSize = 10;
   const [categoriesList, setCategoriesList] = useState([]);
 
   const hasBackendCategoryIds = (categories) =>
-    flattenCategoryTree(categories).some((category) => Number.isFinite(Number(category.id)));
+    flattenCategoryTree(categories).some((category) =>
+      Number.isFinite(Number(category.id)),
+    );
 
   const ensureBackendCategories = async () => {
     if (categoriesList.length > 0 && hasBackendCategoryIds(categoriesList)) {
@@ -2045,18 +2197,18 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
     const handleOutsideClick = () => {
       setActiveDropdownSku(null);
     };
-    window.addEventListener('click', handleOutsideClick);
-    return () => window.removeEventListener('click', handleOutsideClick);
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
   }, []);
 
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === 'sellerProducts') {
+      if (e.key === "sellerProducts") {
         setProductsList(productStorage.getStoredProducts());
       }
     };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
   useEffect(() => {
@@ -2070,14 +2222,17 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
         try {
           categories = await categoryApi.getPublicCategories();
         } catch (catErr) {
-          console.warn('Lỗi lấy danh mục qua /api/categories, thử market-research:', catErr);
+          console.warn(
+            "Lỗi lấy danh mục qua /api/categories, thử market-research:",
+            catErr,
+          );
           try {
             const res = await marketResearchApi.getVendorMarketResearch();
             if (res && Array.isArray(res.categories)) {
               categories = res.categories;
             }
           } catch (mrErr) {
-            console.warn('Không thể lấy danh mục từ market-research:', mrErr);
+            console.warn("Không thể lấy danh mục từ market-research:", mrErr);
           }
         }
         setCategoriesList(categories);
@@ -2085,18 +2240,22 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
         const backendProducts = await sellerApi.getProductsByVendor(vendorId);
         if (Array.isArray(backendProducts)) {
           const stored = productStorage.getStoredProducts();
-          
+
           // Filter out any local products that have a numeric ID but are NOT in the backend products list
-          const backendIds = new Set(backendProducts.map(p => String(p.id)));
-          let updated = stored.filter(p => {
+          const backendIds = new Set(backendProducts.map((p) => String(p.id)));
+          let updated = stored.filter((p) => {
             const isNumericId = p.id && /^\d+$/.test(String(p.id));
             if (!isNumericId) return true; // Keep local drafts that have not been saved to Backend yet
             return backendIds.has(String(p.id)); // Keep only if it still exists on the database
           });
 
-          backendProducts.forEach(beProd => {
+          backendProducts.forEach((beProd) => {
             const mapped = mapBackendProductToLocal(beProd, categories);
-            const idx = updated.findIndex(p => p.sku === mapped.sku || (p.id && String(p.id) === String(mapped.id)));
+            const idx = updated.findIndex(
+              (p) =>
+                p.sku === mapped.sku ||
+                (p.id && String(p.id) === String(mapped.id)),
+            );
             if (idx !== -1) {
               // Merge but keep local properties safely
               updated[idx] = mergeProductData(updated[idx], mapped);
@@ -2109,7 +2268,7 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
           setProductsList(updated);
         }
       } catch (err) {
-        console.warn('Lỗi đồng bộ sản phẩm từ Backend:', err);
+        console.warn("Lỗi đồng bộ sản phẩm từ Backend:", err);
       }
     };
 
@@ -2159,7 +2318,11 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
         }
 
         const backendCategories = await ensureBackendCategories();
-        const backendPayload = buildBackendPayloadFromLocal(product, 'pending', backendCategories);
+        const backendPayload = buildBackendPayloadFromLocal(
+          product,
+          "pending",
+          backendCategories,
+        );
         let updatedId = product.id;
         const isNumericId = product.id && /^\d+$/.test(String(product.id));
 
@@ -2172,7 +2335,11 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
           }
         }
 
-        productStorage.updateProduct(sku, { id: updatedId, status: "Chờ duyệt", note: "Đang chờ Admin duyệt" });
+        productStorage.updateProduct(sku, {
+          id: updatedId,
+          status: "Chờ duyệt",
+          note: "Đang chờ Admin duyệt",
+        });
         await getSubscriptionStatus().catch(() => {});
         onToast({
           title: "Gửi xét duyệt thành công",
@@ -2181,7 +2348,10 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
         refreshList();
       } catch (err) {
         console.error("Lỗi đồng bộ gửi duyệt lên BE:", err);
-        const message = err.response?.data?.message || err.response?.data?.error || err.message;
+        const message =
+          err.response?.data?.message ||
+          err.response?.data?.error ||
+          err.message;
         if (message?.toLowerCase().includes("hết lượt")) {
           await getSubscriptionStatus().catch(() => {});
           onOpenPlanModal?.({ blocksNavigation: true });
@@ -2202,10 +2372,14 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
         const isNumericId = product.id && /^\d+$/.test(String(product.id));
         if (product.id && isNumericId) {
           const backendCategories = await ensureBackendCategories();
-          const backendPayload = buildBackendPayloadFromLocal(product, 'draft', backendCategories);
+          const backendPayload = buildBackendPayloadFromLocal(
+            product,
+            "draft",
+            backendCategories,
+          );
           await sellerApi.updateProduct(product.id, backendPayload);
         }
-        
+
         productStorage.updateProduct(sku, { status: "Nháp", note: "Bản nháp" });
         onToast({
           title: "Đã thu hồi",
@@ -2214,7 +2388,12 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
         refreshList();
       } catch (err) {
         console.error("Lỗi đồng bộ thu hồi lên BE:", err);
-        alert("Không thể thu hồi sản phẩm về trạng thái nháp.\nChi tiết lỗi: " + (err.response?.data?.message || err.response?.data?.error || err.message));
+        alert(
+          "Không thể thu hồi sản phẩm về trạng thái nháp.\nChi tiết lỗi: " +
+            (err.response?.data?.message ||
+              err.response?.data?.error ||
+              err.message),
+        );
       }
     }
   };
@@ -2226,11 +2405,18 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
         const isNumericId = product.id && /^\d+$/.test(String(product.id));
         if (product.id && isNumericId) {
           const backendCategories = await ensureBackendCategories();
-          const backendPayload = buildBackendPayloadFromLocal(product, 'inactive', backendCategories);
+          const backendPayload = buildBackendPayloadFromLocal(
+            product,
+            "inactive",
+            backendCategories,
+          );
           await sellerApi.updateProduct(product.id, backendPayload);
         }
 
-        productStorage.updateProduct(sku, { status: "Tạm ẩn", note: "Người bán tạm ẩn" });
+        productStorage.updateProduct(sku, {
+          status: "Tạm ẩn",
+          note: "Người bán tạm ẩn",
+        });
         onToast({
           title: "Đã tạm ẩn",
           message: "Sản phẩm đã tạm ngừng hiển thị trên cửa hàng.",
@@ -2238,7 +2424,12 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
         refreshList();
       } catch (err) {
         console.error("Lỗi đồng bộ tạm ẩn lên BE:", err);
-        alert("Không thể tạm ẩn sản phẩm.\nChi tiết lỗi: " + (err.response?.data?.message || err.response?.data?.error || err.message));
+        alert(
+          "Không thể tạm ẩn sản phẩm.\nChi tiết lỗi: " +
+            (err.response?.data?.message ||
+              err.response?.data?.error ||
+              err.message),
+        );
       }
     }
   };
@@ -2250,11 +2441,18 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
         const isNumericId = product.id && /^\d+$/.test(String(product.id));
         if (product.id && isNumericId) {
           const backendCategories = await ensureBackendCategories();
-          const backendPayload = buildBackendPayloadFromLocal(product, 'approved', backendCategories);
+          const backendPayload = buildBackendPayloadFromLocal(
+            product,
+            "approved",
+            backendCategories,
+          );
           await sellerApi.updateProduct(product.id, backendPayload);
         }
 
-        productStorage.updateProduct(sku, { status: "Đang bán", note: "Đang hoạt động" });
+        productStorage.updateProduct(sku, {
+          status: "Đang bán",
+          note: "Đang hoạt động",
+        });
         onToast({
           title: "Đã mở bán lại",
           message: "Sản phẩm đang được mở bán trên hệ thống.",
@@ -2262,7 +2460,12 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
         refreshList();
       } catch (err) {
         console.error("Lỗi đồng bộ kích hoạt lên BE:", err);
-        alert("Không thể mở bán lại sản phẩm.\nChi tiết lỗi: " + (err.response?.data?.message || err.response?.data?.error || err.message));
+        alert(
+          "Không thể mở bán lại sản phẩm.\nChi tiết lỗi: " +
+            (err.response?.data?.message ||
+              err.response?.data?.error ||
+              err.message),
+        );
       }
     }
   };
@@ -2277,7 +2480,12 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
             await sellerApi.deleteProduct(product.id);
           } catch (err) {
             console.error("Lỗi khi xóa sản phẩm trên BE:", err);
-            alert("Không thể xóa sản phẩm trên Backend.\nChi tiết lỗi: " + (err.response?.data?.message || err.response?.data?.error || err.message));
+            alert(
+              "Không thể xóa sản phẩm trên Backend.\nChi tiết lỗi: " +
+                (err.response?.data?.message ||
+                  err.response?.data?.error ||
+                  err.message),
+            );
             return;
           }
         }
@@ -2304,13 +2512,19 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] p-8 bg-white border border-stone-200/80 rounded-2xl shadow-sm text-center max-w-2xl mx-auto my-4">
         <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-orange-50 text-orange-600 mb-6 shadow-sm shadow-orange-500/5 ring-4 ring-orange-50/50">
-          <Warehouse className="h-10 w-10 animate-bounce" style={{ animationDuration: '3s' }} />
+          <Warehouse
+            className="h-10 w-10 animate-bounce"
+            style={{ animationDuration: "3s" }}
+          />
         </div>
         <h2 className="text-xl font-extrabold text-stone-800 mb-3">
           Yêu cầu thiết lập kho hàng trước khi bán
         </h2>
         <p className="text-sm text-stone-500 font-medium max-w-md mb-6 leading-relaxed">
-          Bạn cần thiết lập thông tin cho cả <strong>Kho lấy hàng (PICKUP)</strong> và <strong>Kho trả hàng (RETURN)</strong> tại trang cấu hình kho hàng để kích hoạt các tính năng quản lý sản phẩm.
+          Bạn cần thiết lập thông tin cho cả{" "}
+          <strong>Kho lấy hàng (PICKUP)</strong> và{" "}
+          <strong>Kho trả hàng (RETURN)</strong> tại trang cấu hình kho hàng để
+          kích hoạt các tính năng quản lý sản phẩm.
         </p>
         <button
           type="button"
@@ -2328,10 +2542,12 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
       {/* Quota Banner */}
       <PostingQuotaBanner
         key={planRefreshKey}
-        onUpgradeClick={() => onOpenPlanModal?.({
-          blocksNavigation: false,
-          onAfterSelect: () => setPlanRefreshKey((k) => k + 1),
-        })}
+        onUpgradeClick={() =>
+          onOpenPlanModal?.({
+            blocksNavigation: false,
+            onAfterSelect: () => setPlanRefreshKey((k) => k + 1),
+          })
+        }
       />
 
       <Panel className="overflow-hidden">
@@ -2387,7 +2603,15 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
                   setPage(1);
                 }}
                 placeholder="Tất cả trạng thái"
-                options={["Đang bán", "Tồn thấp", "Tạm ẩn", "Chờ duyệt", "Nháp", "Bị từ chối", "Cảnh báo"]}
+                options={[
+                  "Đang bán",
+                  "Tồn thấp",
+                  "Tạm ẩn",
+                  "Chờ duyệt",
+                  "Nháp",
+                  "Bị từ chối",
+                  "Cảnh báo",
+                ]}
               />
             </Toolbar>
           </div>
@@ -2419,7 +2643,11 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
                     <div className="flex items-center gap-3">
                       <span className="flex h-10 w-10 overflow-hidden items-center justify-center rounded-lg bg-orange-50 text-orange-600">
                         {product.images && product.images.length > 0 ? (
-                          <img src={product.images[0].preview || product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                          <img
+                            src={product.images[0].preview || product.images[0]}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                          />
                         ) : (
                           <ImagePlus className="h-5 w-5" />
                         )}
@@ -2457,16 +2685,24 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
                   <td className="px-5 py-4">
                     <div className="flex flex-col items-start gap-1">
                       <StatusBadge status={product.status} />
-                      {product.status === 'Bị từ chối' && product.rejectReason && (
-                        <span className="text-[10px] font-semibold text-red-500 italic max-w-[150px] truncate" title={product.rejectReason}>
-                          Lý do: {product.rejectReason}
-                        </span>
-                      )}
-                      {product.status === 'Cảnh báo' && product.rejectReason && (
-                        <span className="text-[10px] font-semibold text-red-500 italic max-w-[150px] truncate" title={product.rejectReason}>
-                          Lý do: {product.rejectReason}
-                        </span>
-                      )}
+                      {product.status === "Bị từ chối" &&
+                        product.rejectReason && (
+                          <span
+                            className="text-[10px] font-semibold text-red-500 italic max-w-[150px] truncate"
+                            title={product.rejectReason}
+                          >
+                            Lý do: {product.rejectReason}
+                          </span>
+                        )}
+                      {product.status === "Cảnh báo" &&
+                        product.rejectReason && (
+                          <span
+                            className="text-[10px] font-semibold text-red-500 italic max-w-[150px] truncate"
+                            title={product.rejectReason}
+                          >
+                            Lý do: {product.rejectReason}
+                          </span>
+                        )}
                     </div>
                   </td>
                   <td className="px-5 py-4">
@@ -2477,23 +2713,33 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
                         className="vendor-icon-button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setActiveDropdownSku(activeDropdownSku === product.sku ? null : product.sku);
+                          setActiveDropdownSku(
+                            activeDropdownSku === product.sku
+                              ? null
+                              : product.sku,
+                          );
                         }}
                       >
                         <MoreHorizontal className="h-4 w-4" />
                       </button>
                       {activeDropdownSku === product.sku && (
                         <div className="absolute right-0 mt-2 w-48 bg-white border border-stone-200 rounded-xl shadow-xl z-[60] py-1.5 overflow-hidden">
-                          {product.status === 'Nháp' && (
+                          {product.status === "Nháp" && (
                             <>
                               <button
-                                onClick={() => navigate(`/vendor/products/edit/${product.sku}`)}
+                                onClick={() =>
+                                  navigate(
+                                    `/vendor/products/edit/${product.sku}`,
+                                  )
+                                }
                                 className="w-full text-left px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
                               >
                                 Chỉnh sửa
                               </button>
                               <button
-                                onClick={() => handlePublishProduct(product.sku)}
+                                onClick={() =>
+                                  handlePublishProduct(product.sku)
+                                }
                                 className="w-full text-left px-4 py-2 text-xs font-semibold text-orange-600 hover:bg-stone-50 transition-colors"
                               >
                                 Gửi xét duyệt
@@ -2507,7 +2753,7 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
                             </>
                           )}
 
-                          {product.status === 'Chờ duyệt' && (
+                          {product.status === "Chờ duyệt" && (
                             <>
                               <button
                                 onClick={() => handleRecallProduct(product.sku)}
@@ -2518,16 +2764,23 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
                             </>
                           )}
 
-                          {(product.status === 'Đang bán' || product.status === 'Tồn thấp') && (
+                          {(product.status === "Đang bán" ||
+                            product.status === "Tồn thấp") && (
                             <>
                               <button
-                                onClick={() => navigate(`/vendor/products/edit/${product.sku}`)}
+                                onClick={() =>
+                                  navigate(
+                                    `/vendor/products/edit/${product.sku}`,
+                                  )
+                                }
                                 className="w-full text-left px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
                               >
                                 Chỉnh sửa
                               </button>
                               <button
-                                onClick={() => handleDeactivateProduct(product.sku)}
+                                onClick={() =>
+                                  handleDeactivateProduct(product.sku)
+                                }
                                 className="w-full text-left px-4 py-2 text-xs font-semibold text-stone-500 hover:bg-stone-50 transition-colors"
                               >
                                 Tạm ẩn sản phẩm
@@ -2541,7 +2794,7 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
                             </>
                           )}
 
-                          {product.status === 'Bị từ chối' && (
+                          {product.status === "Bị từ chối" && (
                             <>
                               <button
                                 onClick={() => {
@@ -2553,7 +2806,11 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
                                 Xem lý do từ chối
                               </button>
                               <button
-                                onClick={() => navigate(`/vendor/products/edit/${product.sku}`)}
+                                onClick={() =>
+                                  navigate(
+                                    `/vendor/products/edit/${product.sku}`,
+                                  )
+                                }
                                 className="w-full text-left px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
                               >
                                 Sửa & gửi lại
@@ -2567,16 +2824,22 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
                             </>
                           )}
 
-                          {product.status === 'Tạm ẩn' && (
+                          {product.status === "Tạm ẩn" && (
                             <>
                               <button
-                                onClick={() => handleActivateProduct(product.sku)}
+                                onClick={() =>
+                                  handleActivateProduct(product.sku)
+                                }
                                 className="w-full text-left px-4 py-2 text-xs font-semibold text-green-600 hover:bg-stone-50 transition-colors"
                               >
                                 Mở bán lại
                               </button>
                               <button
-                                onClick={() => navigate(`/vendor/products/edit/${product.sku}`)}
+                                onClick={() =>
+                                  navigate(
+                                    `/vendor/products/edit/${product.sku}`,
+                                  )
+                                }
                                 className="w-full text-left px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
                               >
                                 Chỉnh sửa
@@ -2590,7 +2853,7 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
                             </>
                           )}
 
-                          {product.status === 'Cảnh báo' && (
+                          {product.status === "Cảnh báo" && (
                             <>
                               <button
                                 onClick={() => {
@@ -2602,7 +2865,11 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
                                 Xem lý do vi phạm
                               </button>
                               <button
-                                onClick={() => navigate(`/vendor/products/edit/${product.sku}`)}
+                                onClick={() =>
+                                  navigate(
+                                    `/vendor/products/edit/${product.sku}`,
+                                  )
+                                }
                                 className="w-full text-left px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
                               >
                                 Sửa & gửi lại
@@ -2640,7 +2907,9 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-base font-extrabold text-stone-950 flex items-center gap-2">
                 <span className="w-1.5 h-4 rounded-sm bg-red-600 flex-shrink-0" />
-                {rejectReasonModalProduct.status === 'Cảnh báo' ? 'Lý do vi phạm cảnh báo' : 'Lý do từ chối kiểm duyệt'}
+                {rejectReasonModalProduct.status === "Cảnh báo"
+                  ? "Lý do vi phạm cảnh báo"
+                  : "Lý do từ chối kiểm duyệt"}
               </h3>
               <button
                 onClick={() => setRejectReasonModalProduct(null)}
@@ -2649,11 +2918,14 @@ function ProductsPage({ onToast, navigate, hasWarehouseConfigured, onOpenPlanMod
                 <X className="h-5 w-5" />
               </button>
             </div>
-            
+
             <div className="bg-red-50/60 border border-red-100 rounded-xl p-4 mb-5">
-              <p className="text-xs font-bold text-red-800 mb-1">Chi tiết từ quản trị viên:</p>
+              <p className="text-xs font-bold text-red-800 mb-1">
+                Chi tiết từ quản trị viên:
+              </p>
               <p className="text-sm font-semibold text-red-950 leading-relaxed">
-                {rejectReasonModalProduct.rejectReason || "Sản phẩm không đáp ứng đủ tiêu chuẩn nội dung hoặc hình ảnh mờ/vi phạm bản quyền."}
+                {rejectReasonModalProduct.rejectReason ||
+                  "Sản phẩm không đáp ứng đủ tiêu chuẩn nội dung hoặc hình ảnh mờ/vi phạm bản quyền."}
               </p>
             </div>
 
@@ -2707,8 +2979,14 @@ const warehouseSetupSteps = [
 
 const warehouseSetupNotes = [
   ["Dùng cho vận chuyển", "Đơn mới sẽ lấy địa chỉ này để điều phối bàn giao."],
-  ["Dùng cho trả hàng", "Khách và đối tác vận chuyển có điểm trả hàng rõ ràng."],
-  ["Có thể chỉnh sửa sau", "Bạn vẫn cập nhật được liên hệ, địa chỉ và trạng thái kho."],
+  [
+    "Dùng cho trả hàng",
+    "Khách và đối tác vận chuyển có điểm trả hàng rõ ràng.",
+  ],
+  [
+    "Có thể chỉnh sửa sau",
+    "Bạn vẫn cập nhật được liên hệ, địa chỉ và trạng thái kho.",
+  ],
 ];
 
 function WarehousePage({ action, navigate, onToast }) {
@@ -2878,9 +3156,7 @@ function WarehousePage({ action, navigate, onToast }) {
 
     Promise.resolve()
       .then(() => addLog("Kiểm tra tính hợp lệ của địa chỉ kho...", 600))
-      .then(() =>
-        addLog("Khởi tạo kho hàng trên hệ thống...", 1000),
-      )
+      .then(() => addLog("Khởi tạo kho hàng trên hệ thống...", 1000))
       .then(() => addLog("Hoàn tất liên kết kho mặc định...", 800))
       .then(() => {
         setTimeout(() => {
@@ -3447,7 +3723,8 @@ function WarehousePage({ action, navigate, onToast }) {
               Đang kiểm tra thông tin kho
             </h2>
             <p className="text-xs font-semibold text-stone-400 mt-1">
-              Hệ thống đang xác thực địa chỉ, vị trí ghim và trạng thái liên kết.
+              Hệ thống đang xác thực địa chỉ, vị trí ghim và trạng thái liên
+              kết.
             </p>
 
             {/* Live logging */}
@@ -3876,186 +4153,21 @@ function MessagesPage({ onToast }) {
   };
 
   return (
-    <section className="grid min-h-[620px] gap-5 xl:grid-cols-[320px_1fr_280px]">
-      <Panel className="p-4">
-        <PanelHeader
-          title="Hộp thư"
-          subtitle={`${conversations.length} hội thoại`}
-        >
-          <button
-            type="button"
-            aria-label="Tải lại hội thoại"
-            className="vendor-icon-button"
-            onClick={loadConversations}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
-        </PanelHeader>
-        {error && (
-          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
-            {error}
-          </p>
-        )}
-        <div className="mt-4 space-y-2">
-          {loadingConversations && !conversations.length && (
-            <p className="py-8 text-center text-xs font-semibold text-stone-400">
-              Đang tải hộp thư...
-            </p>
-          )}
-          {!loadingConversations && !conversations.length && (
-            <div className="py-10 text-center">
-              <MessageSquareText className="mx-auto h-8 w-8 text-stone-300" />
-              <p className="mt-3 text-sm font-extrabold text-stone-700">
-                Chưa có hội thoại
-              </p>
-              <p className="mt-1 text-xs font-semibold leading-5 text-stone-400">
-                Tin nhắn mới từ khách hàng sẽ xuất hiện tại đây.
-              </p>
-            </div>
-          )}
-          {conversations.map((chat) => (
-            <button
-              key={chat.id}
-              type="button"
-              className={cn(
-                "vendor-chat-item",
-                activeConversationId === chat.id && "is-active",
-              )}
-              onClick={() => selectConversation(chat.id)}
-            >
-              <div className="flex items-center gap-2">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100 text-xs font-extrabold text-orange-700">
-                  {getInitials(chat.customerName)}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="truncate text-sm font-extrabold text-stone-700">
-                      {chat.customerName}
-                    </span>
-                    <span className="shrink-0 text-[11px] font-semibold text-stone-400">
-                      {formatChatTime(chat.lastMessageAt)}
-                    </span>
-                  </span>
-                  <span className="mt-1 block truncate text-xs font-semibold text-stone-500">
-                    {chat.lastMessage || "Chưa có tin nhắn"}
-                  </span>
-                </span>
-              </div>
-              {chat.unreadCount > 0 && (
-                <span className="mt-2 inline-flex rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-extrabold text-white">
-                  {chat.unreadCount}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </Panel>
-
-      <Panel className="flex min-h-[560px] flex-col overflow-hidden">
-        {activeChat ? (
-          <>
-            <div className="border-b border-stone-100 p-4">
-              <p className="font-extrabold text-stone-800">
-                {activeChat.customerName}
-              </p>
-              <p className="mt-1 text-xs font-semibold text-stone-400">
-                Trao đổi với khách hàng
-              </p>
-            </div>
-            <div className="flex-1 space-y-3 overflow-y-auto bg-stone-50/60 p-4">
-              {loadingMessages && (
-                <p className="py-8 text-center text-xs font-semibold text-stone-400">
-                  Đang tải tin nhắn...
-                </p>
-              )}
-              {!loadingMessages && !messages.length && (
-                <p className="py-8 text-center text-xs font-semibold text-stone-400">
-                  Hội thoại chưa có tin nhắn.
-                </p>
-              )}
-              {messages.map((item) => (
-                <div
-                  key={item.id}
-                  className={cn(
-                    "max-w-[75%] rounded-xl px-3 py-2 text-sm font-semibold shadow-sm",
-                    item.sentByVendor
-                      ? "ml-auto bg-teal-700 text-white"
-                      : "bg-white text-stone-600",
-                  )}
-                >
-                  <p>{item.content}</p>
-                  <p
-                    className={cn(
-                      "mt-1 text-[10px]",
-                      item.sentByVendor ? "text-teal-100" : "text-stone-400",
-                    )}
-                  >
-                    {formatChatTime(item.createdAt)}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <div className="border-t border-stone-100 p-4">
-              <div className="flex gap-2">
-                <input
-                  value={message}
-                  maxLength={2000}
-                  disabled={sending}
-                  onChange={(event) => setMessage(event.target.value)}
-                  onKeyDown={(event) => event.key === "Enter" && sendMessage()}
-                  className="vendor-input h-11 flex-1 px-3 text-sm"
-                  placeholder="Nhập tin nhắn..."
-                />
-                <button
-                  type="button"
-                  aria-label="Gửi tin nhắn"
-                  disabled={sending || !message.trim()}
-                  className="vendor-primary-button px-3 disabled:cursor-not-allowed disabled:opacity-50"
-                  onClick={sendMessage}
-                >
-                  <Send className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex flex-1 items-center justify-center p-8 text-center">
-            <div>
-              <MessageSquareText className="mx-auto h-10 w-10 text-stone-300" />
-              <p className="mt-3 text-sm font-extrabold text-stone-700">
-                Chọn một hội thoại
-              </p>
-              <p className="mt-1 text-xs font-semibold text-stone-400">
-                Nội dung trao đổi với khách hàng sẽ hiển thị tại đây.
-              </p>
-            </div>
-          </div>
-        )}
-      </Panel>
-
-      <Panel className="p-4">
-        <PanelHeader title="Trả lời nhanh" subtitle="Chọn để điền nội dung" />
-        <div className="mt-4 space-y-2">
-          {[
-            "Dạ sản phẩm vẫn còn hàng ạ.",
-            "Shop hỗ trợ đổi trả trong 7 ngày.",
-            "Shop gửi bạn mã giảm 10% nhé.",
-            "Đơn sẽ được gửi trong hôm nay ạ.",
-          ].map((reply) => (
-            <button
-              key={reply}
-              type="button"
-              disabled={!activeChat}
-              className="vendor-quick-reply disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => setMessage(reply)}
-            >
-              <MessageSquareText className="h-4 w-4 shrink-0 text-orange-500" />
-              {reply}
-            </button>
-          ))}
-        </div>
-      </Panel>
-    </section>
+    <ChatWorkspace
+      mode="vendor"
+      conversations={conversations}
+      activeConversationId={activeConversationId}
+      messages={messages}
+      message={message}
+      loadingConversations={loadingConversations}
+      loadingMessages={loadingMessages}
+      sending={sending}
+      error={error}
+      onRefresh={loadConversations}
+      onSelectConversation={selectConversation}
+      onMessageChange={setMessage}
+      onSend={sendMessage}
+    />
   );
 }
 
@@ -4153,23 +4265,29 @@ function MarketResearchPage({ onToast, onOpenPlanModal }) {
     };
   }, [selectedCategoryId, source, submittedQuery, refreshKey, onToast]);
 
-  if (plan.planId === 'free') {
+  if (plan.planId === "free") {
     return (
       <div className="relative min-h-[500px] flex items-center justify-center p-8 bg-slate-50/50 rounded-3xl border border-slate-200 overflow-hidden">
         <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
-        
+
         <div className="relative max-w-md w-full text-center space-y-6 bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-orange-50 text-orange-500 shadow-md shadow-orange-100 ring-4 ring-orange-50/50 animate-pulse">
             <Lock className="h-8 w-8" />
           </div>
-          
+
           <div className="space-y-2">
-            <h3 className="text-xl font-extrabold text-slate-800 tracking-tight">Tính Năng Bị Khóa</h3>
+            <h3 className="text-xl font-extrabold text-slate-800 tracking-tight">
+              Tính Năng Bị Khóa
+            </h3>
             <p className="text-xs font-semibold text-slate-500 leading-relaxed px-2">
-              Tính năng <strong>Nghiên cứu thị trường</strong> chỉ dành cho các đối tác đăng ký gói <strong>Plus</strong> hoặc <strong>Premium</strong>. Nâng cấp ngay để mở khóa các phân tích thông tin chi tiết, so khớp giá cả thị trường và gợi ý chiến lược bán hàng tối ưu!
+              Tính năng <strong>Nghiên cứu thị trường</strong> chỉ dành cho các
+              đối tác đăng ký gói <strong>Plus</strong> hoặc{" "}
+              <strong>Premium</strong>. Nâng cấp ngay để mở khóa các phân tích
+              thông tin chi tiết, so khớp giá cả thị trường và gợi ý chiến lược
+              bán hàng tối ưu!
             </p>
           </div>
-          
+
           <button
             type="button"
             onClick={() => onOpenPlanModal?.()}
@@ -4309,7 +4427,10 @@ function MarketResearchPage({ onToast, onOpenPlanModal }) {
                   placeholder="Nhập tên sản phẩm cần tìm, ví dụ iPhone 15"
                 />
               </div>
-              <button type="submit" className="vendor-primary-button justify-center">
+              <button
+                type="submit"
+                className="vendor-primary-button justify-center"
+              >
                 <Search className="h-4 w-4" />
                 Tìm kiếm
               </button>
@@ -4365,7 +4486,9 @@ function MarketResearchPage({ onToast, onOpenPlanModal }) {
         <StatCard
           stat={{
             label: "Giá thị trường",
-            value: formatShortCurrency(Number(selectedMarket.marketAverage || 0)),
+            value: formatShortCurrency(
+              Number(selectedMarket.marketAverage || 0),
+            ),
             change: selectedMarket.trend,
             note: "tính từ dữ liệu thật",
             icon: BarChart3,
@@ -4375,7 +4498,9 @@ function MarketResearchPage({ onToast, onOpenPlanModal }) {
         <StatCard
           stat={{
             label: "Giá đề xuất",
-            value: formatShortCurrency(Number(selectedMarket.recommendedPrice || 0)),
+            value: formatShortCurrency(
+              Number(selectedMarket.recommendedPrice || 0),
+            ),
             change: "Thấp hơn TB 2%",
             note: "gợi ý tham khảo",
             icon: TicketPercent,
@@ -4429,7 +4554,9 @@ function MarketResearchPage({ onToast, onOpenPlanModal }) {
             <MarketInsightRow
               icon={TicketPercent}
               label="Giá nên niêm yết"
-              value={formatCurrency(Number(selectedMarket.recommendedPrice || 0))}
+              value={formatCurrency(
+                Number(selectedMarket.recommendedPrice || 0),
+              )}
             />
             <MarketInsightRow
               icon={Store}
@@ -4537,19 +4664,27 @@ function MarketResearchPage({ onToast, onOpenPlanModal }) {
                       )}
                     </td>
                     <td className="px-5 py-4 font-extrabold text-teal-700">
-                      {hasData ? formatCurrency(Number(item.min || 0)) : "Chưa có"}
+                      {hasData
+                        ? formatCurrency(Number(item.min || 0))
+                        : "Chưa có"}
                     </td>
                     <td className="px-5 py-4 font-bold text-stone-800">
-                      {hasData ? formatCurrency(Number(item.avg || 0)) : "Chưa có"}
+                      {hasData
+                        ? formatCurrency(Number(item.avg || 0))
+                        : "Chưa có"}
                     </td>
                     <td className="px-5 py-4 font-semibold text-stone-500">
-                      {hasData ? formatCurrency(Number(item.max || 0)) : "Chưa có"}
+                      {hasData
+                        ? formatCurrency(Number(item.max || 0))
+                        : "Chưa có"}
                     </td>
                     <td className="px-5 py-4 font-semibold text-stone-600">
                       {item.productCount || 0}
                     </td>
                     <td className="px-5 py-4 font-semibold text-stone-600">
-                      {Number(item.rating || 0) > 0 ? `${item.rating}/5` : "Chưa có"}
+                      {Number(item.rating || 0) > 0
+                        ? `${item.rating}/5`
+                        : "Chưa có"}
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex min-w-32 items-center gap-2">
@@ -4761,8 +4896,8 @@ function MarketingPage({ onToast, navigateTo }) {
   const [eligibleProducts, setEligibleProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [selectedPostId, setSelectedPostId] = useState('');
+  const [error, setError] = useState("");
+  const [selectedPostId, setSelectedPostId] = useState("");
   const [selectedPromotion, setSelectedPromotion] = useState(null);
   const [editPromotion, setEditPromotion] = useState(null);
   const [stopPromotion, setStopPromotion] = useState(null);
@@ -4778,18 +4913,29 @@ function MarketingPage({ onToast, navigateTo }) {
   });
 
   const mapProductCandidate = useCallback((product) => {
-    const mainMedia = product.mediaList?.find((media) => media.isMain) || product.mediaList?.[0];
+    const mainMedia =
+      product.mediaList?.find((media) => media.isMain) ||
+      product.mediaList?.[0];
     const firstVariant = product.variants?.[0];
-    const promotionId = product.promotionId ?? product.postPromotionId ?? product.promotion?.id ?? null;
+    const promotionId =
+      product.promotionId ??
+      product.postPromotionId ??
+      product.promotion?.id ??
+      null;
     return {
       id: product.id,
-      sku: firstVariant?.sku || firstVariant?.sellerSku || product.slug || `POST-${product.id}`,
+      sku:
+        firstVariant?.sku ||
+        firstVariant?.sellerSku ||
+        product.slug ||
+        `POST-${product.id}`,
       name: product.name,
-      category: product.categoryName || product.vendorCategory || 'Chưa phân loại',
+      category:
+        product.categoryName || product.vendorCategory || "Chưa phân loại",
       price: Number(firstVariant?.price || 0),
-      status: String(product.status || '').toUpperCase(),
+      status: String(product.status || "").toUpperCase(),
       sold: Number(product.soldCount || 0),
-      imageUrl: mainMedia?.mediaUrl || firstVariant?.imageUrl || '',
+      imageUrl: mainMedia?.mediaUrl || firstVariant?.imageUrl || "",
       vendorId: product.vendorId,
       isPromoted: Boolean(product.isPromoted || promotionId),
       promotionId,
@@ -4797,61 +4943,94 @@ function MarketingPage({ onToast, navigateTo }) {
     };
   }, []);
 
-  const mapPromotedProduct = useCallback((product, detail = null) => {
-    const candidate = mapProductCandidate(product);
-    const promotionId = detail?.promotionId ?? candidate.promotionId;
-    const initialBudget = Number(detail?.initialBudget ?? product.promotionAmount ?? product.initialBudget ?? 0);
-    const remainingBudget = Number(detail?.remainingBudget ?? product.remainingBudget ?? initialBudget);
-    const roiAmount = Number(detail?.roiPerClick ?? product.roiPerClick ?? 0);
-    return {
-      promotionId,
-      postId: candidate.id,
-      postTitle: candidate.name,
-      postImageUrl: candidate.imageUrl,
-      category: candidate.category,
-      price: candidate.price,
-      status: detail?.status || product.promotionStatus || 'ACTIVE',
-      initialBudget,
-      remainingBudget,
-      spentAmount: Number(detail?.spentAmount ?? Math.max(0, initialBudget - remainingBudget)),
-      roiPerClick: roiAmount,
-      estimatedClicks: Number(detail?.estimatedClicks ?? (initialBudget && roiAmount ? Math.floor(initialBudget / roiAmount) : 0)),
-      customerClicks: Number(detail?.customerClicks ?? 0),
-      impressions: Number(detail?.impressions ?? 0),
-      ctr: Number(detail?.ctr ?? 0),
-      startDate: detail?.startDate || product.promotionStartDate || null,
-      endDate: detail?.endDate || product.promotionEndDate || null,
-      dataSource: detail?.dataSource || 'PRODUCTS_API',
-    };
-  }, [mapProductCandidate]);
+  const mapPromotedProduct = useCallback(
+    (product, detail = null) => {
+      const candidate = mapProductCandidate(product);
+      const promotionId = detail?.promotionId ?? candidate.promotionId;
+      const initialBudget = Number(
+        detail?.initialBudget ??
+          product.promotionAmount ??
+          product.initialBudget ??
+          0,
+      );
+      const remainingBudget = Number(
+        detail?.remainingBudget ?? product.remainingBudget ?? initialBudget,
+      );
+      const roiAmount = Number(detail?.roiPerClick ?? product.roiPerClick ?? 0);
+      return {
+        promotionId,
+        postId: candidate.id,
+        postTitle: candidate.name,
+        postImageUrl: candidate.imageUrl,
+        category: candidate.category,
+        price: candidate.price,
+        status: detail?.status || product.promotionStatus || "ACTIVE",
+        initialBudget,
+        remainingBudget,
+        spentAmount: Number(
+          detail?.spentAmount ?? Math.max(0, initialBudget - remainingBudget),
+        ),
+        roiPerClick: roiAmount,
+        estimatedClicks: Number(
+          detail?.estimatedClicks ??
+            (initialBudget && roiAmount
+              ? Math.floor(initialBudget / roiAmount)
+              : 0),
+        ),
+        customerClicks: Number(detail?.customerClicks ?? 0),
+        impressions: Number(detail?.impressions ?? 0),
+        ctr: Number(detail?.ctr ?? 0),
+        startDate: detail?.startDate || product.promotionStartDate || null,
+        endDate: detail?.endDate || product.promotionEndDate || null,
+        dataSource: detail?.dataSource || "PRODUCTS_API",
+      };
+    },
+    [mapProductCandidate],
+  );
 
   const loadPromotionData = useCallback(async () => {
     if (!vendorId) {
-      setError('Không tìm thấy vendorId trong phiên đăng nhập. Vui lòng đăng nhập lại Seller Center.');
+      setError(
+        "Không tìm thấy vendorId trong phiên đăng nhập. Vui lòng đăng nhập lại Seller Center.",
+      );
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    setError('');
+    setError("");
     try {
       const [walletResult, productResult] = await Promise.allSettled([
         promotionApi.getPromotionWallet(),
         sellerApi.getPublicProducts(),
       ]);
 
-      const walletData = walletResult.status === 'fulfilled' ? walletResult.value : null;
-      const productData = productResult.status === 'fulfilled' ? productResult.value : [];
-      const vendorProducts = (Array.isArray(productData) ? productData : [])
-        .filter((product) => String(product.vendorId || '') === String(vendorId));
-      const activeVendorProducts = vendorProducts
-        .filter((product) => String(product.status || '').toLowerCase() === 'active');
-      const promotedProducts = activeVendorProducts
-        .filter((product) => Boolean(product.isPromoted || product.promotionId || product.postPromotionId || product.promotion?.id));
+      const walletData =
+        walletResult.status === "fulfilled" ? walletResult.value : null;
+      const productData =
+        productResult.status === "fulfilled" ? productResult.value : [];
+      const vendorProducts = (
+        Array.isArray(productData) ? productData : []
+      ).filter(
+        (product) => String(product.vendorId || "") === String(vendorId),
+      );
+      const activeVendorProducts = vendorProducts.filter(
+        (product) => String(product.status || "").toLowerCase() === "active",
+      );
+      const promotedProducts = activeVendorProducts.filter((product) =>
+        Boolean(
+          product.isPromoted ||
+          product.promotionId ||
+          product.postPromotionId ||
+          product.promotion?.id,
+        ),
+      );
       const productPromotions = promotedProducts
         .map((product) => mapPromotedProduct(product))
         .filter((promotion) => promotion.promotionId);
-      const promotedPostIds = new Set(productPromotions.map((promotion) => String(promotion.postId)));
+      const promotedPostIds = new Set(
+        productPromotions.map((promotion) => String(promotion.postId)),
+      );
 
       setWallet(walletData || null);
       setTransactions([]);
@@ -4861,12 +5040,16 @@ function MarketingPage({ onToast, navigateTo }) {
           .filter((product) => !promotedPostIds.has(String(product.id)))
           .map(mapProductCandidate),
       );
-      if (walletResult.status === 'rejected') {
+      if (walletResult.status === "rejected") {
         throw walletResult.reason;
       }
     } catch (err) {
-      console.error('Không thể tải dữ liệu tiếp thị quảng cáo:', err);
-      setError(err.response?.data?.message || err.message || 'Không thể tải dữ liệu tiếp thị quảng cáo từ backend.');
+      console.error("Không thể tải dữ liệu tiếp thị quảng cáo:", err);
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Không thể tải dữ liệu tiếp thị quảng cáo từ backend.",
+      );
     } finally {
       setLoading(false);
     }
@@ -4876,57 +5059,101 @@ function MarketingPage({ onToast, navigateTo }) {
     loadPromotionData();
   }, [loadPromotionData]);
 
-  const selectedPost = eligibleProducts.find((product) => String(product.id) === String(selectedPostId)) || null;
-  const availableBalance = Number(wallet?.availableBalance ?? wallet?.balance ?? 0);
+  const selectedPost =
+    eligibleProducts.find(
+      (product) => String(product.id) === String(selectedPostId),
+    ) || null;
+  const availableBalance = Number(
+    wallet?.availableBalance ?? wallet?.balance ?? 0,
+  );
   const lockedBalance = Number(wallet?.lockedBalance ?? 0);
   const totalSpent = Number(wallet?.totalSpent ?? 0);
   const totalDeposited = Number(wallet?.totalDeposited ?? 0);
-  const estimatedClicks = budget > 0 && roiPerClick > 0 ? Math.floor(budget / roiPerClick) : 0;
+  const estimatedClicks =
+    budget > 0 && roiPerClick > 0 ? Math.floor(budget / roiPerClick) : 0;
   const deficit = Math.max(0, budget - availableBalance);
   const isBalanceSufficient = deficit === 0;
   const runningPromotion = selectedPost
-    ? promotions.find((promotion) =>
-        String(promotion.postId) === String(selectedPost.id) &&
-        ['ACTIVE', 'SCHEDULED', 'PAUSED'].includes(String(promotion.status || '').toUpperCase()),
+    ? promotions.find(
+        (promotion) =>
+          String(promotion.postId) === String(selectedPost.id) &&
+          ["ACTIVE", "SCHEDULED", "PAUSED"].includes(
+            String(promotion.status || "").toUpperCase(),
+          ),
       )
     : null;
   const start = new Date(`${startDate}T00:00:00`);
   const end = new Date(`${endDate}T23:59:59`);
   const durationDays = Math.max(0, Math.ceil((end - start) / 86400000));
-  const isDurationValid = startDate && endDate && end >= start && durationDays >= PROMOTION_CONFIG.minDurationDays && durationDays <= PROMOTION_CONFIG.maxDurationDays;
-  const isBudgetValid = budget >= PROMOTION_CONFIG.minBudget && budget <= PROMOTION_CONFIG.maxBudget;
-  const isRoiValid = roiPerClick >= PROMOTION_CONFIG.minAmountPerClick && roiPerClick <= budget;
-  const canSubmit = selectedPost && isBudgetValid && isRoiValid && isDurationValid && isBalanceSufficient && !runningPromotion;
+  const isDurationValid =
+    startDate &&
+    endDate &&
+    end >= start &&
+    durationDays >= PROMOTION_CONFIG.minDurationDays &&
+    durationDays <= PROMOTION_CONFIG.maxDurationDays;
+  const isBudgetValid =
+    budget >= PROMOTION_CONFIG.minBudget &&
+    budget <= PROMOTION_CONFIG.maxBudget;
+  const isRoiValid =
+    roiPerClick >= PROMOTION_CONFIG.minAmountPerClick && roiPerClick <= budget;
+  const canSubmit =
+    selectedPost &&
+    isBudgetValid &&
+    isRoiValid &&
+    isDurationValid &&
+    isBalanceSufficient &&
+    !runningPromotion;
 
-  const summary = useMemo(() => promotions.reduce(
-    (acc, promotion) => {
-      const status = String(promotion.status || '').toUpperCase();
-      acc.active += status === 'ACTIVE' ? 1 : 0;
-      acc.spent += Number(promotion.spentAmount || 0);
-      acc.remaining += Number(promotion.remainingBudget || 0);
-      acc.clicks += Number(promotion.customerClicks || 0);
-      acc.impressions += Number(promotion.impressions || 0);
-      return acc;
-    },
-    { active: 0, spent: 0, remaining: 0, clicks: 0, impressions: 0 },
-  ), [promotions]);
+  const summary = useMemo(
+    () =>
+      promotions.reduce(
+        (acc, promotion) => {
+          const status = String(promotion.status || "").toUpperCase();
+          acc.active += status === "ACTIVE" ? 1 : 0;
+          acc.spent += Number(promotion.spentAmount || 0);
+          acc.remaining += Number(promotion.remainingBudget || 0);
+          acc.clicks += Number(promotion.customerClicks || 0);
+          acc.impressions += Number(promotion.impressions || 0);
+          return acc;
+        },
+        { active: 0, spent: 0, remaining: 0, clicks: 0, impressions: 0 },
+      ),
+    [promotions],
+  );
 
-  const toApiDate = (date, isEnd = false) => `${date}T${isEnd ? '23:59:59' : '00:00:00'}+07:00`;
+  const toApiDate = (date, isEnd = false) =>
+    `${date}T${isEnd ? "23:59:59" : "00:00:00"}+07:00`;
 
   const handleTopUp = async (amount) => {
     const requestedAmount = Number(amount || 0);
     if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
-      onToast({ title: 'Số tiền nạp chưa hợp lệ', message: `Số tiền nạp tối thiểu là ${formatCurrency(PROMOTION_CONFIG.minTopUpAmount)}.`, type: 'error' });
+      onToast({
+        title: "Số tiền nạp chưa hợp lệ",
+        message: `Số tiền nạp tối thiểu là ${formatCurrency(PROMOTION_CONFIG.minTopUpAmount)}.`,
+        type: "error",
+      });
       return;
     }
-    const normalizedAmount = Math.max(PROMOTION_CONFIG.minTopUpAmount, requestedAmount);
+    const normalizedAmount = Math.max(
+      PROMOTION_CONFIG.minTopUpAmount,
+      requestedAmount,
+    );
     setActionLoading(true);
     try {
-      const order = await promotionApi.createTopUp({ amount: normalizedAmount });
+      const order = await promotionApi.createTopUp({
+        amount: normalizedAmount,
+      });
       setTopUpPayment(order);
-      onToast({ title: 'Đã tạo yêu cầu nạp tiền', message: 'Hệ thống đã tạo link thanh toán nạp ví quảng bá.' });
+      onToast({
+        title: "Đã tạo yêu cầu nạp tiền",
+        message: "Hệ thống đã tạo link thanh toán nạp ví quảng bá.",
+      });
     } catch (err) {
-      onToast({ title: 'Không thể tạo yêu cầu nạp tiền', message: err.response?.data?.message || err.message, type: 'error' });
+      onToast({
+        title: "Không thể tạo yêu cầu nạp tiền",
+        message: err.response?.data?.message || err.message,
+        type: "error",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -4943,12 +5170,20 @@ function MarketingPage({ onToast, navigateTo }) {
         startDate: toApiDate(startDate),
         endDate: toApiDate(endDate, true),
       });
-      onToast({ title: 'Đã tạo quảng bá', message: 'Bài đăng đã được đưa vào danh sách tiếp thị quảng cáo bằng dữ liệu thật.' });
-      setSelectedPostId('');
+      onToast({
+        title: "Đã tạo quảng bá",
+        message:
+          "Bài đăng đã được đưa vào danh sách tiếp thị quảng cáo bằng dữ liệu thật.",
+      });
+      setSelectedPostId("");
       window.dispatchEvent(new Event("seller-wallet-refresh"));
       await loadPromotionData();
     } catch (err) {
-      onToast({ title: 'Không thể tạo quảng bá', message: err.response?.data?.message || err.message, type: 'error' });
+      onToast({
+        title: "Không thể tạo quảng bá",
+        message: err.response?.data?.message || err.message,
+        type: "error",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -4962,16 +5197,26 @@ function MarketingPage({ onToast, navigateTo }) {
     if (!editPromotion) return;
     setActionLoading(true);
     try {
-      const updated = await promotionApi.updatePromotion(editPromotion.promotionId, {
-        promotionAmount: Number(editPromotion.initialBudget || 0),
-        roiPerClick: Number(editPromotion.roiPerClick || 0),
-      });
+      const updated = await promotionApi.updatePromotion(
+        editPromotion.promotionId,
+        {
+          promotionAmount: Number(editPromotion.initialBudget || 0),
+          roiPerClick: Number(editPromotion.roiPerClick || 0),
+        },
+      );
       setEditPromotion(null);
       setSelectedPromotion(updated);
       await loadPromotionData();
-      onToast({ title: 'Đã cập nhật quảng bá', message: 'Dữ liệu đã được cập nhật từ bảng post_promotions.' });
+      onToast({
+        title: "Đã cập nhật quảng bá",
+        message: "Dữ liệu đã được cập nhật từ bảng post_promotions.",
+      });
     } catch (err) {
-      onToast({ title: 'Không thể cập nhật quảng bá', message: err.response?.data?.message || err.message, type: 'error' });
+      onToast({
+        title: "Không thể cập nhật quảng bá",
+        message: err.response?.data?.message || err.message,
+        type: "error",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -4985,9 +5230,16 @@ function MarketingPage({ onToast, navigateTo }) {
       setStopPromotion(null);
       setSelectedPromotion(null);
       await loadPromotionData();
-      onToast({ title: 'Đã dừng quảng bá', message: 'Ngân sách còn lại đã được release về ví nếu còn số dư.' });
+      onToast({
+        title: "Đã dừng quảng bá",
+        message: "Ngân sách còn lại đã được release về ví nếu còn số dư.",
+      });
     } catch (err) {
-      onToast({ title: 'Không thể dừng quảng bá', message: err.response?.data?.message || err.message, type: 'error' });
+      onToast({
+        title: "Không thể dừng quảng bá",
+        message: err.response?.data?.message || err.message,
+        type: "error",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -5010,9 +5262,15 @@ function MarketingPage({ onToast, navigateTo }) {
         <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 p-4">
           <AlertTriangle className="mt-0.5 h-5 w-5 text-red-600" />
           <div>
-            <p className="font-extrabold text-red-700">Không thể tải tiếp thị quảng cáo</p>
+            <p className="font-extrabold text-red-700">
+              Không thể tải tiếp thị quảng cáo
+            </p>
             <p className="mt-1 text-sm font-semibold text-red-600">{error}</p>
-            <button type="button" className="vendor-primary-button mt-4" onClick={loadPromotionData}>
+            <button
+              type="button"
+              className="vendor-primary-button mt-4"
+              onClick={loadPromotionData}
+            >
               <RefreshCw className="h-4 w-4" />
               Thử lại
             </button>
@@ -5026,17 +5284,56 @@ function MarketingPage({ onToast, navigateTo }) {
     return (
       <div className="space-y-5">
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <InsightCard title="Số dư khả dụng" icon={WalletCards} value={formatShortCurrency(availableBalance)} label={`${formatShortCurrency(lockedBalance)} đang giữ`} text="Dữ liệu thật từ ví quảng bá Seller." tone="is-green" />
-          <InsightCard title="Promotion active" icon={Megaphone} value={new Intl.NumberFormat('vi-VN').format(summary.active)} label={`${formatShortCurrency(summary.remaining)} còn lại`} text="Danh sách promotion lấy từ database." tone="is-orange" />
-          <InsightCard title="Chi phí lượt click" icon={CircleDollarSign} value={formatShortCurrency(totalSpent || summary.spent)} label={`${summary.clicks} click khách hàng`} text="Chỉ trừ tiền khi click hợp lệ." tone="is-teal" />
-          <InsightCard title="CTR quảng bá" icon={BarChart3} value={summary.impressions ? formatPercent((summary.clicks / summary.impressions) * 100) : '0%'} label={`${new Intl.NumberFormat('vi-VN').format(summary.impressions)} impressions`} text="Từ impression/click backend ghi nhận." tone="is-yellow" />
+          <InsightCard
+            title="Số dư khả dụng"
+            icon={WalletCards}
+            value={formatShortCurrency(availableBalance)}
+            label={`${formatShortCurrency(lockedBalance)} đang giữ`}
+            text="Dữ liệu thật từ ví quảng bá Seller."
+            tone="is-green"
+          />
+          <InsightCard
+            title="Promotion active"
+            icon={Megaphone}
+            value={new Intl.NumberFormat("vi-VN").format(summary.active)}
+            label={`${formatShortCurrency(summary.remaining)} còn lại`}
+            text="Danh sách promotion lấy từ database."
+            tone="is-orange"
+          />
+          <InsightCard
+            title="Chi phí lượt click"
+            icon={CircleDollarSign}
+            value={formatShortCurrency(totalSpent || summary.spent)}
+            label={`${summary.clicks} click khách hàng`}
+            text="Chỉ trừ tiền khi click hợp lệ."
+            tone="is-teal"
+          />
+          <InsightCard
+            title="CTR quảng bá"
+            icon={BarChart3}
+            value={
+              summary.impressions
+                ? formatPercent((summary.clicks / summary.impressions) * 100)
+                : "0%"
+            }
+            label={`${new Intl.NumberFormat("vi-VN").format(summary.impressions)} impressions`}
+            text="Từ impression/click backend ghi nhận."
+            tone="is-yellow"
+          />
         </section>
 
         <section className="grid gap-5 xl:grid-cols-[1fr_340px]">
           <Panel className="overflow-hidden">
             <div className="p-5">
-              <PanelHeader title="Chọn bài đăng để tiếp thị quảng cáo" subtitle="Chỉ hiển thị bài ACTIVE lấy trực tiếp từ backend.">
-                <button type="button" className="vendor-secondary-button" onClick={() => navigateTo?.('san-pham')}>
+              <PanelHeader
+                title="Chọn bài đăng để tiếp thị quảng cáo"
+                subtitle="Chỉ hiển thị bài ACTIVE lấy trực tiếp từ backend."
+              >
+                <button
+                  type="button"
+                  className="vendor-secondary-button"
+                  onClick={() => navigateTo?.("san-pham")}
+                >
                   <PackageSearch className="h-4 w-4" />
                   Quản lý sản phẩm
                 </button>
@@ -5045,37 +5342,94 @@ function MarketingPage({ onToast, navigateTo }) {
             {eligibleProducts.length === 0 ? (
               <div className="border-t border-stone-100 p-8 text-center">
                 <PackageSearch className="mx-auto h-10 w-10 text-stone-300" />
-                <p className="mt-3 text-sm font-extrabold text-stone-700">Chưa có bài ACTIVE để quảng bá</p>
-                <p className="mt-1 text-xs font-semibold text-stone-400">Hãy đăng tin và được duyệt trước khi tạo tiếp thị quảng cáo.</p>
+                <p className="mt-3 text-sm font-extrabold text-stone-700">
+                  Chưa có bài ACTIVE để quảng bá
+                </p>
+                <p className="mt-1 text-xs font-semibold text-stone-400">
+                  Hãy đăng tin và được duyệt trước khi tạo tiếp thị quảng cáo.
+                </p>
               </div>
             ) : (
               <div className="divide-y divide-stone-100">
                 {eligibleProducts.map((product) => {
-                  const productPromotion = promotions.find((promotion) => String(promotion.postId) === String(product.id) && ['ACTIVE', 'SCHEDULED', 'PAUSED'].includes(String(promotion.status || '').toUpperCase()));
+                  const productPromotion = promotions.find(
+                    (promotion) =>
+                      String(promotion.postId) === String(product.id) &&
+                      ["ACTIVE", "SCHEDULED", "PAUSED"].includes(
+                        String(promotion.status || "").toUpperCase(),
+                      ),
+                  );
                   return (
-                    <div key={product.id} className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-center">
+                    <div
+                      key={product.id}
+                      className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-center"
+                    >
                       <div className="flex min-w-0 gap-4">
                         <span className="flex h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-orange-50 text-orange-600">
-                          {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" /> : <ImagePlus className="m-auto h-7 w-7" />}
+                          {product.imageUrl ? (
+                            <img
+                              src={product.imageUrl}
+                              alt={product.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <ImagePlus className="m-auto h-7 w-7" />
+                          )}
                         </span>
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="truncate text-base font-extrabold text-stone-900">{product.name}</p>
+                            <p className="truncate text-base font-extrabold text-stone-900">
+                              {product.name}
+                            </p>
                             <StatusBadge status="Đang bán" />
-                            {productPromotion && <StatusBadge status={getPromotionStatusLabel(productPromotion.status)} />}
+                            {productPromotion && (
+                              <StatusBadge
+                                status={getPromotionStatusLabel(
+                                  productPromotion.status,
+                                )}
+                              />
+                            )}
                           </div>
-                          <p className="mt-1 text-xs font-semibold text-stone-400">SKU {product.sku} · {product.category} · {formatCurrency(product.price)}</p>
+                          <p className="mt-1 text-xs font-semibold text-stone-400">
+                            SKU {product.sku} · {product.category} ·{" "}
+                            {formatCurrency(product.price)}
+                          </p>
                           <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                            <PromotionPreviewItem label="Số tiền cho mỗi lượt được click" value={formatCurrency(roiPerClick)} tone="text-orange-700" />
-                            <PromotionPreviewItem label="Click ước tính" value={new Intl.NumberFormat('vi-VN').format(roiPerClick > 0 ? Math.floor(budget / roiPerClick) : 0)} tone="text-teal-700" />
-                            <PromotionPreviewItem label="Đã bán" value={new Intl.NumberFormat('vi-VN').format(product.sold || 0)} tone="text-stone-800" />
+                            <PromotionPreviewItem
+                              label="Số tiền cho mỗi lượt được click"
+                              value={formatCurrency(roiPerClick)}
+                              tone="text-orange-700"
+                            />
+                            <PromotionPreviewItem
+                              label="Click ước tính"
+                              value={new Intl.NumberFormat("vi-VN").format(
+                                roiPerClick > 0
+                                  ? Math.floor(budget / roiPerClick)
+                                  : 0,
+                              )}
+                              tone="text-teal-700"
+                            />
+                            <PromotionPreviewItem
+                              label="Đã bán"
+                              value={new Intl.NumberFormat("vi-VN").format(
+                                product.sold || 0,
+                              )}
+                              tone="text-stone-800"
+                            />
                           </div>
                         </div>
                       </div>
                       <div className="flex flex-col gap-2 lg:items-end">
-                        <button type="button" disabled={Boolean(productPromotion)} className="vendor-primary-button justify-center disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-stone-200 disabled:text-stone-400 disabled:shadow-none" onClick={() => setSelectedPostId(product.id)}>
+                        <button
+                          type="button"
+                          disabled={Boolean(productPromotion)}
+                          className="vendor-primary-button justify-center disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-stone-200 disabled:text-stone-400 disabled:shadow-none"
+                          onClick={() => setSelectedPostId(product.id)}
+                        >
                           <Megaphone className="h-4 w-4" />
-                          {productPromotion ? 'Đã có quảng bá' : 'Chọn quảng bá'}
+                          {productPromotion
+                            ? "Đã có quảng bá"
+                            : "Chọn quảng bá"}
                         </button>
                       </div>
                     </div>
@@ -5086,22 +5440,45 @@ function MarketingPage({ onToast, navigateTo }) {
           </Panel>
 
           <Panel className="p-5">
-            <PanelHeader title="Ví quảng bá" subtitle="Tất cả số liệu lấy từ backend." />
+            <PanelHeader
+              title="Ví quảng bá"
+              subtitle="Tất cả số liệu lấy từ backend."
+            />
             <div className="mt-4 grid gap-3">
-              <PromotionPreviewItem label="Available balance" value={formatCurrency(availableBalance)} tone="text-teal-700" />
-              <PromotionPreviewItem label="Locked balance" value={formatCurrency(lockedBalance)} tone="text-orange-700" />
-              <PromotionPreviewItem label="Total deposited" value={formatCurrency(totalDeposited)} tone="text-stone-800" />
-              <PromotionPreviewItem label="Total spent" value={formatCurrency(totalSpent)} tone="text-red-600" />
+              <PromotionPreviewItem
+                label="Available balance"
+                value={formatCurrency(availableBalance)}
+                tone="text-teal-700"
+              />
+              <PromotionPreviewItem
+                label="Locked balance"
+                value={formatCurrency(lockedBalance)}
+                tone="text-orange-700"
+              />
+              <PromotionPreviewItem
+                label="Total deposited"
+                value={formatCurrency(totalDeposited)}
+                tone="text-stone-800"
+              />
+              <PromotionPreviewItem
+                label="Total spent"
+                value={formatCurrency(totalSpent)}
+                tone="text-red-600"
+              />
             </div>
             <div className="mt-4 rounded-xl border border-orange-100 bg-orange-50/60 p-4">
               <label className="block">
-                <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-orange-700">Nạp tiền vào số dư quảng bá</span>
+                <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-orange-700">
+                  Nạp tiền vào số dư quảng bá
+                </span>
                 <input
                   type="number"
                   min={PROMOTION_CONFIG.minTopUpAmount}
                   step="1000"
                   value={topUpAmount}
-                  onChange={(event) => setTopUpAmount(Number(event.target.value || 0))}
+                  onChange={(event) =>
+                    setTopUpAmount(Number(event.target.value || 0))
+                  }
                   className="vendor-input mt-2 h-11 w-full bg-white px-3 text-sm font-bold"
                 />
               </label>
@@ -5111,8 +5488,10 @@ function MarketingPage({ onToast, navigateTo }) {
                     key={amount}
                     type="button"
                     className={cn(
-                      'rounded-lg border px-2 py-2 text-xs font-extrabold transition-colors',
-                      topUpAmount === amount ? 'border-orange-500 bg-white text-orange-700' : 'border-orange-100 bg-white/70 text-stone-500 hover:border-orange-300',
+                      "rounded-lg border px-2 py-2 text-xs font-extrabold transition-colors",
+                      topUpAmount === amount
+                        ? "border-orange-500 bg-white text-orange-700"
+                        : "border-orange-100 bg-white/70 text-stone-500 hover:border-orange-300",
                     )}
                     onClick={() => setTopUpAmount(amount)}
                   >
@@ -5120,20 +5499,42 @@ function MarketingPage({ onToast, navigateTo }) {
                   </button>
                 ))}
               </div>
-              <button type="button" className="vendor-primary-button mt-3 w-full justify-center" disabled={actionLoading || topUpAmount < PROMOTION_CONFIG.minTopUpAmount} onClick={() => handleTopUp(topUpAmount)}>
+              <button
+                type="button"
+                className="vendor-primary-button mt-3 w-full justify-center"
+                disabled={
+                  actionLoading || topUpAmount < PROMOTION_CONFIG.minTopUpAmount
+                }
+                onClick={() => handleTopUp(topUpAmount)}
+              >
                 <CreditCard className="h-4 w-4" />
                 Nạp vào ví quảng bá
               </button>
             </div>
             <div className="mt-4 divide-y divide-stone-100">
               {transactions.slice(0, 5).map((transaction) => (
-                <div key={transaction.id || transaction.transactionCode} className="flex items-start justify-between gap-3 py-3">
+                <div
+                  key={transaction.id || transaction.transactionCode}
+                  className="flex items-start justify-between gap-3 py-3"
+                >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-extrabold text-stone-700">{transaction.transactionCode || `WLT-${transaction.id}`}</p>
-                    <p className="mt-1 text-xs font-semibold text-stone-400">{transaction.type} · {transaction.status}</p>
+                    <p className="truncate text-sm font-extrabold text-stone-700">
+                      {transaction.transactionCode || `WLT-${transaction.id}`}
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-stone-400">
+                      {transaction.type} · {transaction.status}
+                    </p>
                   </div>
-                  <p className={cn('shrink-0 text-sm font-extrabold', Number(transaction.amount) >= 0 ? 'text-teal-700' : 'text-red-600')}>
-                    {Number(transaction.amount) >= 0 ? '+' : ''}{formatCurrency(Number(transaction.amount || 0))}
+                  <p
+                    className={cn(
+                      "shrink-0 text-sm font-extrabold",
+                      Number(transaction.amount) >= 0
+                        ? "text-teal-700"
+                        : "text-red-600",
+                    )}
+                  >
+                    {Number(transaction.amount) >= 0 ? "+" : ""}
+                    {formatCurrency(Number(transaction.amount || 0))}
                   </p>
                 </div>
               ))}
@@ -5141,11 +5542,34 @@ function MarketingPage({ onToast, navigateTo }) {
           </Panel>
         </section>
 
-        <PromotionPerformanceTable promotions={promotions} onOpenDetail={openPromotionDetail} />
-        <PromotionDetailModal promotion={selectedPromotion} onClose={() => setSelectedPromotion(null)} onEdit={() => setEditPromotion(selectedPromotion)} onStop={() => setStopPromotion(selectedPromotion)} />
-        <PromotionEditModal promotion={editPromotion} onChange={setEditPromotion} onClose={() => setEditPromotion(null)} onSubmit={handleUpdatePromotion} loading={actionLoading} />
-        <PromotionStopConfirm promotion={stopPromotion} onClose={() => setStopPromotion(null)} onConfirm={handleStopPromotion} loading={actionLoading} />
-        <PromotionTopUpModal payment={topUpPayment} onClose={() => setTopUpPayment(null)} onPaid={loadPromotionData} />
+        <PromotionPerformanceTable
+          promotions={promotions}
+          onOpenDetail={openPromotionDetail}
+        />
+        <PromotionDetailModal
+          promotion={selectedPromotion}
+          onClose={() => setSelectedPromotion(null)}
+          onEdit={() => setEditPromotion(selectedPromotion)}
+          onStop={() => setStopPromotion(selectedPromotion)}
+        />
+        <PromotionEditModal
+          promotion={editPromotion}
+          onChange={setEditPromotion}
+          onClose={() => setEditPromotion(null)}
+          onSubmit={handleUpdatePromotion}
+          loading={actionLoading}
+        />
+        <PromotionStopConfirm
+          promotion={stopPromotion}
+          onClose={() => setStopPromotion(null)}
+          onConfirm={handleStopPromotion}
+          loading={actionLoading}
+        />
+        <PromotionTopUpModal
+          payment={topUpPayment}
+          onClose={() => setTopUpPayment(null)}
+          onPaid={loadPromotionData}
+        />
       </div>
     );
   }
@@ -5154,8 +5578,15 @@ function MarketingPage({ onToast, navigateTo }) {
     <div className="space-y-5">
       <section className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
         <Panel className="p-5">
-          <PanelHeader title="Thiết lập tiếp thị quảng cáo" subtitle="Nhập số tiền quảng bá, số tiền cho mỗi lượt được click và thời gian chạy.">
-            <button type="button" className="vendor-secondary-button" onClick={() => setSelectedPostId('')}>
+          <PanelHeader
+            title="Thiết lập tiếp thị quảng cáo"
+            subtitle="Nhập số tiền quảng bá, số tiền cho mỗi lượt được click và thời gian chạy."
+          >
+            <button
+              type="button"
+              className="vendor-secondary-button"
+              onClick={() => setSelectedPostId("")}
+            >
               <ChevronLeft className="h-4 w-4" />
               Đổi bài đăng
             </button>
@@ -5165,9 +5596,16 @@ function MarketingPage({ onToast, navigateTo }) {
             <div className="rounded-xl border border-stone-100 bg-stone-50/70 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-stone-400">Bài đăng đã chọn</p>
-                  <p className="mt-1 text-sm font-extrabold text-stone-800">{selectedPost.name}</p>
-                  <p className="mt-1 text-xs font-semibold text-stone-400">{selectedPost.category} · {formatCurrency(selectedPost.price)}</p>
+                  <p className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-stone-400">
+                    Bài đăng đã chọn
+                  </p>
+                  <p className="mt-1 text-sm font-extrabold text-stone-800">
+                    {selectedPost.name}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-stone-400">
+                    {selectedPost.category} ·{" "}
+                    {formatCurrency(selectedPost.price)}
+                  </p>
                 </div>
                 <StatusBadge status="Đang bán" />
               </div>
@@ -5175,23 +5613,49 @@ function MarketingPage({ onToast, navigateTo }) {
 
             <div>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">Số tiền quảng bá</span>
-                <span className="text-xs font-bold text-stone-500">Min {formatCurrency(PROMOTION_CONFIG.minBudget)}</span>
+                <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+                  Số tiền quảng bá
+                </span>
+                <span className="text-xs font-bold text-stone-500">
+                  Min {formatCurrency(PROMOTION_CONFIG.minBudget)}
+                </span>
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {PROMOTION_CONFIG.budgetPresets.map((amount) => (
-                  <button key={amount} type="button" className={cn('rounded-lg border px-3 py-2 text-xs font-extrabold transition-colors', budget === amount ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-stone-200 bg-white text-stone-500 hover:border-orange-200 hover:text-orange-600')} onClick={() => setBudget(amount)}>
+                  <button
+                    key={amount}
+                    type="button"
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-xs font-extrabold transition-colors",
+                      budget === amount
+                        ? "border-orange-500 bg-orange-50 text-orange-700"
+                        : "border-stone-200 bg-white text-stone-500 hover:border-orange-200 hover:text-orange-600",
+                    )}
+                    onClick={() => setBudget(amount)}
+                  >
                     {formatCurrency(amount)}
                   </button>
                 ))}
               </div>
-              <input type="number" min={PROMOTION_CONFIG.minBudget} max={PROMOTION_CONFIG.maxBudget} step="10000" value={budget} onChange={(event) => setBudget(Number(event.target.value || 0))} className="vendor-input mt-3 h-11 w-full px-3 text-sm font-bold" />
+              <input
+                type="number"
+                min={PROMOTION_CONFIG.minBudget}
+                max={PROMOTION_CONFIG.maxBudget}
+                step="10000"
+                value={budget}
+                onChange={(event) => setBudget(Number(event.target.value || 0))}
+                className="vendor-input mt-3 h-11 w-full px-3 text-sm font-bold"
+              />
             </div>
 
             <label className="block">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">Số tiền cho mỗi lượt được click</span>
-                <span className="text-xs font-bold text-stone-500">Tối đa {formatCurrency(budget)}</span>
+                <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+                  Số tiền cho mỗi lượt được click
+                </span>
+                <span className="text-xs font-bold text-stone-500">
+                  Tối đa {formatCurrency(budget)}
+                </span>
               </div>
               <input
                 type="number"
@@ -5199,48 +5663,92 @@ function MarketingPage({ onToast, navigateTo }) {
                 max={budget}
                 step="1000"
                 value={roiPerClick}
-                onChange={(event) => setRoiPerClick(Number(event.target.value || 0))}
+                onChange={(event) =>
+                  setRoiPerClick(Number(event.target.value || 0))
+                }
                 className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
                 placeholder="Nhập số tiền trả cho mỗi lượt click"
               />
               {!isRoiValid && (
                 <p className="mt-2 text-xs font-semibold text-red-600">
-                  Số tiền cho mỗi lượt được click phải lớn hơn 0 và không vượt quá số tiền quảng bá.
+                  Số tiền cho mỗi lượt được click phải lớn hơn 0 và không vượt
+                  quá số tiền quảng bá.
                 </p>
               )}
             </label>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block">
-                <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">Ngày bắt đầu</span>
-                <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold" />
+                <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+                  Ngày bắt đầu
+                </span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(event) => setStartDate(event.target.value)}
+                  className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
+                />
               </label>
               <label className="block">
-                <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">Ngày kết thúc</span>
-                <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold" />
+                <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+                  Ngày kết thúc
+                </span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
+                />
               </label>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              <PromotionPreviewItem label="Số dư khả dụng" value={formatCurrency(availableBalance)} tone="text-teal-700" />
-              <PromotionPreviewItem label="Số tiền cho mỗi lượt được click" value={formatCurrency(roiPerClick)} tone="text-orange-700" />
-              <PromotionPreviewItem label="Estimated clicks" value={new Intl.NumberFormat('vi-VN').format(estimatedClicks)} tone="text-stone-800" />
+              <PromotionPreviewItem
+                label="Số dư khả dụng"
+                value={formatCurrency(availableBalance)}
+                tone="text-teal-700"
+              />
+              <PromotionPreviewItem
+                label="Số tiền cho mỗi lượt được click"
+                value={formatCurrency(roiPerClick)}
+                tone="text-orange-700"
+              />
+              <PromotionPreviewItem
+                label="Estimated clicks"
+                value={new Intl.NumberFormat("vi-VN").format(estimatedClicks)}
+                tone="text-stone-800"
+              />
             </div>
 
             {!isBalanceSufficient && (
               <div className="rounded-xl border border-red-100 bg-red-50 p-4">
-                <p className="text-sm font-extrabold text-red-700">Số dư không đủ để quảng bá bài đăng</p>
-                <p className="mt-1 text-xs font-semibold leading-5 text-red-600">
-                  Cần nạp thêm {formatCurrency(deficit)} để reserve ngân sách. API nạp ví yêu cầu tối thiểu {formatCurrency(PROMOTION_CONFIG.minTopUpAmount)} mỗi giao dịch.
+                <p className="text-sm font-extrabold text-red-700">
+                  Số dư không đủ để quảng bá bài đăng
                 </p>
-                <button type="button" className="vendor-primary-button mt-3 bg-red-600 border-red-600 hover:bg-red-700" disabled={actionLoading} onClick={() => handleTopUp(deficit)}>
+                <p className="mt-1 text-xs font-semibold leading-5 text-red-600">
+                  Cần nạp thêm {formatCurrency(deficit)} để reserve ngân sách.
+                  API nạp ví yêu cầu tối thiểu{" "}
+                  {formatCurrency(PROMOTION_CONFIG.minTopUpAmount)} mỗi giao
+                  dịch.
+                </p>
+                <button
+                  type="button"
+                  className="vendor-primary-button mt-3 bg-red-600 border-red-600 hover:bg-red-700"
+                  disabled={actionLoading}
+                  onClick={() => handleTopUp(deficit)}
+                >
                   <CreditCard className="h-4 w-4" />
                   Nạp thêm
                 </button>
               </div>
             )}
 
-            <button type="button" disabled={!canSubmit || actionLoading} onClick={handleCreatePromotion} className="vendor-primary-button w-full justify-center disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-stone-200 disabled:text-stone-400 disabled:shadow-none disabled:hover:translate-y-0">
+            <button
+              type="button"
+              disabled={!canSubmit || actionLoading}
+              onClick={handleCreatePromotion}
+              className="vendor-primary-button w-full justify-center disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-stone-200 disabled:text-stone-400 disabled:shadow-none disabled:hover:translate-y-0"
+            >
               <Megaphone className="h-4 w-4" />
               Xác nhận quảng bá
             </button>
@@ -5248,15 +5756,34 @@ function MarketingPage({ onToast, navigateTo }) {
         </Panel>
 
         <Panel className="p-5">
-          <PanelHeader title="Cách tính theo dữ liệu thật" subtitle="Không dùng mock data." />
+          <PanelHeader
+            title="Cách tính theo dữ liệu thật"
+            subtitle="Không dùng mock data."
+          />
           <div className="mt-4 space-y-3">
-            <PromotionPreviewItem label="Công thức estimated clicks" value={`${formatCurrency(budget)} / ${formatCurrency(roiPerClick)} = ${new Intl.NumberFormat('vi-VN').format(estimatedClicks)} click`} tone="text-stone-800" />
-            <PromotionPreviewItem label="Reserve budget" value="available balance giảm, locked balance tăng" tone="text-orange-700" />
-            <PromotionPreviewItem label="Charge" value="Mỗi click hợp lệ trừ đúng số tiền đã nhập" tone="text-teal-700" />
+            <PromotionPreviewItem
+              label="Công thức estimated clicks"
+              value={`${formatCurrency(budget)} / ${formatCurrency(roiPerClick)} = ${new Intl.NumberFormat("vi-VN").format(estimatedClicks)} click`}
+              tone="text-stone-800"
+            />
+            <PromotionPreviewItem
+              label="Reserve budget"
+              value="available balance giảm, locked balance tăng"
+              tone="text-orange-700"
+            />
+            <PromotionPreviewItem
+              label="Charge"
+              value="Mỗi click hợp lệ trừ đúng số tiền đã nhập"
+              tone="text-teal-700"
+            />
           </div>
         </Panel>
       </section>
-      <PromotionTopUpModal payment={topUpPayment} onClose={() => setTopUpPayment(null)} onPaid={loadPromotionData} />
+      <PromotionTopUpModal
+        payment={topUpPayment}
+        onClose={() => setTopUpPayment(null)}
+        onPaid={loadPromotionData}
+      />
     </div>
   );
 }
@@ -5267,9 +5794,7 @@ function PromotionPreviewItem({ label, value, tone }) {
       <p className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-stone-400">
         {label}
       </p>
-      <p className={cn("mt-1 text-sm font-extrabold", tone)}>
-        {value}
-      </p>
+      <p className={cn("mt-1 text-sm font-extrabold", tone)}>{value}</p>
     </div>
   );
 }
@@ -5287,76 +5812,140 @@ function PromotionPerformanceTable({ promotions, onOpenDetail }) {
         <table className="w-full min-w-[960px] text-left text-sm">
           <thead className="vendor-table-head">
             <tr>
-              {["Bài đăng", "Trạng thái", "Ngân sách", "Số tiền cho mỗi lượt được click", "Estimated/Customer click", "Impression/CTR", "Thao tác"].map((column) => (
-                <th key={column} className="px-5 py-3.5">{column}</th>
+              {[
+                "Bài đăng",
+                "Trạng thái",
+                "Ngân sách",
+                "Số tiền cho mỗi lượt được click",
+                "Estimated/Customer click",
+                "Impression/CTR",
+                "Thao tác",
+              ].map((column) => (
+                <th key={column} className="px-5 py-3.5">
+                  {column}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-100">
             {promotions.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-5 py-10 text-center text-sm font-semibold text-stone-400">
+                <td
+                  colSpan={7}
+                  className="px-5 py-10 text-center text-sm font-semibold text-stone-400"
+                >
                   Chưa có bài đăng nào được quảng bá.
                 </td>
               </tr>
-            ) : promotions.map((promotion) => {
-              const initialBudget = Number(promotion.initialBudget || 0);
-              const remainingBudget = Number(promotion.remainingBudget || 0);
-              const roiAmount = Number(promotion.roiPerClick || 0);
-              const spentPercent = initialBudget
-                ? (Number(promotion.spentAmount || 0) / initialBudget) * 100
-                : 0;
-              return (
-                <tr key={promotion.promotionId} className="vendor-table-row">
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 overflow-hidden rounded-lg bg-orange-50 text-orange-600">
-                        {promotion.postImageUrl ? <img src={promotion.postImageUrl} alt={promotion.postTitle} className="h-full w-full object-cover" /> : <Megaphone className="m-auto h-5 w-5" />}
-                      </span>
-                      <div>
-                        <p className="font-extrabold text-stone-800">{promotion.postTitle}</p>
-                        <p className="mt-1 text-xs font-semibold text-stone-400">
-                          PRM-{promotion.promotionId} · Post #{promotion.postId}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4">
-                    <StatusBadge status={getPromotionStatusLabel(promotion.status)} />
-                  </td>
-                  <td className="px-5 py-4">
-                    {initialBudget ? (
-                      <>
-                        <p className="font-extrabold text-stone-700">{formatCurrency(remainingBudget)}</p>
-                        <p className="mt-1 text-xs font-semibold text-stone-400">/ {formatCurrency(initialBudget)}</p>
-                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-100">
-                          <div className="h-full rounded-full bg-orange-500" style={{ width: `${Math.min(100, spentPercent)}%` }} />
+            ) : (
+              promotions.map((promotion) => {
+                const initialBudget = Number(promotion.initialBudget || 0);
+                const remainingBudget = Number(promotion.remainingBudget || 0);
+                const roiAmount = Number(promotion.roiPerClick || 0);
+                const spentPercent = initialBudget
+                  ? (Number(promotion.spentAmount || 0) / initialBudget) * 100
+                  : 0;
+                return (
+                  <tr key={promotion.promotionId} className="vendor-table-row">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 overflow-hidden rounded-lg bg-orange-50 text-orange-600">
+                          {promotion.postImageUrl ? (
+                            <img
+                              src={promotion.postImageUrl}
+                              alt={promotion.postTitle}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <Megaphone className="m-auto h-5 w-5" />
+                          )}
+                        </span>
+                        <div>
+                          <p className="font-extrabold text-stone-800">
+                            {promotion.postTitle}
+                          </p>
+                          <p className="mt-1 text-xs font-semibold text-stone-400">
+                            PRM-{promotion.promotionId} · Post #
+                            {promotion.postId}
+                          </p>
                         </div>
-                      </>
-                    ) : (
-                      <p className="text-xs font-bold text-stone-400">Chưa đồng bộ từ post_promotions</p>
-                    )}
-                  </td>
-                  <td className="px-5 py-4 font-extrabold text-orange-700">
-                    {roiAmount ? formatCurrency(roiAmount) : <span className="text-xs text-stone-400">Chưa đồng bộ</span>}
-                  </td>
-                  <td className="px-5 py-4">
-                    <p className="font-extrabold text-stone-700">{new Intl.NumberFormat('vi-VN').format(Number(promotion.estimatedClicks || 0))}</p>
-                    <p className="mt-1 text-xs font-semibold text-teal-700">Khách click {new Intl.NumberFormat('vi-VN').format(Number(promotion.customerClicks || 0))}</p>
-                  </td>
-                  <td className="px-5 py-4">
-                    <p className="font-extrabold text-stone-700">{new Intl.NumberFormat('vi-VN').format(Number(promotion.impressions || 0))}</p>
-                    <p className="mt-1 text-xs font-semibold text-teal-700">CTR {formatPercent(Number(promotion.ctr || 0))}</p>
-                  </td>
-                  <td className="px-5 py-4">
-                    <button type="button" className="vendor-secondary-button min-h-9 px-3" onClick={() => onOpenDetail(promotion)}>
-                      <Eye className="h-4 w-4" />
-                      Chi tiết
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <StatusBadge
+                        status={getPromotionStatusLabel(promotion.status)}
+                      />
+                    </td>
+                    <td className="px-5 py-4">
+                      {initialBudget ? (
+                        <>
+                          <p className="font-extrabold text-stone-700">
+                            {formatCurrency(remainingBudget)}
+                          </p>
+                          <p className="mt-1 text-xs font-semibold text-stone-400">
+                            / {formatCurrency(initialBudget)}
+                          </p>
+                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-100">
+                            <div
+                              className="h-full rounded-full bg-orange-500"
+                              style={{
+                                width: `${Math.min(100, spentPercent)}%`,
+                              }}
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-xs font-bold text-stone-400">
+                          Chưa đồng bộ từ post_promotions
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 font-extrabold text-orange-700">
+                      {roiAmount ? (
+                        formatCurrency(roiAmount)
+                      ) : (
+                        <span className="text-xs text-stone-400">
+                          Chưa đồng bộ
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4">
+                      <p className="font-extrabold text-stone-700">
+                        {new Intl.NumberFormat("vi-VN").format(
+                          Number(promotion.estimatedClicks || 0),
+                        )}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-teal-700">
+                        Khách click{" "}
+                        {new Intl.NumberFormat("vi-VN").format(
+                          Number(promotion.customerClicks || 0),
+                        )}
+                      </p>
+                    </td>
+                    <td className="px-5 py-4">
+                      <p className="font-extrabold text-stone-700">
+                        {new Intl.NumberFormat("vi-VN").format(
+                          Number(promotion.impressions || 0),
+                        )}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-teal-700">
+                        CTR {formatPercent(Number(promotion.ctr || 0))}
+                      </p>
+                    </td>
+                    <td className="px-5 py-4">
+                      <button
+                        type="button"
+                        className="vendor-secondary-button min-h-9 px-3"
+                        onClick={() => onOpenDetail(promotion)}
+                      >
+                        <Eye className="h-4 w-4" />
+                        Chi tiết
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -5366,60 +5955,186 @@ function PromotionPerformanceTable({ promotions, onOpenDetail }) {
 
 function PromotionDetailModal({ promotion, onClose, onEdit, onStop }) {
   if (!promotion) return null;
-  const canEdit = ['ACTIVE', 'SCHEDULED', 'PAUSED'].includes(String(promotion.status || '').toUpperCase());
-  const renderMoneyOrPending = (value) => Number(value || 0) ? formatCurrency(Number(value)) : 'Chưa đồng bộ';
-  const renderNumberOrPending = (value) => Number(value || 0) ? new Intl.NumberFormat('vi-VN').format(Number(value)) : 'Chưa đồng bộ';
+  const canEdit = ["ACTIVE", "SCHEDULED", "PAUSED"].includes(
+    String(promotion.status || "").toUpperCase(),
+  );
+  const renderMoneyOrPending = (value) =>
+    Number(value || 0) ? formatCurrency(Number(value)) : "Chưa đồng bộ";
+  const renderNumberOrPending = (value) =>
+    Number(value || 0)
+      ? new Intl.NumberFormat("vi-VN").format(Number(value))
+      : "Chưa đồng bộ";
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-stone-950/45 p-4">
       <div className="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-2xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange-600">Chi tiết tiếp thị quảng cáo</p>
-            <h3 className="mt-1 text-lg font-extrabold text-stone-900">{promotion.postTitle}</h3>
-            <p className="mt-1 text-xs font-semibold text-stone-400">Promotion #{promotion.promotionId} · Data source: {promotion.dataSource || 'DATABASE'}</p>
+            <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange-600">
+              Chi tiết tiếp thị quảng cáo
+            </p>
+            <h3 className="mt-1 text-lg font-extrabold text-stone-900">
+              {promotion.postTitle}
+            </h3>
+            <p className="mt-1 text-xs font-semibold text-stone-400">
+              Promotion #{promotion.promotionId} · Data source:{" "}
+              {promotion.dataSource || "DATABASE"}
+            </p>
           </div>
-          <button type="button" className="vendor-icon-button" onClick={onClose}><X className="h-4 w-4" /></button>
+          <button
+            type="button"
+            className="vendor-icon-button"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <PromotionPreviewItem label="Promotion ID" value={`PRM-${promotion.promotionId}`} tone="text-stone-800" />
-          <PromotionPreviewItem label="Initial budget" value={renderMoneyOrPending(promotion.initialBudget)} tone="text-stone-800" />
-          <PromotionPreviewItem label="Remaining amount" value={renderMoneyOrPending(promotion.remainingBudget)} tone="text-teal-700" />
-          <PromotionPreviewItem label="Số tiền cho mỗi lượt được click" value={renderMoneyOrPending(promotion.roiPerClick)} tone="text-orange-700" />
-          <PromotionPreviewItem label="Estimated clicks" value={renderNumberOrPending(promotion.estimatedClicks)} tone="text-stone-800" />
-          <PromotionPreviewItem label="Customer clicks" value={renderNumberOrPending(promotion.customerClicks)} tone="text-teal-700" />
-          <PromotionPreviewItem label="Impressions" value={renderNumberOrPending(promotion.impressions)} tone="text-stone-800" />
-          <PromotionPreviewItem label="CTR" value={Number(promotion.ctr || 0) ? formatPercent(Number(promotion.ctr)) : 'Chưa đồng bộ'} tone="text-stone-800" />
+          <PromotionPreviewItem
+            label="Promotion ID"
+            value={`PRM-${promotion.promotionId}`}
+            tone="text-stone-800"
+          />
+          <PromotionPreviewItem
+            label="Initial budget"
+            value={renderMoneyOrPending(promotion.initialBudget)}
+            tone="text-stone-800"
+          />
+          <PromotionPreviewItem
+            label="Remaining amount"
+            value={renderMoneyOrPending(promotion.remainingBudget)}
+            tone="text-teal-700"
+          />
+          <PromotionPreviewItem
+            label="Số tiền cho mỗi lượt được click"
+            value={renderMoneyOrPending(promotion.roiPerClick)}
+            tone="text-orange-700"
+          />
+          <PromotionPreviewItem
+            label="Estimated clicks"
+            value={renderNumberOrPending(promotion.estimatedClicks)}
+            tone="text-stone-800"
+          />
+          <PromotionPreviewItem
+            label="Customer clicks"
+            value={renderNumberOrPending(promotion.customerClicks)}
+            tone="text-teal-700"
+          />
+          <PromotionPreviewItem
+            label="Impressions"
+            value={renderNumberOrPending(promotion.impressions)}
+            tone="text-stone-800"
+          />
+          <PromotionPreviewItem
+            label="CTR"
+            value={
+              Number(promotion.ctr || 0)
+                ? formatPercent(Number(promotion.ctr))
+                : "Chưa đồng bộ"
+            }
+            tone="text-stone-800"
+          />
         </div>
         <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <button type="button" className="vendor-secondary-button" onClick={onClose}>Đóng</button>
-          {canEdit && <button type="button" className="vendor-secondary-button" onClick={onEdit}><PenLine className="h-4 w-4" /> Chỉnh sửa</button>}
-          {canEdit && <button type="button" className="vendor-primary-button bg-red-600 border-red-600 hover:bg-red-700" onClick={onStop}><AlertTriangle className="h-4 w-4" /> Dừng quảng bá</button>}
+          <button
+            type="button"
+            className="vendor-secondary-button"
+            onClick={onClose}
+          >
+            Đóng
+          </button>
+          {canEdit && (
+            <button
+              type="button"
+              className="vendor-secondary-button"
+              onClick={onEdit}
+            >
+              <PenLine className="h-4 w-4" /> Chỉnh sửa
+            </button>
+          )}
+          {canEdit && (
+            <button
+              type="button"
+              className="vendor-primary-button bg-red-600 border-red-600 hover:bg-red-700"
+              onClick={onStop}
+            >
+              <AlertTriangle className="h-4 w-4" /> Dừng quảng bá
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function PromotionEditModal({ promotion, onChange, onClose, onSubmit, loading }) {
+function PromotionEditModal({
+  promotion,
+  onChange,
+  onClose,
+  onSubmit,
+  loading,
+}) {
   if (!promotion) return null;
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-stone-950/45 p-4">
       <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
-        <h3 className="text-lg font-extrabold text-stone-900">Chỉnh sửa quảng bá</h3>
-        <p className="mt-1 text-xs font-semibold text-stone-400">Có thể đổi số tiền cho mỗi lượt được click hoặc số tiền quảng bá.</p>
+        <h3 className="text-lg font-extrabold text-stone-900">
+          Chỉnh sửa quảng bá
+        </h3>
+        <p className="mt-1 text-xs font-semibold text-stone-400">
+          Có thể đổi số tiền cho mỗi lượt được click hoặc số tiền quảng bá.
+        </p>
         <div className="mt-5 space-y-4">
           <label className="block">
-            <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">Số tiền quảng bá</span>
-            <input type="number" className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold" value={promotion.initialBudget || ''} onChange={(event) => onChange({ ...promotion, initialBudget: Number(event.target.value || 0) })} />
+            <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+              Số tiền quảng bá
+            </span>
+            <input
+              type="number"
+              className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
+              value={promotion.initialBudget || ""}
+              onChange={(event) =>
+                onChange({
+                  ...promotion,
+                  initialBudget: Number(event.target.value || 0),
+                })
+              }
+            />
           </label>
           <label className="block">
-            <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">Số tiền cho mỗi lượt được click</span>
-            <input type="number" min="1" step="1000" className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold" value={promotion.roiPerClick || ''} onChange={(event) => onChange({ ...promotion, roiPerClick: Number(event.target.value || 0) })} />
+            <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+              Số tiền cho mỗi lượt được click
+            </span>
+            <input
+              type="number"
+              min="1"
+              step="1000"
+              className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
+              value={promotion.roiPerClick || ""}
+              onChange={(event) =>
+                onChange({
+                  ...promotion,
+                  roiPerClick: Number(event.target.value || 0),
+                })
+              }
+            />
           </label>
         </div>
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" className="vendor-secondary-button" onClick={onClose}>Hủy</button>
-          <button type="button" className="vendor-primary-button" disabled={loading} onClick={onSubmit}>Lưu thay đổi</button>
+          <button
+            type="button"
+            className="vendor-secondary-button"
+            onClick={onClose}
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            className="vendor-primary-button"
+            disabled={loading}
+            onClick={onSubmit}
+          >
+            Lưu thay đổi
+          </button>
         </div>
       </div>
     </div>
@@ -5432,15 +6147,35 @@ function PromotionStopConfirm({ promotion, onClose, onConfirm, loading }) {
     <div className="fixed inset-0 z-[95] flex items-center justify-center bg-stone-950/45 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
         <div className="flex gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600"><AlertTriangle className="h-5 w-5" /></span>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
+            <AlertTriangle className="h-5 w-5" />
+          </span>
           <div>
-            <h3 className="text-base font-extrabold text-stone-900">Xác nhận dừng quảng bá?</h3>
-            <p className="mt-2 text-sm font-semibold leading-6 text-stone-500">Promotion #{promotion.promotionId} sẽ ngừng hiển thị. Phần ngân sách còn lại sẽ được release về ví nếu backend ghi nhận còn số dư.</p>
+            <h3 className="text-base font-extrabold text-stone-900">
+              Xác nhận dừng quảng bá?
+            </h3>
+            <p className="mt-2 text-sm font-semibold leading-6 text-stone-500">
+              Promotion #{promotion.promotionId} sẽ ngừng hiển thị. Phần ngân
+              sách còn lại sẽ được release về ví nếu backend ghi nhận còn số dư.
+            </p>
           </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" className="vendor-secondary-button" onClick={onClose}>Không dừng</button>
-          <button type="button" className="vendor-primary-button bg-red-600 border-red-600 hover:bg-red-700" disabled={loading} onClick={onConfirm}>Xác nhận dừng</button>
+          <button
+            type="button"
+            className="vendor-secondary-button"
+            onClick={onClose}
+          >
+            Không dừng
+          </button>
+          <button
+            type="button"
+            className="vendor-primary-button bg-red-600 border-red-600 hover:bg-red-700"
+            disabled={loading}
+            onClick={onConfirm}
+          >
+            Xác nhận dừng
+          </button>
         </div>
       </div>
     </div>
@@ -5448,31 +6183,33 @@ function PromotionStopConfirm({ promotion, onClose, onConfirm, loading }) {
 }
 
 function PromotionTopUpModal({ payment, onClose, onPaid }) {
-  const [status, setStatus] = useState('pending');
+  const [status, setStatus] = useState("pending");
   const [pollCount, setPollCount] = useState(0);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    setStatus('pending');
+    setStatus("pending");
     setPollCount(0);
   }, [payment?.orderCode]);
 
   useEffect(() => {
-    if (!payment?.orderCode || status !== 'pending') return undefined;
+    if (!payment?.orderCode || status !== "pending") return undefined;
     if (pollCount >= 75) {
-      setStatus('timeout');
+      setStatus("timeout");
       return undefined;
     }
 
     const timer = setTimeout(async () => {
       try {
         const result = await promotionApi.checkTopUpPayment(payment.orderCode);
-        const nextStatus = String(result?.status || result || 'pending').toLowerCase();
-        if (nextStatus === 'paid' || nextStatus === 'success') {
-          setStatus('paid');
+        const nextStatus = String(
+          result?.status || result || "pending",
+        ).toLowerCase();
+        if (nextStatus === "paid" || nextStatus === "success") {
+          setStatus("paid");
           onPaid?.();
           window.dispatchEvent(new Event("seller-wallet-refresh"));
-        } else if (nextStatus === 'cancelled' || nextStatus === 'failed') {
+        } else if (nextStatus === "cancelled" || nextStatus === "failed") {
           setStatus(nextStatus);
         } else {
           setPollCount((count) => count + 1);
@@ -5488,96 +6225,138 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
   if (!payment) return null;
 
   const copyAmount = () => {
-    navigator.clipboard?.writeText(String(payment.amount || ''));
+    navigator.clipboard?.writeText(String(payment.amount || ""));
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
 
-  const statusMeta = {
-    pending: {
-      title: 'Đang chờ thanh toán',
-      text: 'Hoàn tất thanh toán trên PayOS, hệ thống sẽ tự làm mới số dư tài khoản quảng cáo.',
-      className: 'border-amber-100 bg-amber-50 text-amber-800',
-      icon: <RefreshCw className="h-4 w-4 animate-spin" />,
-    },
-    paid: {
-      title: 'Thanh toán hoàn tất',
-      text: 'Số dư đang được làm mới từ backend.',
-      className: 'border-teal-100 bg-teal-50 text-teal-800',
-      icon: <CheckCircle2 className="h-4 w-4" />,
-    },
-    cancelled: {
-      title: 'Giao dịch đã hủy',
-      text: 'Bạn có thể đóng popup và tạo yêu cầu nạp tiền mới.',
-      className: 'border-stone-200 bg-stone-50 text-stone-700',
-      icon: <AlertTriangle className="h-4 w-4" />,
-    },
-    failed: {
-      title: 'Thanh toán thất bại',
-      text: 'Vui lòng thử lại hoặc kiểm tra trạng thái giao dịch trên PayOS.',
-      className: 'border-red-100 bg-red-50 text-red-700',
-      icon: <AlertTriangle className="h-4 w-4" />,
-    },
-    timeout: {
-      title: 'Hết thời gian kiểm tra',
-      text: 'Nếu bạn đã thanh toán, hãy bấm thử lại trên màn hình ví để làm mới số dư.',
-      className: 'border-red-100 bg-red-50 text-red-700',
-      icon: <AlertTriangle className="h-4 w-4" />,
-    },
-  }[status] || {};
+  const statusMeta =
+    {
+      pending: {
+        title: "Đang chờ thanh toán",
+        text: "Hoàn tất thanh toán trên PayOS, hệ thống sẽ tự làm mới số dư tài khoản quảng cáo.",
+        className: "border-amber-100 bg-amber-50 text-amber-800",
+        icon: <RefreshCw className="h-4 w-4 animate-spin" />,
+      },
+      paid: {
+        title: "Thanh toán hoàn tất",
+        text: "Số dư đang được làm mới từ backend.",
+        className: "border-teal-100 bg-teal-50 text-teal-800",
+        icon: <CheckCircle2 className="h-4 w-4" />,
+      },
+      cancelled: {
+        title: "Giao dịch đã hủy",
+        text: "Bạn có thể đóng popup và tạo yêu cầu nạp tiền mới.",
+        className: "border-stone-200 bg-stone-50 text-stone-700",
+        icon: <AlertTriangle className="h-4 w-4" />,
+      },
+      failed: {
+        title: "Thanh toán thất bại",
+        text: "Vui lòng thử lại hoặc kiểm tra trạng thái giao dịch trên PayOS.",
+        className: "border-red-100 bg-red-50 text-red-700",
+        icon: <AlertTriangle className="h-4 w-4" />,
+      },
+      timeout: {
+        title: "Hết thời gian kiểm tra",
+        text: "Nếu bạn đã thanh toán, hãy bấm thử lại trên màn hình ví để làm mới số dư.",
+        className: "border-red-100 bg-red-50 text-red-700",
+        icon: <AlertTriangle className="h-4 w-4" />,
+      },
+    }[status] || {};
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-950/45 p-4">
       <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-stone-100 p-5">
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange-600">Nạp tiền tài khoản quảng cáo</p>
-            <h3 className="mt-1 text-lg font-extrabold text-stone-900">Thanh toán qua PayOS</h3>
-            <p className="mt-1 text-xs font-semibold text-stone-400">Link thanh toán được tạo từ API ví seller, số dư dùng để chạy tiếp thị quảng cáo.</p>
+            <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange-600">
+              Nạp tiền tài khoản quảng cáo
+            </p>
+            <h3 className="mt-1 text-lg font-extrabold text-stone-900">
+              Thanh toán qua PayOS
+            </h3>
+            <p className="mt-1 text-xs font-semibold text-stone-400">
+              Link thanh toán được tạo từ API ví seller, số dư dùng để chạy tiếp
+              thị quảng cáo.
+            </p>
           </div>
-          <button type="button" className="vendor-icon-button" onClick={onClose}><X className="h-4 w-4" /></button>
+          <button
+            type="button"
+            className="vendor-icon-button"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         <div className="space-y-4 p-5">
           <div className="rounded-2xl border border-orange-100 bg-orange-50/60 p-4">
             <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="font-semibold text-orange-800">Mã thanh toán</span>
-              <span className="font-mono font-extrabold text-stone-900">{payment.orderCode}</span>
+              <span className="font-semibold text-orange-800">
+                Mã thanh toán
+              </span>
+              <span className="font-mono font-extrabold text-stone-900">
+                {payment.orderCode}
+              </span>
             </div>
             <div className="mt-4 flex items-end justify-between gap-3 border-t border-dashed border-orange-200 pt-4">
               <div>
-                <p className="text-sm font-extrabold text-stone-900">Số tiền nạp</p>
-                <p className="text-[11px] font-semibold text-stone-500">Cộng vào số dư tài khoản quảng cáo sau khi thanh toán thành công</p>
+                <p className="text-sm font-extrabold text-stone-900">
+                  Số tiền nạp
+                </p>
+                <p className="text-[11px] font-semibold text-stone-500">
+                  Cộng vào số dư tài khoản quảng cáo sau khi thanh toán thành
+                  công
+                </p>
               </div>
               <button type="button" className="text-right" onClick={copyAmount}>
-                <span className="block text-2xl font-black text-stone-900">{formatCurrency(Number(payment.amount || 0))}</span>
-                <span className="text-xs font-bold text-orange-600">{copied ? 'Đã copy' : 'Copy số tiền'}</span>
+                <span className="block text-2xl font-black text-stone-900">
+                  {formatCurrency(Number(payment.amount || 0))}
+                </span>
+                <span className="text-xs font-bold text-orange-600">
+                  {copied ? "Đã copy" : "Copy số tiền"}
+                </span>
               </button>
             </div>
           </div>
 
-          <div className={cn('rounded-2xl border p-4', statusMeta.className)}>
+          <div className={cn("rounded-2xl border p-4", statusMeta.className)}>
             <div className="flex gap-3">
               <span className="mt-0.5">{statusMeta.icon}</span>
               <div>
                 <p className="text-sm font-extrabold">{statusMeta.title}</p>
-                <p className="mt-1 text-xs font-semibold leading-5 opacity-80">{statusMeta.text}</p>
+                <p className="mt-1 text-xs font-semibold leading-5 opacity-80">
+                  {statusMeta.text}
+                </p>
               </div>
             </div>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2">
             {payment.paymentUrl ? (
-              <a href={payment.paymentUrl} target="_blank" rel="noopener noreferrer" className="vendor-primary-button justify-center">
+              <a
+                href={payment.paymentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="vendor-primary-button justify-center"
+              >
                 Mở PayOS
                 <ExternalLink className="h-4 w-4" />
               </a>
             ) : (
-              <button type="button" className="vendor-primary-button justify-center" disabled>
+              <button
+                type="button"
+                className="vendor-primary-button justify-center"
+                disabled
+              >
                 Chưa có link thanh toán
               </button>
             )}
-            <button type="button" className="vendor-secondary-button justify-center" onClick={onPaid}>
+            <button
+              type="button"
+              className="vendor-secondary-button justify-center"
+              onClick={onPaid}
+            >
               <RefreshCw className="h-4 w-4" />
               Làm mới số dư
             </button>
@@ -5585,7 +6364,8 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
 
           <div className="flex items-center justify-center gap-2 text-xs font-semibold text-stone-400">
             <Lock className="h-3.5 w-3.5" />
-            Frontend chỉ mở link PayOS do backend trả về, không xử lý thông tin thanh toán.
+            Frontend chỉ mở link PayOS do backend trả về, không xử lý thông tin
+            thanh toán.
           </div>
         </div>
       </div>
@@ -5801,15 +6581,27 @@ function SettingsPage({ onToast }) {
 
   const handleSaveProfile = async () => {
     if (!vendorData.shopName.trim()) {
-      onToast({ title: "Thông tin không hợp lệ", message: "Vui lòng nhập tên shop.", type: "error" });
+      onToast({
+        title: "Thông tin không hợp lệ",
+        message: "Vui lòng nhập tên shop.",
+        type: "error",
+      });
       return;
     }
     if (!vendorData.email.trim()) {
-      onToast({ title: "Thông tin không hợp lệ", message: "Vui lòng nhập email hỗ trợ.", type: "error" });
+      onToast({
+        title: "Thông tin không hợp lệ",
+        message: "Vui lòng nhập email hỗ trợ.",
+        type: "error",
+      });
       return;
     }
     if (!vendorData.phone.trim()) {
-      onToast({ title: "Thông tin không hợp lệ", message: "Vui lòng nhập số điện thoại.", type: "error" });
+      onToast({
+        title: "Thông tin không hợp lệ",
+        message: "Vui lòng nhập số điện thoại.",
+        type: "error",
+      });
       return;
     }
 
@@ -5846,7 +6638,10 @@ function SettingsPage({ onToast }) {
       console.error("Lỗi khi lưu thông tin shop:", err);
       onToast({
         title: "Lỗi cập nhật",
-        message: err?.response?.data?.message || err?.message || "Không thể lưu thay đổi.",
+        message:
+          err?.response?.data?.message ||
+          err?.message ||
+          "Không thể lưu thay đổi.",
         type: "error",
       });
     } finally {
@@ -5892,11 +6687,20 @@ function SettingsPage({ onToast }) {
             <Store className="h-7 w-7" />
           </span>
           <div>
-            <p className="font-extrabold text-stone-800">{vendorData.shopName || "ShopVN Seller"}</p>
+            <p className="font-extrabold text-stone-800">
+              {vendorData.shopName || "ShopVN Seller"}
+            </p>
             <p className="mt-1 text-xs font-semibold text-stone-400">
               Mã shop: VND-{vendorData.id || vendorInfo?.vendorId || "N/A"}
             </p>
-            <StatusBadge className="mt-2" status={vendorData.status === "active" ? "Đang hoạt động" : vendorData.status} />
+            <StatusBadge
+              className="mt-2"
+              status={
+                vendorData.status === "active"
+                  ? "Đang hoạt động"
+                  : vendorData.status
+              }
+            />
           </div>
         </div>
         <div className="mt-5 grid gap-3">
@@ -5905,53 +6709,78 @@ function SettingsPage({ onToast }) {
             <input
               className="vendor-input mt-1 h-11 w-full px-3 text-sm"
               value={vendorData.shopName}
-              onChange={(e) => setVendorData(prev => ({ ...prev, shopName: e.target.value }))}
+              onChange={(e) =>
+                setVendorData((prev) => ({ ...prev, shopName: e.target.value }))
+              }
             />
           </label>
 
           <label>
-            <span className="text-xs font-bold text-stone-500">Ngành hàng chính</span>
+            <span className="text-xs font-bold text-stone-500">
+              Ngành hàng chính
+            </span>
             <select
               className="vendor-input mt-1 h-11 w-full px-3 text-sm bg-white"
               value={vendorData.category}
-              onChange={(e) => setVendorData(prev => ({ ...prev, category: e.target.value }))}
+              onChange={(e) =>
+                setVendorData((prev) => ({ ...prev, category: e.target.value }))
+              }
             >
               <option value="">Chọn ngành hàng chính</option>
-              {SELLER_CATEGORIES.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              {SELLER_CATEGORIES.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
               ))}
             </select>
           </label>
 
           <label>
-            <span className="text-xs font-bold text-stone-500">Email hỗ trợ</span>
+            <span className="text-xs font-bold text-stone-500">
+              Email hỗ trợ
+            </span>
             <input
               className="vendor-input mt-1 h-11 w-full px-3 text-sm"
               value={vendorData.email}
-              onChange={(e) => setVendorData(prev => ({ ...prev, email: e.target.value }))}
+              onChange={(e) =>
+                setVendorData((prev) => ({ ...prev, email: e.target.value }))
+              }
             />
           </label>
 
           <label>
-            <span className="text-xs font-bold text-stone-500">Số điện thoại</span>
+            <span className="text-xs font-bold text-stone-500">
+              Số điện thoại
+            </span>
             <input
               className="vendor-input mt-1 h-11 w-full px-3 text-sm"
               value={vendorData.phone}
-              onChange={(e) => setVendorData(prev => ({ ...prev, phone: e.target.value }))}
+              onChange={(e) =>
+                setVendorData((prev) => ({ ...prev, phone: e.target.value }))
+              }
             />
           </label>
 
           <label className="relative block">
-            <span className="text-xs font-bold text-stone-500">Số CCCD chủ shop (Được bảo mật)</span>
+            <span className="text-xs font-bold text-stone-500">
+              Số CCCD chủ shop (Được bảo mật)
+            </span>
             <div className="relative mt-1">
               <input
                 type="text"
                 className={`vendor-input h-11 w-full pl-3 pr-10 text-sm ${!showCccd ? "bg-stone-50 text-stone-500 select-none" : ""}`}
-                value={showCccd ? vendorData.cccd : maskSensitive(vendorData.cccd, false)}
+                value={
+                  showCccd
+                    ? vendorData.cccd
+                    : maskSensitive(vendorData.cccd, false)
+                }
                 readOnly={!showCccd}
                 onChange={(e) => {
                   if (showCccd) {
-                    setVendorData(prev => ({ ...prev, cccd: e.target.value }));
+                    setVendorData((prev) => ({
+                      ...prev,
+                      cccd: e.target.value,
+                    }));
                   }
                 }}
                 placeholder="Chưa cập nhật số CCCD"
@@ -5961,22 +6790,35 @@ function SettingsPage({ onToast }) {
                 onClick={() => setShowCccd(!showCccd)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
               >
-                {showCccd ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                {showCccd ? (
+                  <EyeOff className="h-4.5 w-4.5" />
+                ) : (
+                  <Eye className="h-4.5 w-4.5" />
+                )}
               </button>
             </div>
           </label>
 
           <label className="relative block">
-            <span className="text-xs font-bold text-stone-500">Mã số thuế (Được bảo mật)</span>
+            <span className="text-xs font-bold text-stone-500">
+              Mã số thuế (Được bảo mật)
+            </span>
             <div className="relative mt-1">
               <input
                 type="text"
                 className={`vendor-input h-11 w-full pl-3 pr-10 text-sm ${!showTaxCode ? "bg-stone-50 text-stone-500 select-none" : ""}`}
-                value={showTaxCode ? vendorData.taxCode : maskSensitive(vendorData.taxCode, false)}
+                value={
+                  showTaxCode
+                    ? vendorData.taxCode
+                    : maskSensitive(vendorData.taxCode, false)
+                }
                 readOnly={!showTaxCode}
                 onChange={(e) => {
                   if (showTaxCode) {
-                    setVendorData(prev => ({ ...prev, taxCode: e.target.value }));
+                    setVendorData((prev) => ({
+                      ...prev,
+                      taxCode: e.target.value,
+                    }));
                   }
                 }}
                 placeholder="Chưa cập nhật mã số thuế"
@@ -5986,7 +6828,11 @@ function SettingsPage({ onToast }) {
                 onClick={() => setShowTaxCode(!showTaxCode)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
               >
-                {showTaxCode ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                {showTaxCode ? (
+                  <EyeOff className="h-4.5 w-4.5" />
+                ) : (
+                  <Eye className="h-4.5 w-4.5" />
+                )}
               </button>
             </div>
           </label>
@@ -6014,7 +6860,11 @@ function SettingsPage({ onToast }) {
           />
           <div className="mt-4 space-y-2">
             {[
-              ["CCCD chủ shop", vendorData.cccd ? "Đã xác minh" : "Chưa cập nhật", ShieldCheck],
+              [
+                "CCCD chủ shop",
+                vendorData.cccd ? "Đã xác minh" : "Chưa cập nhật",
+                ShieldCheck,
+              ],
               ["Tài khoản ngân hàng", "Đã xác minh", Banknote],
               ["Xác thực 2 lớp", "Khuyến nghị bật", BadgeCheck],
             ].map(([label, value, Icon]) => (
@@ -6086,7 +6936,12 @@ function AuditLogPage({ onToast }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await sellerApi.getAuditLogs(page, pageSize, query, selectedAction);
+      const data = await sellerApi.getAuditLogs(
+        page,
+        pageSize,
+        query,
+        selectedAction,
+      );
       if (data) {
         setLogs(data.content || []);
         setTotalPages(data.totalPages || 0);
@@ -6136,21 +6991,30 @@ function AuditLogPage({ onToast }) {
 
   const getActionBadgeClass = (action) => {
     const act = (action || "").toUpperCase();
-    if (act.includes("SUCCESS") || act.includes("VERIFY_CCCD_SUCCESS")) return "bg-emerald-50 text-emerald-700 border border-emerald-200";
-    if (act.includes("FAILED") || act.includes("VERIFY_CCCD_FAILED")) return "bg-red-50 text-red-700 border border-red-200";
-    if (act.includes("REGISTER") || act.includes("ONBOARDING")) return "bg-purple-50 text-purple-700 border border-purple-200";
-    if (act.includes("UPGRADE") || act.includes("SUBSCRIPTION")) return "bg-indigo-50 text-indigo-700 border border-indigo-200";
-    if (act.includes("PRODUCT")) return "bg-blue-50 text-blue-700 border border-blue-200";
+    if (act.includes("SUCCESS") || act.includes("VERIFY_CCCD_SUCCESS"))
+      return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+    if (act.includes("FAILED") || act.includes("VERIFY_CCCD_FAILED"))
+      return "bg-red-50 text-red-700 border border-red-200";
+    if (act.includes("REGISTER") || act.includes("ONBOARDING"))
+      return "bg-purple-50 text-purple-700 border border-purple-200";
+    if (act.includes("UPGRADE") || act.includes("SUBSCRIPTION"))
+      return "bg-indigo-50 text-indigo-700 border border-indigo-200";
+    if (act.includes("PRODUCT"))
+      return "bg-blue-50 text-blue-700 border border-blue-200";
     return "bg-slate-50 text-slate-700 border border-slate-200";
   };
 
   const parseUserAgent = (ua) => {
     if (!ua) return "Không rõ";
-    if (ua.includes("Mobile") || ua.includes("Android") || ua.includes("iPhone")) {
+    if (
+      ua.includes("Mobile") ||
+      ua.includes("Android") ||
+      ua.includes("iPhone")
+    ) {
       let os = "Mobile";
       if (ua.includes("iPhone")) os = "iPhone";
       else if (ua.includes("Android")) os = "Android";
-      
+
       let browser = "Browser";
       if (ua.includes("Chrome")) browser = "Chrome";
       else if (ua.includes("Safari")) browser = "Safari";
@@ -6161,10 +7025,11 @@ function AuditLogPage({ onToast }) {
     if (ua.includes("Windows")) os = "Windows";
     else if (ua.includes("Macintosh")) os = "Mac";
     else if (ua.includes("Linux")) os = "Linux";
-    
+
     let browser = "Browser";
     if (ua.includes("Chrome")) browser = "Chrome";
-    else if (ua.includes("Safari") && !ua.includes('Chrome')) browser = "Safari";
+    else if (ua.includes("Safari") && !ua.includes("Chrome"))
+      browser = "Safari";
     else if (ua.includes("Firefox")) browser = "Firefox";
     return `${browser} (${os})`;
   };
@@ -6176,7 +7041,11 @@ function AuditLogPage({ onToast }) {
         subtitle="Giám sát lịch sử đăng nhập, thay đổi thông tin cửa hàng, thêm/sửa sản phẩm và trạng thái nâng cấp gói."
       >
         <button
-          onClick={() => { setPage(0); fetchLogs(); fetchActions(); }}
+          onClick={() => {
+            setPage(0);
+            fetchLogs();
+            fetchActions();
+          }}
           className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition-colors shadow-sm"
         >
           <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
@@ -6186,7 +7055,10 @@ function AuditLogPage({ onToast }) {
 
       {/* Filter bar */}
       <div className="rounded-xl border border-stone-100 bg-white p-4 shadow-sm">
-        <form onSubmit={handleSearchSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <form
+          onSubmit={handleSearchSubmit}
+          className="flex flex-col gap-3 sm:flex-row sm:items-center"
+        >
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-stone-400" />
             <input
@@ -6200,12 +7072,17 @@ function AuditLogPage({ onToast }) {
           <div className="w-full sm:w-64">
             <select
               value={selectedAction}
-              onChange={(e) => { setSelectedAction(e.target.value); setPage(0); }}
+              onChange={(e) => {
+                setSelectedAction(e.target.value);
+                setPage(0);
+              }}
               className="w-full rounded-lg border border-stone-200 py-2 px-3 text-xs outline-none focus:border-stone-500 focus:ring-1 focus:ring-stone-500 transition-shadow"
             >
               <option value="">Tất cả loại hành động</option>
               {actions.map((act) => (
-                <option key={act} value={act}>{act}</option>
+                <option key={act} value={act}>
+                  {act}
+                </option>
               ))}
             </select>
           </div>
@@ -6223,12 +7100,16 @@ function AuditLogPage({ onToast }) {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <RefreshCw className="h-6 w-6 animate-spin text-stone-600" />
-            <p className="text-xs font-semibold text-stone-500">Đang tải nhật ký...</p>
+            <p className="text-xs font-semibold text-stone-500">
+              Đang tải nhật ký...
+            </p>
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20 text-center px-4">
             <AlertTriangle className="h-6 w-6 text-red-600 mb-4" />
-            <h3 className="text-xs font-extrabold text-stone-900">Lỗi tải dữ liệu</h3>
+            <h3 className="text-xs font-extrabold text-stone-900">
+              Lỗi tải dữ liệu
+            </h3>
             <p className="mt-2 text-xs font-semibold text-stone-400">{error}</p>
             <button
               onClick={fetchLogs}
@@ -6240,7 +7121,9 @@ function AuditLogPage({ onToast }) {
         ) : logs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center px-4">
             <History className="h-6 w-6 text-stone-400 mb-4" />
-            <h3 className="text-xs font-extrabold text-stone-900">Không có hoạt động nào</h3>
+            <h3 className="text-xs font-extrabold text-stone-900">
+              Không có hoạt động nào
+            </h3>
             <p className="mt-2 text-xs font-semibold text-stone-400">
               Chưa ghi nhận hoạt động nào khớp với bộ lọc hiện tại của shop bạn.
             </p>
@@ -6259,19 +7142,30 @@ function AuditLogPage({ onToast }) {
               </thead>
               <tbody className="divide-y divide-stone-100">
                 {logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-stone-50 transition-colors">
+                  <tr
+                    key={log.id}
+                    className="hover:bg-stone-50 transition-colors"
+                  >
                     <td className="whitespace-nowrap px-6 py-4 font-semibold text-stone-800">
                       {formatTime(log.createdAt)}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", getActionBadgeClass(log.action))}>
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                          getActionBadgeClass(log.action),
+                        )}
+                      >
                         {log.action}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 font-mono text-stone-500">
                       {log.ipAddress}
                     </td>
-                    <td className="px-6 py-4 text-stone-500 max-w-[200px] truncate" title={log.userAgent}>
+                    <td
+                      className="px-6 py-4 text-stone-500 max-w-[200px] truncate"
+                      title={log.userAgent}
+                    >
                       {parseUserAgent(log.userAgent)}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right">
@@ -6284,7 +7178,9 @@ function AuditLogPage({ onToast }) {
                           Xem chi tiết
                         </button>
                       ) : (
-                        <span className="text-stone-400 font-semibold">Không có dữ liệu</span>
+                        <span className="text-stone-400 font-semibold">
+                          Không có dữ liệu
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -6300,14 +7196,14 @@ function AuditLogPage({ onToast }) {
             <div className="flex flex-1 justify-between sm:hidden">
               <button
                 disabled={page === 0}
-                onClick={() => setPage(p => Math.max(0, p - 1))}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
                 className="relative inline-flex items-center rounded-md border border-stone-300 bg-white px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-50 transition-opacity"
               >
                 Trước
               </button>
               <button
                 disabled={page >= totalPages - 1}
-                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                 className="relative ml-3 inline-flex items-center rounded-md border border-stone-300 bg-white px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-50 transition-opacity"
               >
                 Sau
@@ -6316,13 +7212,26 @@ function AuditLogPage({ onToast }) {
             <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs text-stone-600 font-semibold">
-                  Hiển thị <span className="font-extrabold text-stone-800">{page * pageSize + 1}</span> đến{" "}
-                  <span className="font-extrabold text-stone-800">{Math.min((page + 1) * pageSize, totalElements)}</span> trong số{" "}
-                  <span className="font-extrabold text-stone-800">{totalElements}</span> bản ghi
+                  Hiển thị{" "}
+                  <span className="font-extrabold text-stone-800">
+                    {page * pageSize + 1}
+                  </span>{" "}
+                  đến{" "}
+                  <span className="font-extrabold text-stone-800">
+                    {Math.min((page + 1) * pageSize, totalElements)}
+                  </span>{" "}
+                  trong số{" "}
+                  <span className="font-extrabold text-stone-800">
+                    {totalElements}
+                  </span>{" "}
+                  bản ghi
                 </p>
               </div>
               <div>
-                <nav className="relative z-0 inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                <nav
+                  className="relative z-0 inline-flex -space-x-px rounded-md shadow-sm"
+                  aria-label="Pagination"
+                >
                   <button
                     disabled={page === 0}
                     onClick={() => setPage(0)}
@@ -6332,40 +7241,45 @@ function AuditLogPage({ onToast }) {
                   </button>
                   <button
                     disabled={page === 0}
-                    onClick={() => setPage(p => Math.max(0, p - 1))}
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
                     className="relative inline-flex items-center border border-stone-300 bg-white px-2.5 py-1 text-xs font-semibold text-stone-500 hover:bg-stone-50 disabled:opacity-50"
                   >
                     ‹
                   </button>
-                  
+
                   {/* Page Numbers */}
-                  {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-                    let pageNum = page;
-                    if (page < 2) pageNum = i;
-                    else if (page >= totalPages - 2) pageNum = totalPages - 5 + i;
-                    else pageNum = page - 2 + i;
-                    
-                    if (pageNum < 0 || pageNum >= totalPages) return null;
-                    
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setPage(pageNum)}
-                        className={cn(
-                          "relative inline-flex items-center border px-3 py-1 text-xs font-semibold focus:z-10",
-                          page === pageNum
-                            ? "z-10 border-stone-900 bg-stone-50 text-stone-900"
-                            : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
-                        )}
-                      >
-                        {pageNum + 1}
-                      </button>
-                    );
-                  })}
+                  {Array.from({ length: Math.min(5, totalPages) }).map(
+                    (_, i) => {
+                      let pageNum = page;
+                      if (page < 2) pageNum = i;
+                      else if (page >= totalPages - 2)
+                        pageNum = totalPages - 5 + i;
+                      else pageNum = page - 2 + i;
+
+                      if (pageNum < 0 || pageNum >= totalPages) return null;
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setPage(pageNum)}
+                          className={cn(
+                            "relative inline-flex items-center border px-3 py-1 text-xs font-semibold focus:z-10",
+                            page === pageNum
+                              ? "z-10 border-stone-900 bg-stone-50 text-stone-900"
+                              : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50",
+                          )}
+                        >
+                          {pageNum + 1}
+                        </button>
+                      );
+                    },
+                  )}
 
                   <button
                     disabled={page >= totalPages - 1}
-                    onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                    onClick={() =>
+                      setPage((p) => Math.min(totalPages - 1, p + 1))
+                    }
                     className="relative inline-flex items-center border border-stone-300 bg-white px-2.5 py-1 text-xs font-semibold text-stone-500 hover:bg-stone-50 disabled:opacity-50"
                   >
                     ›
@@ -6392,7 +7306,9 @@ function AuditLogPage({ onToast }) {
             <div className="flex items-center justify-between border-b border-stone-100 px-6 py-4">
               <div className="flex items-center gap-2">
                 <History className="h-5 w-5 text-stone-900" />
-                <h3 className="text-sm font-bold text-stone-900">Chi tiết dữ liệu hoạt động</h3>
+                <h3 className="text-sm font-bold text-stone-900">
+                  Chi tiết dữ liệu hoạt động
+                </h3>
               </div>
               <button
                 onClick={() => setSelectedPayload(null)}
@@ -6406,31 +7322,54 @@ function AuditLogPage({ onToast }) {
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4 text-xs border-b border-stone-100 pb-4">
                 <div>
-                  <span className="text-stone-400 block mb-0.5 font-semibold">Thời gian</span>
-                  <span className="font-bold text-stone-800">{formatTime(selectedPayload.createdAt)}</span>
+                  <span className="text-stone-400 block mb-0.5 font-semibold">
+                    Thời gian
+                  </span>
+                  <span className="font-bold text-stone-800">
+                    {formatTime(selectedPayload.createdAt)}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-stone-400 block mb-0.5 font-semibold">Hành động</span>
-                  <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase", getActionBadgeClass(selectedPayload.action))}>
+                  <span className="text-stone-400 block mb-0.5 font-semibold">
+                    Hành động
+                  </span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase",
+                      getActionBadgeClass(selectedPayload.action),
+                    )}
+                  >
                     {selectedPayload.action}
                   </span>
                 </div>
                 <div>
-                  <span className="text-stone-400 block mb-0.5 font-semibold">Địa chỉ IP</span>
-                  <span className="font-mono text-stone-800">{selectedPayload.ipAddress}</span>
+                  <span className="text-stone-400 block mb-0.5 font-semibold">
+                    Địa chỉ IP
+                  </span>
+                  <span className="font-mono text-stone-800">
+                    {selectedPayload.ipAddress}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-stone-400 block mb-0.5 font-semibold">Thiết bị</span>
-                  <span className="font-bold text-stone-800">{parseUserAgent(selectedPayload.userAgent)}</span>
+                  <span className="text-stone-400 block mb-0.5 font-semibold">
+                    Thiết bị
+                  </span>
+                  <span className="font-bold text-stone-800">
+                    {parseUserAgent(selectedPayload.userAgent)}
+                  </span>
                 </div>
               </div>
 
               <div>
-                <span className="text-stone-400 text-xs block mb-2 font-bold">Chi tiết Payload (Dữ liệu chuyển giao)</span>
+                <span className="text-stone-400 text-xs block mb-2 font-bold">
+                  Chi tiết Payload (Dữ liệu chuyển giao)
+                </span>
                 <pre className="overflow-x-auto rounded-lg bg-stone-950 p-4 font-mono text-[10px] text-stone-400 border border-stone-900 leading-relaxed max-h-[250px]">
                   {(() => {
                     try {
-                      const parsed = JSON.parse(selectedPayload.payloadSnapshot);
+                      const parsed = JSON.parse(
+                        selectedPayload.payloadSnapshot,
+                      );
                       return JSON.stringify(parsed, null, 2);
                     } catch (e) {
                       return selectedPayload.payloadSnapshot;
@@ -6481,26 +7420,32 @@ export default function VendorHome() {
   const [planModalBlocks, setPlanModalBlocks] = useState(false);
   const [afterSelectCb, setAfterSelectCb] = useState(null);
 
-  const openPlanModal = useCallback(({ blocksNavigation = false, onAfterSelect } = {}) => {
-    setPlanModalBlocks(blocksNavigation);
-    setAfterSelectCb(() => onAfterSelect || null);
-    setPlanModalOpen(true);
-  }, []);
+  const openPlanModal = useCallback(
+    ({ blocksNavigation = false, onAfterSelect } = {}) => {
+      setPlanModalBlocks(blocksNavigation);
+      setAfterSelectCb(() => onAfterSelect || null);
+      setPlanModalOpen(true);
+    },
+    [],
+  );
 
-  const handlePlanSelected = useCallback((plan) => {
-    setToast({
-      title: `Đã chuyển sang gói ${plan.name}`,
-      message:
-        plan.id === 'premium'
-          ? 'Không giới hạn lượt đăng. Đăng tin ngay thôi!'
-          : `Bạn có ${plan.totalSlots} lượt đăng tin với thời hạn ${plan.displayDays} ngày/tin.`,
-    });
-    afterSelectCb?.();
-    // If was blocking (quota exhausted) and now has slots, navigate to add product
-    if (planModalBlocks && plan.id !== 'free') {
-      navigate('/vendor/products/add');
-    }
-  }, [afterSelectCb, navigate, planModalBlocks]);
+  const handlePlanSelected = useCallback(
+    (plan) => {
+      setToast({
+        title: `Đã chuyển sang gói ${plan.name}`,
+        message:
+          plan.id === "premium"
+            ? "Không giới hạn lượt đăng. Đăng tin ngay thôi!"
+            : `Bạn có ${plan.totalSlots} lượt đăng tin với thời hạn ${plan.displayDays} ngày/tin.`,
+      });
+      afterSelectCb?.();
+      // If was blocking (quota exhausted) and now has slots, navigate to add product
+      if (planModalBlocks && plan.id !== "free") {
+        navigate("/vendor/products/add");
+      }
+    },
+    [afterSelectCb, navigate, planModalBlocks],
+  );
 
   useEffect(() => {
     if (!location.state?.toast) return;
@@ -6519,10 +7464,10 @@ export default function VendorHome() {
         const list = JSON.parse(saved);
         if (!Array.isArray(list)) return false;
         const hasPickup = list.some(
-          (w) => w.type === "PICKUP" || w.warehouse_type === "PICKUP"
+          (w) => w.type === "PICKUP" || w.warehouse_type === "PICKUP",
         );
         const hasReturn = list.some(
-          (w) => w.type === "RETURN" || w.warehouse_type === "RETURN"
+          (w) => w.type === "RETURN" || w.warehouse_type === "RETURN",
         );
         return hasPickup && hasReturn;
       } catch {
