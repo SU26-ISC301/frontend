@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
 import SellerCenter from "./pages/SellerCenter";
 import SellerAddProduct from "./pages/SellerAddProduct";
@@ -11,6 +11,17 @@ import { ThemeToggle } from "./components/ThemeToggle";
 import ProductDetail from "./pages/ProductDetail";
 import Favorites from "./pages/Favorites";
 import ShopDetail from "./pages/ShopDetail";
+import { MessageLauncher } from "./components/Messaging/MessageLauncher";
+
+function BuyerChannelMessageShortcut() {
+  const { pathname } = useLocation();
+  const hiddenPrefixes = ["/vendor", "/seller", "/admin", "/quantri", "/buyer"];
+  const shouldHide = hiddenPrefixes.some((prefix) => pathname.startsWith(prefix));
+
+  if (shouldHide) return null;
+
+  return <MessageLauncher mode="buyer" />;
+}
 
 function App() {
   return (
@@ -54,6 +65,7 @@ function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <BuyerChannelMessageShortcut />
       <ThemeToggle />
     </BrowserRouter>
   );
