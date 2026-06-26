@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Sparkles,
   Store,
+  Trash2,
   UserRound,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -70,6 +71,28 @@ const vendorQuickReplies = [
   'Đơn sẽ được gửi trong hôm nay ạ.',
 ];
 
+const MAX_QUICK_REPLIES = 10;
+
+function sanitizeQuickReplies(replies = []) {
+  return replies
+    .map((reply) => String(reply || '').trim())
+    .filter(Boolean)
+    .slice(0, MAX_QUICK_REPLIES);
+}
+
+function getSavedQuickReplies(mode, fallback) {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const saved = window.localStorage.getItem(`shopvn:${mode}:quick-replies`);
+    if (!saved) return fallback;
+    const parsed = JSON.parse(saved);
+    const replies = Array.isArray(parsed) ? sanitizeQuickReplies(parsed) : [];
+    return replies.length > 0 ? replies : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function ChatWorkspace({
   mode = 'buyer',
   variant = 'page',
@@ -95,7 +118,13 @@ export function ChatWorkspace({
   const isPopup = variant === 'popup';
   const accent = isVendor ? 'teal' : 'orange';
   const activeChat = conversations.find((conversation) => conversation.id === activeConversationId);
-  const quickReplies = isVendor ? vendorQuickReplies : buyerQuickReplies;
+  const defaultQuickReplies = useMemo(
+    () => (isVendor ? vendorQuickReplies : buyerQuickReplies),
+    [isVendor],
+  );
+  const [quickReplies, setQuickReplies] = useState(() => getSavedQuickReplies(mode, defaultQuickReplies));
+  const [quickReplyDraft, setQuickReplyDraft] = useState('');
+  const displayQuickReplies = useMemo(() => sanitizeQuickReplies(quickReplies), [quickReplies]);
 
   const filteredConversations = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -114,6 +143,16 @@ export function ChatWorkspace({
   }, [conversations, mode, query]);
 
   useEffect(() => {
+    setQuickReplies(getSavedQuickReplies(mode, defaultQuickReplies));
+    setQuickReplyDraft('');
+  }, [defaultQuickReplies, mode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(`shopvn:${mode}:quick-replies`, JSON.stringify(sanitizeQuickReplies(quickReplies)));
+  }, [mode, quickReplies]);
+
+  useEffect(() => {
     const node = messageListRef.current;
     if (!node) return;
     node.scrollTop = node.scrollHeight;
@@ -129,6 +168,23 @@ export function ChatWorkspace({
     if (event.shiftKey) return;
     event.preventDefault();
     sendCurrentMessage();
+  };
+
+  const updateQuickReply = (index, nextValue) => {
+    setQuickReplies((current) =>
+      current.map((reply, replyIndex) => (replyIndex === index ? nextValue : reply)),
+    );
+  };
+
+  const removeQuickReply = (index) => {
+    setQuickReplies((current) => current.filter((_, replyIndex) => replyIndex !== index));
+  };
+
+  const addQuickReply = () => {
+    const nextReply = quickReplyDraft.trim();
+    if (!nextReply || displayQuickReplies.length >= MAX_QUICK_REPLIES) return;
+    setQuickReplies((current) => sanitizeQuickReplies([...current, nextReply]));
+    setQuickReplyDraft('');
   };
 
   return (
@@ -357,7 +413,7 @@ export function ChatWorkspace({
 
               <div className="border-t border-slate-100 bg-white p-4">
                 <div className="mb-3 flex gap-2 overflow-x-auto">
-                  {quickReplies.map((reply) => (
+                  {displayQuickReplies.map((reply) => (
                     <button
                       key={reply}
                       type="button"
@@ -425,7 +481,71 @@ export function ChatWorkspace({
 
           {isVendor ? (
             <div className="space-y-3 p-4">
-              {quickReplies.map((reply) => (
+              <div className="rounded-3xl border border-orange-100 bg-orange-50/50 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-slate-900">Tin nhắn sẵn</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                      Cấu hình tối đa {MAX_QUICK_REPLIES} câu trả lời nhanh.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white px-2 py-1 text-xs font-black text-orange-600">
+                    {displayQuickReplies.length}/{MAX_QUICK_REPLIES}
+                  </span>
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  {quickReplies.map((reply, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 shrink-0 text-orange-500" />
+                      <input
+                        value={reply}
+                        maxLength={160}
+                        onChange={(event) => updateQuickReply(index, event.target.value)}
+                        onBlur={() => setQuickReplies((current) => sanitizeQuickReplies(current))}
+                        className="min-w-0 flex-1 rounded-2xl border border-white bg-white px-3 py-2 text-xs font-bold text-slate-600 outline-none transition focus:border-orange-300 focus:ring-4 focus:ring-orange-100"
+                        placeholder="Nhập tin nhắn sẵn..."
+                      />
+                      <button
+                        type="button"
+                        aria-label="Xóa tin nhắn sẵn"
+                        onClick={() => removeQuickReply(index)}
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+
+                  {displayQuickReplies.length < MAX_QUICK_REPLIES && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        value={quickReplyDraft}
+                        maxLength={160}
+                        onChange={(event) => setQuickReplyDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter') return;
+                          event.preventDefault();
+                          addQuickReply();
+                        }}
+                        className="min-w-0 flex-1 rounded-2xl border border-orange-100 bg-white px-3 py-2 text-xs font-bold text-slate-600 outline-none transition focus:border-orange-300 focus:ring-4 focus:ring-orange-100"
+                        placeholder="Thêm tin nhắn sẵn..."
+                      />
+                      <button
+                        type="button"
+                        onClick={addQuickReply}
+                        disabled={!quickReplyDraft.trim()}
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-lg shadow-orange-500/20 transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label="Thêm tin nhắn sẵn"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {displayQuickReplies.map((reply) => (
                 <button
                   key={reply}
                   type="button"
@@ -448,6 +568,70 @@ export function ChatWorkspace({
             </div>
           ) : (
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              <div className="mb-4 rounded-3xl border border-orange-100 bg-orange-50/50 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-slate-900">Tin nhắn sẵn</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                      Cấu hình tối đa {MAX_QUICK_REPLIES} câu hỏi nhanh.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white px-2 py-1 text-xs font-black text-orange-600">
+                    {displayQuickReplies.length}/{MAX_QUICK_REPLIES}
+                  </span>
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  {quickReplies.map((reply, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 shrink-0 text-orange-500" />
+                      <input
+                        value={reply}
+                        maxLength={160}
+                        onChange={(event) => updateQuickReply(index, event.target.value)}
+                        onBlur={() => setQuickReplies((current) => sanitizeQuickReplies(current))}
+                        className="min-w-0 flex-1 rounded-2xl border border-white bg-white px-3 py-2 text-xs font-bold text-slate-600 outline-none transition focus:border-orange-300 focus:ring-4 focus:ring-orange-100"
+                        placeholder="Nhập tin nhắn sẵn..."
+                      />
+                      <button
+                        type="button"
+                        aria-label="Xóa tin nhắn sẵn"
+                        onClick={() => removeQuickReply(index)}
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+
+                  {displayQuickReplies.length < MAX_QUICK_REPLIES && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        value={quickReplyDraft}
+                        maxLength={160}
+                        onChange={(event) => setQuickReplyDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter') return;
+                          event.preventDefault();
+                          addQuickReply();
+                        }}
+                        className="min-w-0 flex-1 rounded-2xl border border-orange-100 bg-white px-3 py-2 text-xs font-bold text-slate-600 outline-none transition focus:border-orange-300 focus:ring-4 focus:ring-orange-100"
+                        placeholder="Thêm tin nhắn sẵn..."
+                      />
+                      <button
+                        type="button"
+                        onClick={addQuickReply}
+                        disabled={!quickReplyDraft.trim()}
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-lg shadow-orange-500/20 transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label="Thêm tin nhắn sẵn"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="space-y-2">
                 {directory.map((vendor) => {
                   const existingConversation = conversations.find((conversation) => conversation.vendorId === vendor.id);

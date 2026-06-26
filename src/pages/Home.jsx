@@ -63,7 +63,6 @@ const APPROVED_PRODUCT_STATUSES = new Set(['active', 'approved', 'đã duyệt',
 const ACTIVE_PROMOTION_STATUSES = new Set(['active', 'scheduled']);
 const PRODUCTS_PAGE_SIZE = 20;
 const PRICE_FILTER_MAX = 73000000;
-const PRODUCT_FETCH_SIZE_FOR_PRICE_FILTER = 100;
 const MENU_SORT_OPTIONS = [
   { value: 'newest', label: 'Mới nhất đến cũ nhất' },
   { value: 'oldest', label: 'Cũ nhất đến mới nhất' },
@@ -290,6 +289,17 @@ function getPageMeta(data, fallbackPage = 0) {
   };
 }
 
+function dedupeProducts(products = []) {
+  return Array.from(
+    products.reduce((map, product) => {
+      if (product?.id != null) {
+        map.set(String(product.id), product);
+      }
+      return map;
+    }, new Map()).values()
+  );
+}
+
 function normalizeCategory(category) {
   if (!category) return null;
 
@@ -383,6 +393,7 @@ function getCategoryMenuIcon(category, index = 0) {
 export default function Home() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
+  const [allMatchedProducts, setAllMatchedProducts] = useState([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [productsPage, setProductsPage] = useState(0);
   const [pageMeta, setPageMeta] = useState(defaultPageMeta);
@@ -406,12 +417,12 @@ export default function Home() {
     || null;
 
   const brandOptions = useMemo(() => {
-    const productBrands = products
+    const productBrands = allMatchedProducts
       .map((product) => product.brandName)
       .filter(Boolean);
     const brands = productBrands.length ? productBrands : TECH_BRANDS;
     return Array.from(new Set(brands)).slice(0, 16);
-  }, [products]);
+  }, [allMatchedProducts]);
 
   useEffect(() => {
     let isMounted = true;
@@ -428,18 +439,10 @@ export default function Home() {
     setIsLoadingProducts(true);
 
     const loadProducts = async () => {
-      if (!hasPriceFilter) {
-        return productApi.getPublicProducts({
-          ...filterParams,
-          page: productsPage,
-          size: PRODUCTS_PAGE_SIZE,
-        });
-      }
-
       const firstPage = await productApi.getPublicProducts({
         ...filterParams,
         page: 0,
-        size: PRODUCT_FETCH_SIZE_FOR_PRICE_FILTER,
+        size: PRODUCTS_PAGE_SIZE,
       });
       const firstMeta = getPageMeta(firstPage, 0);
       const allContent = [...getPageContent(firstPage)];
@@ -450,7 +453,7 @@ export default function Home() {
             productApi.getPublicProducts({
               ...filterParams,
               page: index + 1,
-              size: PRODUCT_FETCH_SIZE_FOR_PRICE_FILTER,
+              size: PRODUCTS_PAGE_SIZE,
             }).catch(() => null)
           )
         );
@@ -459,50 +462,40 @@ export default function Home() {
         });
       }
 
-      const uniqueProducts = Array.from(
-        allContent.reduce((map, product) => {
-          if (product?.id != null) {
-            map.set(String(product.id), product);
-          }
-          return map;
-        }, new Map()).values()
-      );
+      const uniqueProducts = dedupeProducts(allContent);
 
       const filteredContent = uniqueProducts
         .filter(isApprovedProduct)
-        .filter((product) => isProductInPriceRange(product, appliedPrice))
+        .filter((product) => !hasPriceFilter || isProductInPriceRange(product, appliedPrice))
         .map(mapProductCard)
         .sort((left, right) => sortPublicProducts(left, right, menuSortMode));
       const totalElements = filteredContent.length;
       const totalPages = Math.max(1, Math.ceil(totalElements / PRODUCTS_PAGE_SIZE));
+      const safePage = Math.min(productsPage, totalPages - 1);
 
       return {
-        content: filteredContent.slice(productsPage * PRODUCTS_PAGE_SIZE, (productsPage + 1) * PRODUCTS_PAGE_SIZE),
-        number: productsPage,
+        allContent: filteredContent,
+        content: filteredContent.slice(safePage * PRODUCTS_PAGE_SIZE, (safePage + 1) * PRODUCTS_PAGE_SIZE),
+        number: safePage,
         size: PRODUCTS_PAGE_SIZE,
         totalElements,
         totalPages,
-        first: productsPage === 0,
-        last: productsPage >= totalPages - 1,
+        first: safePage === 0,
+        last: safePage >= totalPages - 1,
       };
     };
 
     loadProducts()
       .then((data) => {
         if (!isMounted) return;
-        const pageContent = getPageContent(data);
-        const mapped = hasPriceFilter
-          ? pageContent
-          : pageContent
-              .filter(isApprovedProduct)
-              .map(mapProductCard)
-              .sort((left, right) => sortPublicProducts(left, right, menuSortMode));
-        setProducts(mapped);
+        setAllMatchedProducts(data.allContent || []);
+        setProducts(getPageContent(data));
         setPageMeta(getPageMeta(data, productsPage));
       })
       .catch((error) => {
         console.warn('Không thể tải sản phẩm thật:', error);
         if (isMounted) setProducts([]);
+        if (isMounted) setAllMatchedProducts([]);
         if (isMounted) setPageMeta({ ...defaultPageMeta, page: productsPage });
       })
       .finally(() => {
@@ -543,11 +536,11 @@ export default function Home() {
 
     allCategories.forEach((category) => {
       const categoryIds = new Set(collectCategoryIds(category).map((id) => String(id)));
-      counts[String(category.id)] = products.filter((product) => categoryIds.has(String(product.categoryId))).length;
+      counts[String(category.id)] = allMatchedProducts.filter((product) => categoryIds.has(String(product.categoryId))).length;
     });
 
     return counts;
-  }, [allCategories, products]);
+  }, [allCategories, allMatchedProducts]);
 
   const visibleProducts = products;
 
@@ -671,7 +664,7 @@ export default function Home() {
           selectedCategoryId={selectedCategory?.id ?? null}
           onSelectCategory={setSelectedCategory}
           productCounts={categoryProductCounts}
-          totalProductCount={pageMeta.totalElements || products.length}
+          totalProductCount={pageMeta.totalElements || allMatchedProducts.length}
         />
 
         <section className="pb-8">
