@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Header } from '../components/Home/Header';
 import { HeroBanner } from '../components/Home/HeroBanner';
-import { CategoryStrip } from '../components/Home/CategoryStrip';
 import { ProductCard } from '../components/Home/ProductCard';
 import { Footer } from '../components/layout/Footer';
 import { Card, CardContent } from '../components/ui/card';
@@ -345,26 +344,6 @@ function buildCategoryTree(categories = []) {
   return roots;
 }
 
-function flattenCategories(categories = [], depth = 0, parentPath = '') {
-  return categories.flatMap((category) => {
-    const normalized = normalizeCategory(category);
-    if (!normalized || normalized.isActive === false) return [];
-
-    const path = parentPath ? `${parentPath} > ${normalized.name}` : normalized.name;
-    const item = {
-      ...normalized,
-      depth,
-      path,
-      optionLabel: depth > 0 ? `${'— '.repeat(depth)}${normalized.name}` : normalized.name,
-    };
-
-    return [
-      item,
-      ...flattenCategories(normalized.children || [], depth + 1, path),
-    ];
-  });
-}
-
 function collectCategoryIds(category) {
   if (!category) return [];
 
@@ -399,7 +378,6 @@ export default function Home() {
   const [productsPage, setProductsPage] = useState(0);
   const [pageMeta, setPageMeta] = useState(defaultPageMeta);
   const [categories, setCategories] = useState([]);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [priceDraft, setPriceDraft] = useState({ min: '', max: '' });
   const [appliedPrice, setAppliedPrice] = useState({ min: null, max: null });
@@ -411,7 +389,6 @@ export default function Home() {
   const searchQuery = searchParams.get('search') || '';
   const hasPriceFilter = Boolean(Number(appliedPrice.min || 0) || Number(appliedPrice.max || 0));
 
-  const allCategories = useMemo(() => flattenCategories(categories), [categories]);
   const rootCategories = categories;
   const activeRootCategory = rootCategories.find((category) => String(category.id) === String(activeRootCategoryId))
     || rootCategories[0]
@@ -532,17 +509,6 @@ export default function Home() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isCategoryMenuOpen]);
 
-  const categoryProductCounts = useMemo(() => {
-    const counts = {};
-
-    allCategories.forEach((category) => {
-      const categoryIds = new Set(collectCategoryIds(category).map((id) => String(id)));
-      counts[String(category.id)] = allMatchedProducts.filter((product) => categoryIds.has(String(product.categoryId))).length;
-    });
-
-    return counts;
-  }, [allCategories, allMatchedProducts]);
-
   const visibleProducts = products;
 
   const pageButtons = useMemo(() => {
@@ -624,9 +590,6 @@ export default function Home() {
       .catch((error) => {
         console.warn('Không thể tải hạng mục thật:', error);
         if (isMounted) setCategories([]);
-      })
-      .finally(() => {
-        if (isMounted) setIsLoadingCategories(false);
       });
 
     return () => {
@@ -804,15 +767,6 @@ export default function Home() {
             </Card>
           ))}
         </section>
-
-        <CategoryStrip
-          categories={categories}
-          isLoading={isLoadingCategories}
-          selectedCategoryId={selectedCategory?.id ?? null}
-          onSelectCategory={setSelectedCategory}
-          productCounts={categoryProductCounts}
-          totalProductCount={pageMeta.totalElements || allMatchedProducts.length}
-        />
 
         <section className="pb-8">
           <div className="mb-5 flex items-end justify-between gap-4">
