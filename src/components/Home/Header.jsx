@@ -110,7 +110,7 @@ export function Header({ categoryMenuSlot = null }) {
 
   return (
     <>
-      <header className="sticky top-0 z-40">
+      <header className="sticky top-0 z-50 w-full">
         <div className="bg-[#13252f] text-white">
           <div className="mx-auto flex h-9 max-w-7xl items-center justify-between px-4 text-xs sm:px-6 lg:px-8">
             <Link
