@@ -8,7 +8,7 @@ import { authApi } from '../../api/authAPI';
 import { getAvatarSrc } from '../../utils/avatar';
 import { readViewedCategories } from '../../utils/viewedCategories';
 
-export function Header() {
+export function Header({ categoryMenuSlot = null }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [authOpen, setAuthOpen] = useState(false);
@@ -128,19 +128,21 @@ export function Header() {
           </div>
         </div>
 
-        <div className="border-b border-white/70 bg-white/88 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.6)] backdrop-blur-xl">
+        <div className="border-b border-white/80 bg-gradient-to-r from-[#fff3ef]/95 via-white/95 to-[#f2fff9]/95 shadow-[0_14px_40px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl">
           <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
               <div className="flex items-center justify-between sm:justify-start">
                 <BrandLogo />
                 <Link
                   to="/seller"
-                  className="inline-flex items-center gap-1 rounded-full bg-brand-dark px-3 py-1.5 text-xs font-semibold text-white sm:hidden"
+                  className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200 sm:hidden"
                 >
                   <Store className="h-3.5 w-3.5" />
                   Bán hàng
                 </Link>
               </div>
+
+              {categoryMenuSlot}
 
               <form className="relative flex-1" onSubmit={submitSearch}>
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -154,12 +156,12 @@ export function Header() {
                   }}
                   onBlur={() => window.setTimeout(() => setSearchOpen(false), 160)}
                   placeholder="Tìm sản phẩm, thương hiệu, shop..."
-                  className="h-11 w-full rounded-full border border-slate-200 bg-white pl-11 pr-24 text-sm shadow-inner shadow-slate-100 outline-none transition-all placeholder:text-slate-400 focus:border-[#ff6a3d] focus:ring-4 focus:ring-[#ff6a3d]/15"
+                  className="h-11 w-full rounded-full border border-slate-200 bg-white pl-11 pr-24 text-sm shadow-inner shadow-slate-100 outline-none transition-all placeholder:text-slate-400 focus:border-[#ff6b45] focus:ring-4 focus:ring-orange-100"
                 />
                 <Button
                   type="submit"
                   size="sm"
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full bg-[#ff5a2f] px-5 hover:bg-[#ff6a3d]"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-[#ff315c] to-[#ff6b2c] px-5 text-white shadow-md shadow-orange-200/60 hover:from-[#ef244f] hover:to-[#f05a22]"
                 >
                   Tìm
                 </Button>
@@ -214,7 +216,7 @@ export function Header() {
                 <button
                   type="button"
                   onClick={openFavorites}
-                  className="group relative flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-all hover:bg-[#fff1ed] hover:text-[#ff4d2e]"
+                  className="group relative flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm ring-1 ring-slate-100 transition-all hover:text-[#ff4d2e] hover:ring-orange-100"
                   title="Yêu thích"
                 >
                   <Heart className="h-5 w-5" />
@@ -225,14 +227,14 @@ export function Header() {
                 <div className="flex shrink-0 items-center gap-3">
                   <button
                     type="button"
-                    className="hidden h-10 w-10 items-center justify-center rounded-full bg-slate-50 text-slate-500 transition-colors hover:bg-[#fff1ed] hover:text-[#ff4d2e] sm:flex"
+                    className="hidden h-10 w-10 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm ring-1 ring-slate-100 transition-colors hover:text-[#ff4d2e] hover:ring-orange-100 sm:flex"
                     title="Thông báo"
                   >
                     <Bell className="h-5 w-5" />
                   </button>
                   <Link
                     to="/buyer"
-                    className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-gray-100 shadow-md shadow-slate-200 transition-transform hover:scale-105"
+                    className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-gray-100 shadow-md shadow-slate-200/80 ring-1 ring-slate-100 transition-transform hover:scale-105"
                     title="Tài khoản của tôi"
                   >
                     <img
@@ -243,7 +245,7 @@ export function Header() {
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition-colors hover:text-red-600"
+                    className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition-colors hover:text-[#ff4d2e]"
                   >
                     <LogOut className="h-4 w-4" />
                     <span className="hidden sm:inline">Đăng xuất</span>
@@ -251,7 +253,7 @@ export function Header() {
                 </div>
               ) : (
                 <Button
-                  className="shrink-0 rounded-full bg-[#13252f] shadow-md shadow-slate-200 hover:bg-[#203a48]"
+                  className="shrink-0 rounded-full bg-gradient-to-r from-[#ff315c] to-[#ff6b2c] text-white shadow-md shadow-orange-200/70 hover:from-[#ef244f] hover:to-[#f05a22]"
                   onClick={() => setAuthOpen(true)}
                 >
                   <UserCircle className="h-4 w-4 sm:mr-1" />

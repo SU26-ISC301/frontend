@@ -634,9 +634,155 @@ export default function Home() {
     };
   }, []);
 
+  const categoryMenuSlot = (
+    <div ref={categoryMenuRef} className="relative order-3 sm:order-none">
+      <button
+        type="button"
+        onClick={() => setIsCategoryMenuOpen((open) => !open)}
+        className="flex h-10 w-full items-center justify-between gap-2 rounded-2xl bg-gradient-to-r from-white to-[#fff6f1] px-3 text-left text-sm font-extrabold text-[#f05a22] shadow-sm ring-1 ring-orange-100 transition hover:from-[#fffaf7] hover:to-white focus:outline-none focus:ring-4 focus:ring-orange-100 sm:w-[150px]"
+        aria-expanded={isCategoryMenuOpen}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <Grid2X2 className="h-5 w-5 shrink-0" strokeWidth={2.5} />
+          <span className="truncate">{selectedCategory?.name || 'Danh mục'}</span>
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isCategoryMenuOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isCategoryMenuOpen && (
+        <div className="absolute left-0 top-full z-50 mt-3 w-[min(94vw,780px)] overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl shadow-slate-900/18 sm:left-1/2 sm:-translate-x-[36%]">
+          <div className="grid max-h-[560px] grid-cols-1 overflow-hidden md:grid-cols-[280px_minmax(0,1fr)]">
+            <div className="border-b border-slate-100 bg-white py-2 md:border-b-0 md:border-r">
+              <button
+                type="button"
+                onClick={() => selectMenuCategory(null)}
+                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-red-50 ${
+                  !selectedCategory ? 'bg-red-50 text-red-600' : 'text-slate-700'
+                }`}
+              >
+                <Grid2X2 className="h-6 w-6 shrink-0 text-red-500" />
+                <span className="flex-1 text-base font-extrabold">Tất cả danh mục</span>
+                <ChevronRight className="h-5 w-5 text-slate-400" />
+              </button>
+
+              <div className="max-h-[480px] overflow-y-auto py-1">
+                {rootCategories.map((category, index) => {
+                  const Icon = getCategoryMenuIcon(category, index);
+                  const isActive = String(activeRootCategory?.id) === String(category.id);
+
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onMouseEnter={() => setActiveRootCategoryId(category.id)}
+                      onFocus={() => setActiveRootCategoryId(category.id)}
+                      onClick={() => setActiveRootCategoryId(category.id)}
+                      className={`flex w-full items-center gap-3 px-4 py-3 text-left transition ${
+                        isActive ? 'bg-red-50 text-red-600' : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950'
+                      }`}
+                    >
+                      <Icon className="h-7 w-7 shrink-0 text-red-500" strokeWidth={1.9} />
+                      <span className="min-w-0 flex-1 truncate text-base font-extrabold">{category.name}</span>
+                      <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid max-h-[560px] gap-6 overflow-y-auto p-5 md:grid-cols-2">
+              <div>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="text-lg font-extrabold text-slate-900">
+                    {activeRootCategory?.name || 'Danh mục con'}
+                  </h3>
+                  {activeRootCategory && (
+                    <button
+                      type="button"
+                      onClick={() => selectMenuCategory(activeRootCategory)}
+                      className="text-xs font-extrabold text-red-600 hover:text-red-700"
+                    >
+                      Xem tất cả
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  {(activeRootCategory?.children || []).length > 0 ? (
+                    activeRootCategory.children.map((subcategory) => (
+                      <button
+                        key={subcategory.id}
+                        type="button"
+                        onClick={() => selectMenuCategory(subcategory)}
+                        className={`block w-full rounded-xl px-3 py-2 text-left text-sm font-bold transition ${
+                          String(selectedCategory?.id) === String(subcategory.id)
+                            ? 'bg-red-50 text-red-600'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
+                        }`}
+                      >
+                        {subcategory.name}
+                        {subcategory.children?.length > 0 && (
+                          <span className="ml-2 text-xs font-semibold text-slate-400">
+                            {subcategory.children.length} nhóm
+                          </span>
+                        )}
+                      </button>
+                    ))
+                  ) : (
+                    <p className="rounded-xl bg-slate-50 px-3 py-4 text-sm font-semibold text-slate-400">
+                      Danh mục này chưa có nhóm con.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <h3 className="mb-3 text-lg font-extrabold text-slate-900">Hãng</h3>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                    {brandOptions.map((brand) => (
+                      <button
+                        key={brand}
+                        type="button"
+                        onClick={() => selectMenuBrand(brand)}
+                        className={`truncate rounded-lg px-2 py-1.5 text-left text-sm font-semibold transition ${
+                          selectedBrand === brand
+                            ? 'bg-red-50 text-red-600'
+                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                        }`}
+                      >
+                        {brand}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="mb-3 text-lg font-extrabold text-slate-900">Mức giá</h3>
+                  <div className="space-y-1">
+                    {MENU_PRICE_RANGES.map((range) => (
+                      <button
+                        key={range.label}
+                        type="button"
+                        onClick={() => applyMenuPriceRange(range)}
+                        className="block w-full rounded-lg px-2 py-1.5 text-left text-sm font-semibold text-slate-500 transition hover:bg-red-50 hover:text-red-600"
+                      >
+                        {range.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="shop-home min-h-screen bg-[#f6f4ef] text-[#16202a]">
-      <Header />
+      <Header categoryMenuSlot={categoryMenuSlot} />
 
       <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
         <HeroBanner />
@@ -694,7 +840,7 @@ export default function Home() {
           <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
             <aside className="h-fit rounded-2xl border border-white/80 bg-white/90 p-4 shadow-sm lg:sticky lg:top-28">
               <div className="flex items-center justify-between gap-3">
-                <span className="inline-flex items-center gap-2 rounded-full border border-red-100 bg-red-50 px-3 py-2 text-sm font-extrabold text-red-600">
+                <span className="inline-flex items-center gap-2 rounded-full border border-orange-100 bg-orange-50 px-3 py-2 text-sm font-extrabold text-[#f05a22]">
                   <SlidersHorizontal className="h-4 w-4" />
                   Xem theo giá
                 </span>
@@ -702,7 +848,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={clearPriceFilter}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-orange-50 hover:text-[#f05a22]"
                     aria-label="Xóa lọc giá"
                   >
                     <X className="h-4 w-4" />
@@ -720,7 +866,7 @@ export default function Home() {
                   value={formatCurrencyInput(priceDraft.min)}
                   onChange={(event) => updatePriceDraft('min', event.target.value)}
                   placeholder="0"
-                  className="h-12 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-right text-sm font-bold text-slate-700 outline-none transition focus:border-red-400 focus:ring-4 focus:ring-red-100"
+                  className="h-12 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-right text-sm font-bold text-slate-700 outline-none transition focus:border-[#ff7a45] focus:ring-4 focus:ring-orange-100"
                 />
                 <span className="font-extrabold text-slate-400">-</span>
                 <label className="sr-only" htmlFor="max-price-filter">Giá cao nhất</label>
@@ -731,7 +877,7 @@ export default function Home() {
                   value={formatCurrencyInput(priceDraft.max)}
                   onChange={(event) => updatePriceDraft('max', event.target.value)}
                   placeholder={formatCurrencyInput(PRICE_FILTER_MAX)}
-                  className="h-12 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-right text-sm font-bold text-slate-700 outline-none transition focus:border-red-400 focus:ring-4 focus:ring-red-100"
+                  className="h-12 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-right text-sm font-bold text-slate-700 outline-none transition focus:border-[#ff7a45] focus:ring-4 focus:ring-orange-100"
                 />
               </div>
 
@@ -743,7 +889,7 @@ export default function Home() {
                   step="10000"
                   value={Number(priceDraft.max || PRICE_FILTER_MAX)}
                   onChange={(event) => updatePriceDraft('max', event.target.value)}
-                  className="h-2 w-full accent-red-600"
+                  className="h-2 w-full accent-[#ff6b2c]"
                   aria-label="Chọn giá cao nhất"
                 />
                 <div className="flex justify-between text-xs font-bold text-slate-400">
@@ -753,7 +899,7 @@ export default function Home() {
               </div>
 
               {hasPriceFilter && (
-                <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
+                <p className="mt-4 rounded-xl bg-orange-50 px-3 py-2 text-xs font-bold text-[#f05a22]">
                   Đang lọc: {formatCurrencyInput(appliedPrice.min || 0)}đ - {appliedPrice.max ? `${formatCurrencyInput(appliedPrice.max)}đ` : 'không giới hạn'}
                 </p>
               )}
@@ -762,14 +908,14 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={clearPriceFilter}
-                  className="h-12 rounded-xl border border-slate-200 bg-white text-sm font-extrabold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                  className="h-12 rounded-xl border border-orange-100 bg-white text-sm font-extrabold text-slate-700 shadow-sm transition hover:border-orange-200 hover:text-[#f05a22]"
                 >
                   Đóng
                 </button>
                 <button
                   type="button"
                   onClick={applyPriceFilter}
-                  className="h-12 rounded-xl bg-red-600 text-sm font-extrabold text-white shadow-lg shadow-red-500/20 transition hover:bg-red-700"
+                  className="h-12 rounded-xl border border-orange-200 bg-white text-sm font-extrabold text-[#f05a22] shadow-sm transition hover:border-orange-300 hover:bg-orange-50"
                 >
                   Xem kết quả
                 </button>
@@ -777,162 +923,18 @@ export default function Home() {
             </aside>
 
             <div className="min-w-0">
-              <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-white/80 bg-white/90 p-4 shadow-sm sm:flex-row sm:items-center">
-                <div className="inline-flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-slate-500 sm:w-auto">
-                  <SlidersHorizontal className="h-5 w-5 text-[#ff6b2c]" />
+              <div className="mb-4 flex w-full max-w-[560px] flex-col gap-2 rounded-xl border border-white/80 bg-white/90 p-3 shadow-sm sm:flex-row sm:items-center">
+                <div className="inline-flex shrink-0 items-center gap-2 text-xs font-extrabold uppercase tracking-wide text-slate-500">
+                  <SlidersHorizontal className="h-4 w-4 text-[#ff6b2c]" />
                   Bộ lọc
                 </div>
-                <div className="grid flex-1 gap-3 sm:grid-cols-[minmax(280px,1fr)_minmax(260px,1fr)]">
-                  <div ref={categoryMenuRef} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsCategoryMenuOpen((open) => !open)}
-                      className="flex h-14 w-full items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-[#e60023] to-[#f45b68] px-5 text-left text-base font-extrabold text-white shadow-lg shadow-red-500/20 transition hover:brightness-105 focus:outline-none focus:ring-4 focus:ring-red-200"
-                      aria-expanded={isCategoryMenuOpen}
-                    >
-                      <span className="flex min-w-0 items-center gap-3">
-                        <Grid2X2 className="h-6 w-6 shrink-0" strokeWidth={2.5} />
-                        <span className="truncate">{selectedCategory?.name || 'Danh mục'}</span>
-                      </span>
-                      <ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${isCategoryMenuOpen ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {isCategoryMenuOpen && (
-                      <div className="absolute left-0 top-full z-50 mt-3 w-[min(92vw,780px)] overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl shadow-slate-900/18">
-                        <div className="grid max-h-[560px] grid-cols-1 overflow-hidden md:grid-cols-[280px_minmax(0,1fr)]">
-                          <div className="border-b border-slate-100 bg-white py-2 md:border-b-0 md:border-r">
-                            <button
-                              type="button"
-                              onClick={() => selectMenuCategory(null)}
-                              className={`flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-red-50 ${
-                                !selectedCategory ? 'bg-red-50 text-red-600' : 'text-slate-700'
-                              }`}
-                            >
-                              <Grid2X2 className="h-6 w-6 shrink-0 text-red-500" />
-                              <span className="flex-1 text-base font-extrabold">Tất cả danh mục</span>
-                              <ChevronRight className="h-5 w-5 text-slate-400" />
-                            </button>
-
-                            <div className="max-h-[480px] overflow-y-auto py-1">
-                              {rootCategories.map((category, index) => {
-                                const Icon = getCategoryMenuIcon(category, index);
-                                const isActive = String(activeRootCategory?.id) === String(category.id);
-
-                                return (
-                                  <button
-                                    key={category.id}
-                                    type="button"
-                                    onMouseEnter={() => setActiveRootCategoryId(category.id)}
-                                    onFocus={() => setActiveRootCategoryId(category.id)}
-                                    onClick={() => setActiveRootCategoryId(category.id)}
-                                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition ${
-                                      isActive ? 'bg-red-50 text-red-600' : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950'
-                                    }`}
-                                  >
-                                    <Icon className="h-7 w-7 shrink-0 text-red-500" strokeWidth={1.9} />
-                                    <span className="min-w-0 flex-1 truncate text-base font-extrabold">{category.name}</span>
-                                    <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" />
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          <div className="grid max-h-[560px] gap-6 overflow-y-auto p-5 md:grid-cols-2">
-                            <div>
-                              <div className="mb-3 flex items-center justify-between gap-3">
-                                <h3 className="text-lg font-extrabold text-slate-900">
-                                  {activeRootCategory?.name || 'Danh mục con'}
-                                </h3>
-                                {activeRootCategory && (
-                                  <button
-                                    type="button"
-                                    onClick={() => selectMenuCategory(activeRootCategory)}
-                                    className="text-xs font-extrabold text-red-600 hover:text-red-700"
-                                  >
-                                    Xem tất cả
-                                  </button>
-                                )}
-                              </div>
-
-                              <div className="space-y-1">
-                                {(activeRootCategory?.children || []).length > 0 ? (
-                                  activeRootCategory.children.map((subcategory) => (
-                                    <button
-                                      key={subcategory.id}
-                                      type="button"
-                                      onClick={() => selectMenuCategory(subcategory)}
-                                      className={`block w-full rounded-xl px-3 py-2 text-left text-sm font-bold transition ${
-                                        String(selectedCategory?.id) === String(subcategory.id)
-                                          ? 'bg-red-50 text-red-600'
-                                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
-                                      }`}
-                                    >
-                                      {subcategory.name}
-                                      {subcategory.children?.length > 0 && (
-                                        <span className="ml-2 text-xs font-semibold text-slate-400">
-                                          {subcategory.children.length} nhóm
-                                        </span>
-                                      )}
-                                    </button>
-                                  ))
-                                ) : (
-                                  <p className="rounded-xl bg-slate-50 px-3 py-4 text-sm font-semibold text-slate-400">
-                                    Danh mục này chưa có nhóm con.
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="space-y-6">
-                              <div>
-                                <h3 className="mb-3 text-lg font-extrabold text-slate-900">Hãng</h3>
-                                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                                  {brandOptions.map((brand) => (
-                                    <button
-                                      key={brand}
-                                      type="button"
-                                      onClick={() => selectMenuBrand(brand)}
-                                      className={`truncate rounded-lg px-2 py-1.5 text-left text-sm font-semibold transition ${
-                                        selectedBrand === brand
-                                          ? 'bg-red-50 text-red-600'
-                                          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                                      }`}
-                                    >
-                                      {brand}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              <div>
-                                <h3 className="mb-3 text-lg font-extrabold text-slate-900">Mức giá</h3>
-                                <div className="space-y-1">
-                                  {MENU_PRICE_RANGES.map((range) => (
-                                    <button
-                                      key={range.label}
-                                      type="button"
-                                      onClick={() => applyMenuPriceRange(range)}
-                                      className="block w-full rounded-lg px-2 py-1.5 text-left text-sm font-semibold text-slate-500 transition hover:bg-red-50 hover:text-red-600"
-                                    >
-                                      {range.label}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
+                <div className="grid flex-1 gap-2 sm:max-w-xs">
                   <label className="sr-only" htmlFor="menu-sort-filter">Sắp xếp sản phẩm</label>
                   <select
                     id="menu-sort-filter"
                     value={menuSortMode}
                     onChange={(event) => setMenuSortMode(event.target.value)}
-                    className="h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base font-extrabold text-slate-700 outline-none transition focus:border-[#ff7a45] focus:ring-4 focus:ring-orange-100"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-extrabold text-slate-700 outline-none transition focus:border-[#ff7a45] focus:ring-4 focus:ring-orange-100"
                   >
                     {MENU_SORT_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
