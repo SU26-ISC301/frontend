@@ -51,14 +51,14 @@ export function VendorApprovalTable({
     const vendor = vendors.find((v) => v.id === id);
     setVendors((prev) => prev.filter((v) => v.id !== id));
     onApprove?.(vendor);
-    console.log('Approved vendor:', id);
+    console.log('Đã duyệt người bán:', id);
   };
 
   const handleReject = (id) => {
     const vendor = vendors.find((v) => v.id === id);
     setVendors((prev) => prev.filter((v) => v.id !== id));
     onReject?.(vendor);
-    console.log('Rejected vendor:', id);
+    console.log('Đã từ chối người bán:', id);
   };
 
   return (
@@ -69,14 +69,14 @@ export function VendorApprovalTable({
             <ClipboardList className="h-5 w-5 text-white" />
           </div>
           <div>
-            <CardTitle>Duyệt gian hàng Seller</CardTitle>
+            <CardTitle>Duyệt gian hàng người bán</CardTitle>
             <p className="text-sm text-gray-500">
               Danh sách đăng ký đang chờ phê duyệt
             </p>
           </div>
         </div>
         <span className="shrink-0 rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800">
-          {vendors.length} pending
+          {vendors.length} chờ duyệt
         </span>
       </CardHeader>
 
@@ -136,7 +136,7 @@ function EmptyState() {
       </div>
       <h3 className="font-semibold text-gray-900">Không có hồ sơ chờ duyệt</h3>
       <p className="mt-1 max-w-xs text-sm text-gray-500">
-        Tất cả đăng ký Seller đã được xử lý. Hồ sơ mới sẽ hiển thị tại đây.
+        Tất cả đăng ký người bán đã được xử lý. Hồ sơ mới sẽ hiển thị tại đây.
       </p>
     </div>
   );

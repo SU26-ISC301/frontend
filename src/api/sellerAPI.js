@@ -90,8 +90,8 @@ export const sellerApi = {
     return unwrap(response);
   },
 
-  getPublicProducts: async () => {
-    const response = await axiosClient.get('/api/products');
+  getPublicProducts: async (params = {}) => {
+    const response = await axiosClient.get('/api/products', { params });
     return unwrap(response);
   },
 

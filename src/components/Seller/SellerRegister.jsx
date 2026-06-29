@@ -52,7 +52,7 @@ export function SellerRegister({ onSwitchToLogin }) {
   return (
     <Card className="mx-auto max-w-2xl border-0 shadow-elevated">
       <CardHeader>
-        <CardTitle>Đăng ký Seller</CardTitle>
+        <CardTitle>Đăng ký người bán</CardTitle>
         <p className="text-sm text-gray-500">
           Xác thực email, sau đó hoàn tất hồ sơ mở gian hàng
         </p>

@@ -18,14 +18,18 @@ axiosClient.interceptors.request.use((config) => {
   }
 
   let token = null;
+  let useDefaultTokenFallback = true;
   const roleToken = config.headers?.['X-Role-Token'] || (config.headers?.get && config.headers.get('X-Role-Token'));
   if (roleToken) {
+    useDefaultTokenFallback = false;
     if (roleToken === 'vendor') {
       token = localStorage.getItem('vendorAccessToken') || sessionStorage.getItem('vendorAccessToken') || localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
     } else if (roleToken === 'admin') {
       token = localStorage.getItem('adminAccessToken') || sessionStorage.getItem('adminAccessToken') || localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
     } else if (roleToken === 'buyer') {
       token = localStorage.getItem('buyerAccessToken') || sessionStorage.getItem('buyerAccessToken') || localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+    } else if (roleToken === 'buyer-strict') {
+      token = localStorage.getItem('buyerAccessToken') || sessionStorage.getItem('buyerAccessToken');
     }
     
     if (typeof config.headers?.delete === 'function') {
@@ -35,7 +39,7 @@ axiosClient.interceptors.request.use((config) => {
     }
   }
 
-  if (!token) {
+  if (!token && useDefaultTokenFallback) {
     const path = window.location.pathname;
     if (path.startsWith('/vendor') || path.startsWith('/seller')) {
       token = localStorage.getItem('vendorAccessToken') || sessionStorage.getItem('vendorAccessToken') || localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');

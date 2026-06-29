@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   CalendarDays,
@@ -24,6 +24,7 @@ import { productApi } from '../api/productAPI';
 import { buyerMessageApi } from '../api/buyerMessageAPI';
 import { marketResearchApi } from '../api/marketResearchAPI';
 import { wishlistApi } from '../api/wishlistAPI';
+import { promotionApi } from '../api/promotionAPI';
 import { recordViewedCategory } from '../utils/viewedCategories';
 import { sellerApi } from '../api/sellerAPI';
 import { cn } from '../lib/utils';
@@ -119,6 +120,44 @@ function isLoggedIn() {
       localStorage.getItem('accessToken') ||
       sessionStorage.getItem('accessToken')
   );
+}
+
+function getPromotionId(product) {
+  return (
+    product?.promotionId ||
+    product?.postPromotionId ||
+    product?.promotion?.id ||
+    null
+  );
+}
+
+function getPromotionStatus(product) {
+  return String(
+    product?.promotionStatus ||
+      product?.promotion?.status ||
+      ''
+  ).toUpperCase();
+}
+
+function isActivePromotedProduct(product) {
+  const promotionId = getPromotionId(product);
+  if (!promotionId) return false;
+  const status = getPromotionStatus(product);
+  return !status || status === 'ACTIVE';
+}
+
+function getPromotionClickSessionId() {
+  const key = 'promotionClickSessionId';
+  let sessionId = localStorage.getItem(key);
+  if (!sessionId) {
+    sessionId = `pc-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+    localStorage.setItem(key, sessionId);
+  }
+  return sessionId;
+}
+
+function getPromotionClickRecordKey(promotionId, productId) {
+  return `promotion-click-recorded-v2:${promotionId}:${productId}`;
 }
 
 function buildMarketRange(products, product) {
@@ -240,6 +279,7 @@ function MarketPriceBand({ range, currentPrice, isLoading }) {
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const location = useLocation();
   const [product, setProduct] = useState(null);
   const [allProducts, setAllProducts] = useState([]);
   const [selectedImage, setSelectedImage] = useState('');
@@ -254,6 +294,7 @@ export default function ProductDetail() {
   const [favorite, setFavorite] = useState(false);
   const [favoriteMessage, setFavoriteMessage] = useState('');
   const [pendingFavorite, setPendingFavorite] = useState(false);
+  const recordedPromotionClicksRef = useRef(new Set());
 
   useEffect(() => {
     const handleAuthChanged = (event) => {
@@ -262,7 +303,7 @@ export default function ProductDetail() {
       if (!nextLoggedIn) {
         setProduct((current) => current ? { ...current, vendorPhone: current.vendorPhoneMasked } : current);
       } else {
-        productApi.getPublicProductById(id)
+        productApi.getPublicProductById(id, { buyerAuth: true })
           .then((data) => {
             setProduct(data);
             setSelectedImage((current) => current || getProductImage(data));
@@ -275,7 +316,7 @@ export default function ProductDetail() {
   }, [id]);
 
   const loadProduct = async () => {
-    const data = await productApi.getPublicProductById(id);
+    const data = await productApi.getPublicProductById(id, { buyerAuth: isLoggedIn() });
     setProduct(data);
     setSelectedImage(getProductImage(data));
   };
@@ -285,7 +326,7 @@ export default function ProductDetail() {
     setIsLoading(true);
     setProduct(null);
 
-    productApi.getPublicProductById(id)
+    productApi.getPublicProductById(id, { buyerAuth: isLoggedIn() })
       .then((detail) => {
         if (!mounted) return;
         setProduct(detail);
@@ -350,6 +391,65 @@ export default function ProductDetail() {
     sellerApi.recordVisit(product.vendorId, product.id)
       .catch((err) => console.warn('Lỗi ghi nhận lượt truy cập sản phẩm:', err));
   }, [product?.id, product?.vendorId]);
+
+  const activePromotion = useMemo(() => {
+    const routedPromotion = location.state?.promotionId
+      ? {
+          id: location.state.promotionId,
+          status: String(location.state.promotionStatus || 'ACTIVE').toUpperCase(),
+        }
+      : null;
+
+    if (routedPromotion?.id) {
+      return routedPromotion;
+    }
+
+    if (isActivePromotedProduct(product)) {
+      return {
+        id: getPromotionId(product),
+        status: getPromotionStatus(product) || 'ACTIVE',
+      };
+    }
+
+    const cachedProduct = allProducts.find(
+      (item) => String(item.id) === String(product?.id || id)
+    );
+    if (isActivePromotedProduct(cachedProduct)) {
+      return {
+        id: getPromotionId(cachedProduct),
+        status: getPromotionStatus(cachedProduct) || 'ACTIVE',
+      };
+    }
+
+    return null;
+  }, [allProducts, id, location.state, product]);
+
+  useEffect(() => {
+    if (!loggedIn || !activePromotion?.id) return;
+    if (activePromotion.status && activePromotion.status !== 'ACTIVE') return;
+
+    const recordKey = getPromotionClickRecordKey(activePromotion.id, id);
+    if (
+      recordedPromotionClicksRef.current.has(recordKey) ||
+      sessionStorage.getItem(recordKey) === 'done'
+    ) {
+      return;
+    }
+    recordedPromotionClicksRef.current.add(recordKey);
+
+    promotionApi.recordPromotionClick(activePromotion.id, {
+      sessionId: getPromotionClickSessionId(),
+      surface: 'PRODUCT_DETAIL',
+    })
+      .then(() => {
+        sessionStorage.setItem(recordKey, 'done');
+      })
+      .catch((err) => {
+        sessionStorage.removeItem(recordKey);
+        recordedPromotionClicksRef.current.delete(recordKey);
+        console.warn('Lỗi ghi nhận lượt nhấp quảng bá:', err);
+      });
+  }, [activePromotion, id, loggedIn]);
 
   useEffect(() => {
     if (!id || !loggedIn) {

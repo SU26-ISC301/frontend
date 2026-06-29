@@ -197,6 +197,7 @@ function mapProductCard(product) {
 
   return {
     id: product.id,
+    promotionId: getPromotionId(product),
     title: product.name,
     price: formatPrice(lowestPrice),
     priceValue: lowestPrice,

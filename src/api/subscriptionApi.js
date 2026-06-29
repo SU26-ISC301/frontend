@@ -5,7 +5,9 @@ import axiosClient from './axiosClient';
  * @returns {{ planType, totalSlots, usedSlots, remainingSlots, expiresAt, canPost }}
  */
 export async function getSubscriptionStatus() {
-  const response = await axiosClient.get('/api/subscription/status');
+  const response = await axiosClient.get('/api/subscription/status', {
+    headers: { 'X-Role-Token': 'vendor' },
+  });
   const planData = response.data.data;
   if (planData) {
     const localData = {
@@ -31,6 +33,8 @@ export async function createPaymentLink(planType, paymentMethod = 'payos') {
   const response = await axiosClient.post('/api/subscription/upgrade', {
     planType,
     paymentMethod
+  }, {
+    headers: { 'X-Role-Token': 'vendor' },
   });
   return response.data.data;
 }
@@ -42,7 +46,8 @@ export async function createPaymentLink(planType, paymentMethod = 'payos') {
  */
 export async function checkPaymentStatus(orderCode) {
   const response = await axiosClient.get('/api/subscription/check-payment', {
-    params: { orderCode }
+    params: { orderCode },
+    headers: { 'X-Role-Token': 'vendor' },
   });
   return response.data.data?.status || 'pending';
 }
@@ -51,6 +56,8 @@ export async function checkPaymentStatus(orderCode) {
  * Trừ 1 lượt đăng tin sau khi post thành công
  */
 export async function useSubscriptionSlot() {
-  const response = await axiosClient.post('/api/subscription/use-slot', {});
+  const response = await axiosClient.post('/api/subscription/use-slot', {}, {
+    headers: { 'X-Role-Token': 'vendor' },
+  });
   return response.data;
 }

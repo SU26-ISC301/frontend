@@ -13,6 +13,7 @@ import {
   Banknote,
   BarChart3,
   Bell,
+  Bot,
   Boxes,
   Calendar,
   CheckCircle2,
@@ -86,12 +87,14 @@ import SubscriptionPlanModal, {
 import PostingQuotaBanner from "../components/Seller/PostingQuotaBanner";
 import { ChatWorkspace } from "../components/Messaging/ChatWorkspace";
 import { MessageLauncher } from "../components/Messaging/MessageLauncher";
+import { AiChatboxLauncher, AiChatboxPage } from "../components/AiChatbox/AiChatbox";
 
 const navItems = [
   { slug: "trangchu", label: "Tổng quan", icon: LayoutDashboard },
   { slug: "san-pham", label: "Sản phẩm", icon: PackageSearch },
   { slug: "kho-hang", label: "Kho hàng", icon: Warehouse },
   { slug: "tin-nhan", label: "Tin nhắn", icon: MessageSquareText },
+  { slug: "chatbox-ai", label: "Chatbox AI", icon: Bot },
   {
     slug: "nghien-cuu-thi-truong",
     label: "Nghiên cứu thị trường",
@@ -106,6 +109,8 @@ const navItems = [
 const visibleNavItems = navItems.filter(
   (item) => VENDOR_FEATURES.warehouse || item.slug !== "kho-hang",
 );
+
+const PUBLIC_PRODUCTS_PAGE_SIZE = 100;
 
 const pageTitles = {
   trangchu: [
@@ -131,6 +136,10 @@ const pageTitles = {
   "tin-nhan": [
     "Tin nhắn khách hàng",
     "Phản hồi nhanh để duy trì điểm chăm sóc khách hàng của shop.",
+  ],
+  "chatbox-ai": [
+    "Chatbox AI",
+    "Phân tích tài chính, ROI quảng bá và gợi ý tối ưu hiệu quả bài đăng.",
   ],
   "nghien-cuu-thi-truong": [
     "Nghiên cứu thị trường",
@@ -323,6 +332,106 @@ function getVendorInfo() {
   }
 }
 
+function getStoredVendorId(vendorInfo = getVendorInfo()) {
+  return vendorInfo?.vendorId || vendorInfo?.id || vendorInfo?.vendor?.id || null;
+}
+
+function normalizeShopFilterValue(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function isProductOwnedByStoredVendor(product, vendorInfo = getVendorInfo()) {
+  if (!product) return false;
+
+  const vendorId = getStoredVendorId(vendorInfo);
+  const productVendorIds = [
+    product.vendorId,
+    product.vendor_id,
+    product.vendor?.id,
+    product.shopId,
+    product.shop_id,
+  ].filter((value) => value !== undefined && value !== null && value !== "");
+
+  if (vendorId && productVendorIds.some((id) => String(id) === String(vendorId))) {
+    return true;
+  }
+
+  const shopNames = [
+    vendorInfo?.shopName,
+    vendorInfo?.vendorName,
+    vendorInfo?.vendor?.shopName,
+    vendorInfo?.vendor?.name,
+  ]
+    .map(normalizeShopFilterValue)
+    .filter(Boolean);
+
+  const productShopNames = [
+    product.vendorName,
+    product.shopName,
+    product.vendor?.shopName,
+    product.vendor?.name,
+  ]
+    .map(normalizeShopFilterValue)
+    .filter(Boolean);
+
+  return shopNames.some((shopName) => productShopNames.includes(shopName));
+}
+
+function hasStoredVendorIdentity(vendorInfo = getVendorInfo()) {
+  return Boolean(
+    getStoredVendorId(vendorInfo) ||
+      vendorInfo?.shopName ||
+      vendorInfo?.vendorName ||
+      vendorInfo?.vendor?.shopName ||
+      vendorInfo?.vendor?.name,
+  );
+}
+
+function getProductsPageContent(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.content)) return data.content;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.data)) return data.data;
+  return [];
+}
+
+function getProductsTotalPages(data) {
+  if (Array.isArray(data)) return 1;
+  return Math.max(1, Number(data?.totalPages ?? data?.page?.totalPages ?? 1) || 1);
+}
+
+async function getPublicProductsOwnedByVendor(vendorInfo = getVendorInfo()) {
+  const firstPage = await sellerApi.getPublicProducts({
+    page: 0,
+    size: PUBLIC_PRODUCTS_PAGE_SIZE,
+  });
+  const products = [...getProductsPageContent(firstPage)];
+  const totalPages = getProductsTotalPages(firstPage);
+
+  if (totalPages > 1) {
+    const remainingPages = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, index) =>
+        sellerApi.getPublicProducts({
+          page: index + 1,
+          size: PUBLIC_PRODUCTS_PAGE_SIZE,
+        }).catch(() => null),
+      ),
+    );
+
+    remainingPages.forEach((page) => {
+      products.push(...getProductsPageContent(page));
+    });
+  }
+
+  return products.filter((product) =>
+    isProductOwnedByStoredVendor(product, vendorInfo),
+  );
+}
+
 function formatCurrency(value) {
   return `${new Intl.NumberFormat("vi-VN").format(value)}đ`;
 }
@@ -360,6 +469,56 @@ function getPromotionStatusLabel(status) {
 
 function toInputDate(date) {
   return date.toISOString().split("T")[0];
+}
+
+function toDateInputValue(value) {
+  if (!value) return "";
+  const normalized = String(value).slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : "";
+}
+
+function getPromotionEntityId(promotion) {
+  return (
+    promotion?.promotionId ??
+    promotion?.id ??
+    promotion?.postPromotionId ??
+    promotion?.promotion?.id ??
+    null
+  );
+}
+
+function getPromotionProductId(promotion) {
+  return (
+    promotion?.postId ??
+    promotion?.productId ??
+    promotion?.product?.id ??
+    promotion?.post?.id ??
+    null
+  );
+}
+
+function getProductDisplayImage(product) {
+  const mainMedia =
+    product?.mediaList?.find((media) => media.isMain) ||
+    product?.mediaList?.[0] ||
+    product?.media?.find?.((media) => media.isMain) ||
+    product?.media?.[0];
+  const firstVariant = product?.variants?.[0];
+  return (
+    product?.imageUrl ||
+    product?.image ||
+    product?.thumbnail ||
+    product?.thumbnailUrl ||
+    mainMedia?.mediaUrl ||
+    mainMedia?.media_url ||
+    firstVariant?.imageUrl ||
+    firstVariant?.image_url ||
+    ""
+  );
+}
+
+function isActivePromotion(promotion) {
+  return String(promotion?.status || "").toUpperCase() === "ACTIVE";
 }
 
 function normalizeCategoryText(value) {
@@ -624,7 +783,7 @@ function VendorLayout({
       ...visibleNavItems.map((item) => ({
         slug: item.slug,
         title: item.label,
-        meta: "Chức năng seller",
+        meta: "Chức năng người bán",
         icon: item.icon,
       })),
       ...storedProducts.map((product) => ({
@@ -666,7 +825,7 @@ function VendorLayout({
             0);
       setWalletBalance(Number(balance || 0));
     } catch (err) {
-      console.error("Không thể tải số dư tài khoản seller:", err);
+      console.error("Không thể tải số dư tài khoản người bán:", err);
       setWalletBalance(0);
       setWalletError(err.response?.data?.message || "");
     } finally {
@@ -687,6 +846,7 @@ function VendorLayout({
     localStorage.removeItem("vendorAccessToken");
     localStorage.removeItem("vendorRefreshToken");
     localStorage.removeItem("vendorInfo");
+    window.dispatchEvent(new CustomEvent("vendor-auth-changed", { detail: { loggedIn: false } }));
     navigate("/seller");
   };
 
@@ -747,10 +907,10 @@ function VendorLayout({
           </span>
           <div className="min-w-0">
             <p className="text-base font-extrabold tracking-tight text-white">
-              Seller Studio
+              Kênh người bán
             </p>
             <p className="truncate text-xs font-semibold text-emerald-100/65">
-              {vendorInfo.shopName || "ShopVN Seller"}
+              {vendorInfo.shopName || "ShopVN Người bán"}
             </p>
           </div>
           <button
@@ -800,7 +960,7 @@ function VendorLayout({
               </span>
               <div className="min-w-0">
                 <p className="truncate text-xs font-bold text-white">
-                  {vendorInfo.shopName || "ShopVN Seller"}
+                  {vendorInfo.shopName || "ShopVN Người bán"}
                 </p>
                 <p className="truncate text-[11px] font-medium text-emerald-100/55">
                   Đang hoạt động
@@ -980,6 +1140,7 @@ function VendorLayout({
           {children}
         </main>
       </div>
+      <AiChatboxLauncher mode="vendor" fullPagePath="/vendor/chatbox-ai" />
       <MessageLauncher mode="vendor" />
       <HeaderTopUpModal
         open={headerTopUpModalOpen}
@@ -1215,7 +1376,7 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
   const [statsData, setStatsData] = useState(null);
 
   const vendorInfo = getVendorInfo();
-  const vendorId = vendorInfo?.id || vendorInfo?.vendorId;
+  const vendorId = getStoredVendorId(vendorInfo);
 
   useEffect(() => {
     if (!vendorId) return;
@@ -2214,8 +2375,7 @@ function ProductsPage({
   useEffect(() => {
     const syncBackendProducts = async () => {
       const vendorInfo = getVendorInfo();
-      const vendorId = vendorInfo?.id || vendorInfo?.vendorId;
-      if (!vendorId) return;
+      if (!hasStoredVendorIdentity(vendorInfo)) return;
 
       try {
         let categories = [];
@@ -2237,7 +2397,7 @@ function ProductsPage({
         }
         setCategoriesList(categories);
 
-        const backendProducts = await sellerApi.getProductsByVendor(vendorId);
+        const backendProducts = await getPublicProductsOwnedByVendor(vendorInfo);
         if (Array.isArray(backendProducts)) {
           const stored = productStorage.getStoredProducts();
 
@@ -2268,7 +2428,7 @@ function ProductsPage({
           setProductsList(updated);
         }
       } catch (err) {
-        console.warn("Lỗi đồng bộ sản phẩm từ Backend:", err);
+        console.warn("Lỗi đồng bộ sản phẩm từ máy chủ:", err);
       }
     };
 
@@ -2481,7 +2641,7 @@ function ProductsPage({
           } catch (err) {
             console.error("Lỗi khi xóa sản phẩm trên BE:", err);
             alert(
-              "Không thể xóa sản phẩm trên Backend.\nChi tiết lỗi: " +
+              "Không thể xóa sản phẩm trên máy chủ.\nChi tiết lỗi: " +
                 (err.response?.data?.message ||
                   err.response?.data?.error ||
                   err.message),
@@ -4316,7 +4476,7 @@ function MarketResearchPage({ onToast, onOpenPlanModal }) {
     setRefreshKey((value) => value + 1);
     onToast({
       title: "Đang cập nhật dữ liệu thật",
-      message: "Backend đang lấy dữ liệu public từ 4 shop bên ngoài.",
+      message: "Máy chủ đang lấy dữ liệu công khai từ 4 shop bên ngoài.",
     });
   };
 
@@ -4888,8 +5048,6 @@ function MarketInsightRow({ icon: Icon, label, value }) {
 }
 
 function MarketingPage({ onToast, navigateTo }) {
-  const vendorInfo = getVendorInfo();
-  const vendorId = vendorInfo?.id || vendorInfo?.vendorId;
   const [wallet, setWallet] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [promotions, setPromotions] = useState([]);
@@ -4913,9 +5071,6 @@ function MarketingPage({ onToast, navigateTo }) {
   });
 
   const mapProductCandidate = useCallback((product) => {
-    const mainMedia =
-      product.mediaList?.find((media) => media.isMain) ||
-      product.mediaList?.[0];
     const firstVariant = product.variants?.[0];
     const promotionId =
       product.promotionId ??
@@ -4935,13 +5090,102 @@ function MarketingPage({ onToast, navigateTo }) {
       price: Number(firstVariant?.price || 0),
       status: String(product.status || "").toUpperCase(),
       sold: Number(product.soldCount || 0),
-      imageUrl: mainMedia?.mediaUrl || firstVariant?.imageUrl || "",
+      imageUrl: getProductDisplayImage(product),
       vendorId: product.vendorId,
       isPromoted: Boolean(product.isPromoted || promotionId),
       promotionId,
       promotion: product.promotion || null,
     };
   }, []);
+
+  const normalizePromotion = useCallback(
+    (promotion, productsById = new Map()) => {
+      const promotionId = getPromotionEntityId(promotion);
+      const postId = getPromotionProductId(promotion);
+      const matchedProduct = productsById.get(String(postId));
+      const productCandidate = matchedProduct
+        ? mapProductCandidate(matchedProduct)
+        : null;
+      const initialBudget = Number(
+        promotion?.initialBudget ??
+          promotion?.promotionAmount ??
+          promotion?.budget ??
+          promotion?.totalBudget ??
+          0,
+      );
+      const remainingBudget = Number(
+        promotion?.remainingBudget ??
+          promotion?.remainingAmount ??
+          promotion?.amountRemaining ??
+          initialBudget,
+      );
+      const roiAmount = Number(
+        promotion?.roiPerClick ??
+          promotion?.roiAmount ??
+          promotion?.costPerClick ??
+          promotion?.cpcAmount ??
+          0,
+      );
+      const customerClicks = Number(
+        promotion?.customerClicks ??
+          promotion?.clicks ??
+          promotion?.clickCount ??
+          promotion?.chargedClicks ??
+          0,
+      );
+      const impressions = Number(
+        promotion?.impressions ?? promotion?.impressionCount ?? 0,
+      );
+      const explicitSpentAmount = Number(promotion?.spentAmount || 0);
+      const budgetSpentAmount = Math.max(0, initialBudget - remainingBudget);
+      const spentAmount =
+        explicitSpentAmount || budgetSpentAmount || customerClicks * roiAmount;
+      return {
+        promotionId,
+        postId,
+        postTitle:
+          promotion?.postTitle ||
+          promotion?.productName ||
+          promotion?.product?.name ||
+          productCandidate?.name ||
+          (postId ? `Bài đăng #${postId}` : "Bài đăng quảng bá"),
+        postImageUrl:
+          promotion?.postImageUrl ||
+          promotion?.productImage ||
+          promotion?.product?.imageUrl ||
+          getProductDisplayImage(promotion?.product) ||
+          productCandidate?.imageUrl ||
+          "",
+        category:
+          promotion?.category ||
+          promotion?.categoryName ||
+          productCandidate?.category ||
+          "Chưa phân loại",
+        price: Number(promotion?.price ?? productCandidate?.price ?? 0),
+        status: promotion?.status || "ACTIVE",
+        initialBudget,
+        remainingBudget,
+        spentAmount,
+        roiPerClick: roiAmount,
+        estimatedClicks: Number(
+          promotion?.estimatedClicks ??
+            (initialBudget && roiAmount
+              ? Math.floor(initialBudget / roiAmount)
+              : 0),
+        ),
+        customerClicks,
+        impressions,
+        ctr: Number(
+          promotion?.ctr ??
+            (impressions ? (customerClicks / impressions) * 100 : 0),
+        ),
+        startDate: promotion?.startDate || null,
+        endDate: promotion?.endDate || null,
+        dataSource: promotion?.dataSource || "PROMOTIONS_API",
+      };
+    },
+    [mapProductCandidate],
+  );
 
   const mapPromotedProduct = useCallback(
     (product, detail = null) => {
@@ -4989,9 +5233,10 @@ function MarketingPage({ onToast, navigateTo }) {
   );
 
   const loadPromotionData = useCallback(async () => {
-    if (!vendorId) {
+    const currentVendorInfo = getVendorInfo();
+    if (!hasStoredVendorIdentity(currentVendorInfo)) {
       setError(
-        "Không tìm thấy vendorId trong phiên đăng nhập. Vui lòng đăng nhập lại Seller Center.",
+          "Không tìm thấy thông tin shop trong phiên đăng nhập. Vui lòng đăng nhập lại Trung tâm người bán.",
       );
       setLoading(false);
       return;
@@ -5000,60 +5245,104 @@ function MarketingPage({ onToast, navigateTo }) {
     setLoading(true);
     setError("");
     try {
-      const [walletResult, productResult] = await Promise.allSettled([
+      const [walletResult, transactionsResult, promotionsResult, productResult] = await Promise.allSettled([
         promotionApi.getPromotionWallet(),
-        sellerApi.getPublicProducts(),
+        promotionApi.getWalletTransactions(20),
+        promotionApi.getPromotions(),
+        getPublicProductsOwnedByVendor(currentVendorInfo),
       ]);
 
       const walletData =
         walletResult.status === "fulfilled" ? walletResult.value : null;
-      const productData =
-        productResult.status === "fulfilled" ? productResult.value : [];
-      const vendorProducts = (
-        Array.isArray(productData) ? productData : []
-      ).filter(
-        (product) => String(product.vendorId || "") === String(vendorId),
+      const transactionData =
+        transactionsResult.status === "fulfilled" ? transactionsResult.value : [];
+      if (productResult.status === "rejected") {
+        throw productResult.reason;
+      }
+      if (walletResult.status === "rejected") {
+        console.warn("Không thể tải số dư ví quảng bá:", walletResult.reason);
+      }
+      if (transactionsResult.status === "rejected") {
+        console.warn("Không thể tải giao dịch ví quảng bá:", transactionsResult.reason);
+      }
+      if (promotionsResult.status === "rejected") {
+        console.warn("Không thể tải danh sách quảng bá:", promotionsResult.reason);
+      }
+      const vendorProducts =
+        Array.isArray(productResult.value)
+          ? productResult.value
+          : [];
+      const productsById = new Map(
+        vendorProducts.map((product) => [String(product.id), product]),
       );
       const activeVendorProducts = vendorProducts.filter(
         (product) => String(product.status || "").toLowerCase() === "active",
       );
-      const promotedProducts = activeVendorProducts.filter((product) =>
-        Boolean(
-          product.isPromoted ||
-          product.promotionId ||
-          product.postPromotionId ||
-          product.promotion?.id,
-        ),
-      );
-      const productPromotions = promotedProducts
-        .map((product) => mapPromotedProduct(product))
-        .filter((promotion) => promotion.promotionId);
+      const backendPromotions =
+        promotionsResult.status === "fulfilled" && Array.isArray(promotionsResult.value)
+          ? promotionsResult.value
+          : [];
+      const detailedBackendPromotions = backendPromotions.length
+        ? await Promise.all(
+            backendPromotions.map(async (promotion) => {
+              const promotionId = getPromotionEntityId(promotion);
+              if (!promotionId) return promotion;
+              try {
+                const detail = await promotionApi.getPromotionDetail(promotionId);
+                return {
+                  ...promotion,
+                  ...detail,
+                  id: detail?.id ?? promotion?.id,
+                  promotionId: detail?.promotionId ?? detail?.id ?? promotionId,
+                };
+              } catch (detailError) {
+                console.warn(
+                  `Không thể tải chi tiết promotion ${promotionId}:`,
+                  detailError,
+                );
+                return promotion;
+              }
+            }),
+          )
+        : [];
+      const productPromotions = backendPromotions.length
+        ? detailedBackendPromotions
+            .map((promotion) => normalizePromotion(promotion, productsById))
+            .filter((promotion) => promotion.promotionId && isActivePromotion(promotion))
+        : activeVendorProducts
+            .filter((product) =>
+              Boolean(
+                product.isPromoted ||
+                  product.promotionId ||
+                  product.postPromotionId ||
+                  product.promotion?.id,
+              ),
+            )
+            .map((product) => mapPromotedProduct(product))
+            .filter((promotion) => promotion.promotionId);
       const promotedPostIds = new Set(
         productPromotions.map((promotion) => String(promotion.postId)),
       );
 
       setWallet(walletData || null);
-      setTransactions([]);
+      setTransactions(Array.isArray(transactionData) ? transactionData : []);
       setPromotions(productPromotions);
       setEligibleProducts(
         activeVendorProducts
           .filter((product) => !promotedPostIds.has(String(product.id)))
           .map(mapProductCandidate),
       );
-      if (walletResult.status === "rejected") {
-        throw walletResult.reason;
-      }
     } catch (err) {
       console.error("Không thể tải dữ liệu tiếp thị quảng cáo:", err);
       setError(
         err.response?.data?.message ||
           err.message ||
-          "Không thể tải dữ liệu tiếp thị quảng cáo từ backend.",
+          "Không thể tải dữ liệu tiếp thị quảng cáo từ máy chủ.",
       );
     } finally {
       setLoading(false);
     }
-  }, [mapProductCandidate, mapPromotedProduct, vendorId]);
+  }, [mapProductCandidate, mapPromotedProduct, normalizePromotion]);
 
   useEffect(() => {
     loadPromotionData();
@@ -5193,23 +5482,62 @@ function MarketingPage({ onToast, navigateTo }) {
     setSelectedPromotion(promotion);
   };
 
+  const openPromotionEditor = (promotion) => {
+    setEditPromotion({
+      ...promotion,
+      editInitialBudget: Number(promotion.initialBudget || 0),
+      editRoiPerClick: Number(promotion.roiPerClick || 0),
+      editStartDate: toDateInputValue(promotion.startDate) || startDate,
+      editEndDate: toDateInputValue(promotion.endDate) || endDate,
+    });
+  };
+
   const handleUpdatePromotion = async () => {
     if (!editPromotion) return;
+    const nextBudget = Number(
+      editPromotion.editInitialBudget ?? editPromotion.initialBudget ?? 0,
+    );
+    const nextRoiPerClick = Number(
+      editPromotion.editRoiPerClick ?? editPromotion.roiPerClick ?? 0,
+    );
+    const nextStartDate = editPromotion.editStartDate || toDateInputValue(editPromotion.startDate);
+    const nextEndDate = editPromotion.editEndDate || toDateInputValue(editPromotion.endDate);
+    if (
+      !nextBudget ||
+      nextBudget < PROMOTION_CONFIG.minBudget ||
+      nextRoiPerClick < PROMOTION_CONFIG.minAmountPerClick ||
+      nextRoiPerClick > nextBudget ||
+      !nextStartDate ||
+      !nextEndDate ||
+      new Date(`${nextEndDate}T23:59:59`) < new Date(`${nextStartDate}T00:00:00`)
+    ) {
+      onToast({
+        title: "Thông tin chỉnh sửa chưa hợp lệ",
+        message:
+          "ROI mỗi lượt nhấp phải lớn hơn 0, không vượt tổng tiền quảng bá và ngày kết thúc không được trước ngày bắt đầu.",
+        type: "error",
+      });
+      return;
+    }
     setActionLoading(true);
     try {
       const updated = await promotionApi.updatePromotion(
         editPromotion.promotionId,
         {
-          promotionAmount: Number(editPromotion.initialBudget || 0),
-          roiPerClick: Number(editPromotion.roiPerClick || 0),
+          promotionAmount: nextBudget,
+          roiPerClick: nextRoiPerClick,
+          startDate: toApiDate(nextStartDate),
+          endDate: toApiDate(nextEndDate, true),
         },
       );
       setEditPromotion(null);
-      setSelectedPromotion(updated);
+      setSelectedPromotion(
+        updated ? normalizePromotion({ ...editPromotion, ...updated }) : null,
+      );
       await loadPromotionData();
       onToast({
         title: "Đã cập nhật quảng bá",
-        message: "Dữ liệu đã được cập nhật từ bảng post_promotions.",
+        message: "Dữ liệu quảng bá đã được cập nhật.",
       });
     } catch (err) {
       onToast({
@@ -5232,7 +5560,7 @@ function MarketingPage({ onToast, navigateTo }) {
       await loadPromotionData();
       onToast({
         title: "Đã dừng quảng bá",
-        message: "Ngân sách còn lại đã được release về ví nếu còn số dư.",
+        message: "Ngân sách còn lại đã được hoàn về ví nếu máy chủ ghi nhận còn số dư.",
       });
     } catch (err) {
       onToast({
@@ -5250,7 +5578,7 @@ function MarketingPage({ onToast, navigateTo }) {
       <Panel className="p-6">
         <div className="flex items-center gap-3 text-sm font-bold text-stone-500">
           <RefreshCw className="h-4 w-4 animate-spin text-orange-500" />
-          Đang tải dữ liệu thật từ backend...
+          Đang tải dữ liệu thật từ máy chủ...
         </div>
       </Panel>
     );
@@ -5289,23 +5617,23 @@ function MarketingPage({ onToast, navigateTo }) {
             icon={WalletCards}
             value={formatShortCurrency(availableBalance)}
             label={`${formatShortCurrency(lockedBalance)} đang giữ`}
-            text="Dữ liệu thật từ ví quảng bá Seller."
+            text="Dữ liệu thật từ ví quảng bá người bán."
             tone="is-green"
           />
           <InsightCard
-            title="Promotion active"
+            title="Quảng bá đang chạy"
             icon={Megaphone}
             value={new Intl.NumberFormat("vi-VN").format(summary.active)}
             label={`${formatShortCurrency(summary.remaining)} còn lại`}
-            text="Danh sách promotion lấy từ database."
+            text="Danh sách quảng bá lấy từ cơ sở dữ liệu."
             tone="is-orange"
           />
           <InsightCard
-            title="Chi phí lượt click"
+            title="Chi phí lượt nhấp"
             icon={CircleDollarSign}
             value={formatShortCurrency(totalSpent || summary.spent)}
-            label={`${summary.clicks} click khách hàng`}
-            text="Chỉ trừ tiền khi click hợp lệ."
+            label={`${summary.clicks} lượt nhấp của khách`}
+            text="Chỉ trừ tiền khi lượt nhấp hợp lệ."
             tone="is-teal"
           />
           <InsightCard
@@ -5316,8 +5644,8 @@ function MarketingPage({ onToast, navigateTo }) {
                 ? formatPercent((summary.clicks / summary.impressions) * 100)
                 : "0%"
             }
-            label={`${new Intl.NumberFormat("vi-VN").format(summary.impressions)} impressions`}
-            text="Từ impression/click backend ghi nhận."
+            label={`${new Intl.NumberFormat("vi-VN").format(summary.impressions)} lượt hiển thị`}
+            text="Từ lượt hiển thị/lượt nhấp máy chủ ghi nhận."
             tone="is-yellow"
           />
         </section>
@@ -5327,7 +5655,7 @@ function MarketingPage({ onToast, navigateTo }) {
             <div className="p-5">
               <PanelHeader
                 title="Chọn bài đăng để tiếp thị quảng cáo"
-                subtitle="Chỉ hiển thị bài ACTIVE lấy trực tiếp từ backend."
+                subtitle="Chỉ hiển thị bài đang chạy lấy trực tiếp từ máy chủ."
               >
                 <button
                   type="button"
@@ -5343,7 +5671,7 @@ function MarketingPage({ onToast, navigateTo }) {
               <div className="border-t border-stone-100 p-8 text-center">
                 <PackageSearch className="mx-auto h-10 w-10 text-stone-300" />
                 <p className="mt-3 text-sm font-extrabold text-stone-700">
-                  Chưa có bài ACTIVE để quảng bá
+                  Chưa có bài đang chạy để quảng bá
                 </p>
                 <p className="mt-1 text-xs font-semibold text-stone-400">
                   Hãy đăng tin và được duyệt trước khi tạo tiếp thị quảng cáo.
@@ -5396,12 +5724,12 @@ function MarketingPage({ onToast, navigateTo }) {
                           </p>
                           <div className="mt-3 grid gap-2 sm:grid-cols-3">
                             <PromotionPreviewItem
-                              label="Số tiền cho mỗi lượt được click"
+                              label="Số tiền cho mỗi lượt nhấp"
                               value={formatCurrency(roiPerClick)}
                               tone="text-orange-700"
                             />
                             <PromotionPreviewItem
-                              label="Click ước tính"
+                              label="Lượt nhấp ước tính"
                               value={new Intl.NumberFormat("vi-VN").format(
                                 roiPerClick > 0
                                   ? Math.floor(budget / roiPerClick)
@@ -5442,7 +5770,7 @@ function MarketingPage({ onToast, navigateTo }) {
           <Panel className="p-5">
             <PanelHeader
               title="Ví quảng bá"
-              subtitle="Tất cả số liệu lấy từ backend."
+              subtitle="Tất cả số liệu lấy từ máy chủ."
             />
             <div className="mt-4 grid gap-3">
               <PromotionPreviewItem
@@ -5545,11 +5873,12 @@ function MarketingPage({ onToast, navigateTo }) {
         <PromotionPerformanceTable
           promotions={promotions}
           onOpenDetail={openPromotionDetail}
+          onEdit={openPromotionEditor}
         />
         <PromotionDetailModal
           promotion={selectedPromotion}
           onClose={() => setSelectedPromotion(null)}
-          onEdit={() => setEditPromotion(selectedPromotion)}
+          onEdit={() => openPromotionEditor(selectedPromotion)}
           onStop={() => setStopPromotion(selectedPromotion)}
         />
         <PromotionEditModal
@@ -5580,7 +5909,7 @@ function MarketingPage({ onToast, navigateTo }) {
         <Panel className="p-5">
           <PanelHeader
             title="Thiết lập tiếp thị quảng cáo"
-            subtitle="Nhập số tiền quảng bá, số tiền cho mỗi lượt được click và thời gian chạy."
+            subtitle="Nhập số tiền quảng bá, số tiền cho mỗi lượt nhấp và thời gian chạy."
           >
             <button
               type="button"
@@ -5651,7 +5980,7 @@ function MarketingPage({ onToast, navigateTo }) {
             <label className="block">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
-                  Số tiền cho mỗi lượt được click
+                  Số tiền cho mỗi lượt nhấp
                 </span>
                 <span className="text-xs font-bold text-stone-500">
                   Tối đa {formatCurrency(budget)}
@@ -5667,11 +5996,11 @@ function MarketingPage({ onToast, navigateTo }) {
                   setRoiPerClick(Number(event.target.value || 0))
                 }
                 className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
-                placeholder="Nhập số tiền trả cho mỗi lượt click"
+                placeholder="Nhập số tiền trả cho mỗi lượt nhấp"
               />
               {!isRoiValid && (
                 <p className="mt-2 text-xs font-semibold text-red-600">
-                  Số tiền cho mỗi lượt được click phải lớn hơn 0 và không vượt
+                  Số tiền cho mỗi lượt nhấp phải lớn hơn 0 và không vượt
                   quá số tiền quảng bá.
                 </p>
               )}
@@ -5709,12 +6038,12 @@ function MarketingPage({ onToast, navigateTo }) {
                 tone="text-teal-700"
               />
               <PromotionPreviewItem
-                label="Số tiền cho mỗi lượt được click"
+                label="Số tiền cho mỗi lượt nhấp"
                 value={formatCurrency(roiPerClick)}
                 tone="text-orange-700"
               />
               <PromotionPreviewItem
-                label="Estimated clicks"
+                label="Lượt nhấp ước tính"
                 value={new Intl.NumberFormat("vi-VN").format(estimatedClicks)}
                 tone="text-stone-800"
               />
@@ -5758,22 +6087,22 @@ function MarketingPage({ onToast, navigateTo }) {
         <Panel className="p-5">
           <PanelHeader
             title="Cách tính theo dữ liệu thật"
-            subtitle="Không dùng mock data."
+            subtitle="Không dùng dữ liệu mẫu."
           />
           <div className="mt-4 space-y-3">
             <PromotionPreviewItem
-              label="Công thức estimated clicks"
-              value={`${formatCurrency(budget)} / ${formatCurrency(roiPerClick)} = ${new Intl.NumberFormat("vi-VN").format(estimatedClicks)} click`}
+              label="Công thức lượt nhấp ước tính"
+              value={`${formatCurrency(budget)} / ${formatCurrency(roiPerClick)} = ${new Intl.NumberFormat("vi-VN").format(estimatedClicks)} lượt nhấp`}
               tone="text-stone-800"
             />
             <PromotionPreviewItem
-              label="Reserve budget"
-              value="available balance giảm, locked balance tăng"
+              label="Giữ ngân sách"
+              value="Số dư khả dụng giảm, số dư đang giữ tăng"
               tone="text-orange-700"
             />
             <PromotionPreviewItem
-              label="Charge"
-              value="Mỗi click hợp lệ trừ đúng số tiền đã nhập"
+              label="Trừ tiền"
+              value="Mỗi lượt nhấp hợp lệ trừ đúng số tiền đã nhập"
               tone="text-teal-700"
             />
           </div>
@@ -5799,26 +6128,26 @@ function PromotionPreviewItem({ label, value, tone }) {
   );
 }
 
-function PromotionPerformanceTable({ promotions, onOpenDetail }) {
+function PromotionPerformanceTable({ promotions, onOpenDetail, onEdit }) {
   return (
     <Panel className="overflow-hidden">
       <div className="p-5">
         <PanelHeader
           title="Bài đăng đang được quảng bá"
-          subtitle="Component dùng dữ liệu thật từ post_promotions, promotion_clicks và promotion_impressions."
+          subtitle="Dữ liệu lấy trực tiếp từ API /api/promotions/mine."
         />
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[960px] text-left text-sm">
+        <table className="w-full min-w-[1120px] text-left text-sm">
           <thead className="vendor-table-head">
             <tr>
               {[
-                "Bài đăng",
-                "Trạng thái",
-                "Ngân sách",
-                "Số tiền cho mỗi lượt được click",
-                "Estimated/Customer click",
-                "Impression/CTR",
+                "Sản phẩm",
+                "Tổng quảng bá",
+                "ROI",
+                "Lượt nhấp",
+                "Trừ/lượt nhấp",
+                "Còn lại",
                 "Thao tác",
               ].map((column) => (
                 <th key={column} className="px-5 py-3.5">
@@ -5842,8 +6171,10 @@ function PromotionPerformanceTable({ promotions, onOpenDetail }) {
                 const initialBudget = Number(promotion.initialBudget || 0);
                 const remainingBudget = Number(promotion.remainingBudget || 0);
                 const roiAmount = Number(promotion.roiPerClick || 0);
+                const customerClicks = Number(promotion.customerClicks || 0);
+                const spentAmount = getPromotionSpendAmount(promotion);
                 const spentPercent = initialBudget
-                  ? (Number(promotion.spentAmount || 0) / initialBudget) * 100
+                  ? (spentAmount / initialBudget) * 100
                   : 0;
                 return (
                   <tr key={promotion.promotionId} className="vendor-table-row">
@@ -5865,25 +6196,20 @@ function PromotionPerformanceTable({ promotions, onOpenDetail }) {
                             {promotion.postTitle}
                           </p>
                           <p className="mt-1 text-xs font-semibold text-stone-400">
-                            PRM-{promotion.promotionId} · Post #
+                            PRM-{promotion.promotionId} · Bài đăng #
                             {promotion.postId}
                           </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-5 py-4">
-                      <StatusBadge
-                        status={getPromotionStatusLabel(promotion.status)}
-                      />
-                    </td>
-                    <td className="px-5 py-4">
                       {initialBudget ? (
                         <>
                           <p className="font-extrabold text-stone-700">
-                            {formatCurrency(remainingBudget)}
+                            {formatCurrency(initialBudget)}
                           </p>
                           <p className="mt-1 text-xs font-semibold text-stone-400">
-                            / {formatCurrency(initialBudget)}
+                            Đã trừ {formatCurrency(spentAmount)}
                           </p>
                           <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-100">
                             <div
@@ -5896,7 +6222,7 @@ function PromotionPerformanceTable({ promotions, onOpenDetail }) {
                         </>
                       ) : (
                         <p className="text-xs font-bold text-stone-400">
-                          Chưa đồng bộ từ post_promotions
+                          Chưa có ngân sách quảng bá
                         </p>
                       )}
                     </td>
@@ -5909,38 +6235,39 @@ function PromotionPerformanceTable({ promotions, onOpenDetail }) {
                         </span>
                       )}
                     </td>
+                    <td className="px-5 py-4 font-extrabold text-stone-700">
+                      {new Intl.NumberFormat("vi-VN").format(customerClicks)}
+                    </td>
+                    <td className="px-5 py-4 font-extrabold text-red-600">
+                      {roiAmount ? formatCurrency(roiAmount) : "0đ"}
+                    </td>
                     <td className="px-5 py-4">
-                      <p className="font-extrabold text-stone-700">
-                        {new Intl.NumberFormat("vi-VN").format(
-                          Number(promotion.estimatedClicks || 0),
-                        )}
+                      <p className="font-extrabold text-teal-700">
+                        {formatCurrency(remainingBudget)}
                       </p>
-                      <p className="mt-1 text-xs font-semibold text-teal-700">
-                        Khách click{" "}
-                        {new Intl.NumberFormat("vi-VN").format(
-                          Number(promotion.customerClicks || 0),
-                        )}
+                      <p className="mt-1 text-xs font-semibold text-stone-400">
+                        {getPromotionStatusLabel(promotion.status)}
                       </p>
                     </td>
                     <td className="px-5 py-4">
-                      <p className="font-extrabold text-stone-700">
-                        {new Intl.NumberFormat("vi-VN").format(
-                          Number(promotion.impressions || 0),
-                        )}
-                      </p>
-                      <p className="mt-1 text-xs font-semibold text-teal-700">
-                        CTR {formatPercent(Number(promotion.ctr || 0))}
-                      </p>
-                    </td>
-                    <td className="px-5 py-4">
-                      <button
-                        type="button"
-                        className="vendor-secondary-button min-h-9 px-3"
-                        onClick={() => onOpenDetail(promotion)}
-                      >
-                        <Eye className="h-4 w-4" />
-                        Chi tiết
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="vendor-secondary-button min-h-9 px-3"
+                          onClick={() => onOpenDetail(promotion)}
+                        >
+                          <Eye className="h-4 w-4" />
+                          Chi tiết
+                        </button>
+                        <button
+                          type="button"
+                          className="vendor-secondary-button min-h-9 px-3"
+                          onClick={() => onEdit?.(promotion)}
+                        >
+                          <PenLine className="h-4 w-4" />
+                          Chỉnh sửa
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -5964,21 +6291,34 @@ function PromotionDetailModal({ promotion, onClose, onEdit, onStop }) {
     Number(value || 0)
       ? new Intl.NumberFormat("vi-VN").format(Number(value))
       : "Chưa đồng bộ";
+  const spentAmount = getPromotionSpendAmount(promotion);
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-stone-950/45 p-4">
       <div className="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-2xl">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange-600">
-              Chi tiết tiếp thị quảng cáo
-            </p>
-            <h3 className="mt-1 text-lg font-extrabold text-stone-900">
-              {promotion.postTitle}
-            </h3>
-            <p className="mt-1 text-xs font-semibold text-stone-400">
-              Promotion #{promotion.promotionId} · Data source:{" "}
-              {promotion.dataSource || "DATABASE"}
-            </p>
+          <div className="flex min-w-0 gap-3">
+            <span className="flex h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-orange-50 text-orange-600">
+              {promotion.postImageUrl ? (
+                <img
+                  src={promotion.postImageUrl}
+                  alt={promotion.postTitle}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <Megaphone className="m-auto h-6 w-6" />
+              )}
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange-600">
+                Chi tiết tiếp thị quảng cáo
+              </p>
+              <h3 className="mt-1 truncate text-lg font-extrabold text-stone-900">
+                {promotion.postTitle}
+              </h3>
+              <p className="mt-1 text-xs font-semibold text-stone-400">
+                PRM-{promotion.promotionId} · Bài đăng #{promotion.postId}
+              </p>
+            </div>
           </div>
           <button
             type="button"
@@ -5990,47 +6330,51 @@ function PromotionDetailModal({ promotion, onClose, onEdit, onStop }) {
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <PromotionPreviewItem
-            label="Promotion ID"
-            value={`PRM-${promotion.promotionId}`}
-            tone="text-stone-800"
-          />
-          <PromotionPreviewItem
-            label="Initial budget"
+            label="Tổng số tiền quảng bá"
             value={renderMoneyOrPending(promotion.initialBudget)}
             tone="text-stone-800"
           />
           <PromotionPreviewItem
-            label="Remaining amount"
-            value={renderMoneyOrPending(promotion.remainingBudget)}
-            tone="text-teal-700"
-          />
-          <PromotionPreviewItem
-            label="Số tiền cho mỗi lượt được click"
+            label="Số tiền ROI"
             value={renderMoneyOrPending(promotion.roiPerClick)}
             tone="text-orange-700"
           />
           <PromotionPreviewItem
-            label="Estimated clicks"
-            value={renderNumberOrPending(promotion.estimatedClicks)}
-            tone="text-stone-800"
-          />
-          <PromotionPreviewItem
-            label="Customer clicks"
+            label="Số lượt nhấp"
             value={renderNumberOrPending(promotion.customerClicks)}
             tone="text-teal-700"
           />
           <PromotionPreviewItem
-            label="Impressions"
-            value={renderNumberOrPending(promotion.impressions)}
+            label="Số tiền bị trừ trên từng lượt nhấp"
+            value={renderMoneyOrPending(promotion.roiPerClick)}
+            tone="text-red-600"
+          />
+          <PromotionPreviewItem
+            label="Số tiền còn lại"
+            value={renderMoneyOrPending(promotion.remainingBudget)}
+            tone="text-teal-700"
+          />
+          <PromotionPreviewItem
+            label="Tổng tiền đã trừ"
+            value={renderMoneyOrPending(spentAmount)}
+            tone="text-red-600"
+          />
+          <PromotionPreviewItem
+            label="Ngày bắt đầu"
+            value={formatFinanceDate(toDateInputValue(promotion.startDate), {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })}
             tone="text-stone-800"
           />
           <PromotionPreviewItem
-            label="CTR"
-            value={
-              Number(promotion.ctr || 0)
-                ? formatPercent(Number(promotion.ctr))
-                : "Chưa đồng bộ"
-            }
+            label="Ngày kết thúc"
+            value={formatFinanceDate(toDateInputValue(promotion.endDate), {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })}
             tone="text-stone-800"
           />
         </div>
@@ -6074,50 +6418,183 @@ function PromotionEditModal({
   loading,
 }) {
   if (!promotion) return null;
+  const editBudget = Number(
+    promotion.editInitialBudget ?? promotion.initialBudget ?? 0,
+  );
+  const editRoi = Number(promotion.editRoiPerClick ?? promotion.roiPerClick ?? 0);
+  const editStartDate =
+    promotion.editStartDate || toDateInputValue(promotion.startDate);
+  const editEndDate = promotion.editEndDate || toDateInputValue(promotion.endDate);
+  const spentAmount = getPromotionSpendAmount(promotion);
+  const isBudgetValid = editBudget >= PROMOTION_CONFIG.minBudget;
+  const isRoiValid =
+    editRoi >= PROMOTION_CONFIG.minAmountPerClick && editRoi <= editBudget;
+  const isDateValid =
+    editStartDate &&
+    editEndDate &&
+    new Date(`${editEndDate}T23:59:59`) >=
+      new Date(`${editStartDate}T00:00:00`);
+  const canSubmit = isBudgetValid && isRoiValid && isDateValid && !loading;
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-stone-950/45 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
-        <h3 className="text-lg font-extrabold text-stone-900">
-          Chỉnh sửa quảng bá
-        </h3>
-        <p className="mt-1 text-xs font-semibold text-stone-400">
-          Có thể đổi số tiền cho mỗi lượt được click hoặc số tiền quảng bá.
-        </p>
+      <div className="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 gap-3">
+            <span className="flex h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-orange-50 text-orange-600">
+              {promotion.postImageUrl ? (
+                <img
+                  src={promotion.postImageUrl}
+                  alt={promotion.postTitle}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <Megaphone className="m-auto h-6 w-6" />
+              )}
+            </span>
+            <div className="min-w-0">
+              <h3 className="truncate text-lg font-extrabold text-stone-900">
+                Chỉnh sửa quảng bá
+              </h3>
+              <p className="mt-1 truncate text-xs font-semibold text-stone-400">
+                {promotion.postTitle}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="vendor-icon-button"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <PromotionPreviewItem
+            label="Số lượt nhấp"
+            value={new Intl.NumberFormat("vi-VN").format(
+              Number(promotion.customerClicks || 0),
+            )}
+            tone="text-teal-700"
+          />
+          <PromotionPreviewItem
+            label="Đã trừ"
+            value={formatCurrency(spentAmount)}
+            tone="text-red-600"
+          />
+          <PromotionPreviewItem
+            label="Còn lại hiện tại"
+            value={formatCurrency(Number(promotion.remainingBudget || 0))}
+            tone="text-teal-700"
+          />
+        </div>
         <div className="mt-5 space-y-4">
           <label className="block">
             <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
-              Số tiền quảng bá
+              Tổng số tiền quảng bá
             </span>
             <input
               type="number"
+              min={PROMOTION_CONFIG.minBudget}
+              step="10000"
               className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
-              value={promotion.initialBudget || ""}
+              value={promotion.editInitialBudget ?? promotion.initialBudget ?? ""}
               onChange={(event) =>
                 onChange({
                   ...promotion,
-                  initialBudget: Number(event.target.value || 0),
+                  editInitialBudget: Number(event.target.value || 0),
                 })
               }
             />
+            {!isBudgetValid && (
+              <p className="mt-2 text-xs font-semibold text-red-600">
+                Tổng tiền quảng bá tối thiểu là{" "}
+                {formatCurrency(PROMOTION_CONFIG.minBudget)}.
+              </p>
+            )}
           </label>
           <label className="block">
             <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
-              Số tiền cho mỗi lượt được click
+              Số tiền ROI
             </span>
             <input
               type="number"
-              min="1"
+              min={PROMOTION_CONFIG.minAmountPerClick}
+              max={editBudget}
               step="1000"
               className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
-              value={promotion.roiPerClick || ""}
+              value={promotion.editRoiPerClick ?? promotion.roiPerClick ?? ""}
               onChange={(event) =>
                 onChange({
                   ...promotion,
-                  roiPerClick: Number(event.target.value || 0),
+                  editRoiPerClick: Number(event.target.value || 0),
                 })
               }
             />
+            {!isRoiValid && (
+              <p className="mt-2 text-xs font-semibold text-red-600">
+                ROI mỗi lượt nhấp phải lớn hơn 0 và không được cao hơn tổng tiền
+                quảng bá.
+              </p>
+            )}
           </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+                Ngày bắt đầu
+              </span>
+              <input
+                type="date"
+                className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
+                value={editStartDate}
+                onChange={(event) =>
+                  onChange({
+                    ...promotion,
+                    editStartDate: event.target.value,
+                  })
+                }
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+                Ngày kết thúc
+              </span>
+              <input
+                type="date"
+                className="vendor-input mt-2 h-11 w-full px-3 text-sm font-bold"
+                value={editEndDate}
+                onChange={(event) =>
+                  onChange({
+                    ...promotion,
+                    editEndDate: event.target.value,
+                  })
+                }
+              />
+            </label>
+          </div>
+          {!isDateValid && (
+            <p className="text-xs font-semibold text-red-600">
+              Ngày kết thúc không được trước ngày bắt đầu.
+            </p>
+          )}
+          <div className="grid gap-3 sm:grid-cols-3">
+            <PromotionPreviewItem
+              label="Trừ/lượt nhấp sau chỉnh sửa"
+              value={formatCurrency(editRoi)}
+              tone="text-red-600"
+            />
+            <PromotionPreviewItem
+              label="Lượt nhấp ước tính"
+              value={new Intl.NumberFormat("vi-VN").format(
+                editRoi ? Math.floor(editBudget / editRoi) : 0,
+              )}
+              tone="text-stone-800"
+            />
+            <PromotionPreviewItem
+              label="Tổng tiền quảng bá mới"
+              value={formatCurrency(editBudget)}
+              tone="text-orange-700"
+            />
+          </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <button
@@ -6130,7 +6607,7 @@ function PromotionEditModal({
           <button
             type="button"
             className="vendor-primary-button"
-            disabled={loading}
+            disabled={!canSubmit}
             onClick={onSubmit}
           >
             Lưu thay đổi
@@ -6156,7 +6633,7 @@ function PromotionStopConfirm({ promotion, onClose, onConfirm, loading }) {
             </h3>
             <p className="mt-2 text-sm font-semibold leading-6 text-stone-500">
               Promotion #{promotion.promotionId} sẽ ngừng hiển thị. Phần ngân
-              sách còn lại sẽ được release về ví nếu backend ghi nhận còn số dư.
+              sách còn lại sẽ được hoàn về ví nếu máy chủ ghi nhận còn số dư.
             </p>
           </div>
         </div>
@@ -6240,7 +6717,7 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
       },
       paid: {
         title: "Thanh toán hoàn tất",
-        text: "Số dư đang được làm mới từ backend.",
+        text: "Số dư đang được làm mới từ máy chủ.",
         className: "border-teal-100 bg-teal-50 text-teal-800",
         icon: <CheckCircle2 className="h-4 w-4" />,
       },
@@ -6276,7 +6753,7 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
               Thanh toán qua PayOS
             </h3>
             <p className="mt-1 text-xs font-semibold text-stone-400">
-              Link thanh toán được tạo từ API ví seller, số dư dùng để chạy tiếp
+              Link thanh toán được tạo từ API ví người bán, số dư dùng để chạy tiếp
               thị quảng cáo.
             </p>
           </div>
@@ -6314,7 +6791,7 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
                   {formatCurrency(Number(payment.amount || 0))}
                 </span>
                 <span className="text-xs font-bold text-orange-600">
-                  {copied ? "Đã copy" : "Copy số tiền"}
+                  {copied ? "Đã sao chép" : "Sao chép số tiền"}
                 </span>
               </button>
             </div>
@@ -6364,7 +6841,7 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
 
           <div className="flex items-center justify-center gap-2 text-xs font-semibold text-stone-400">
             <Lock className="h-3.5 w-3.5" />
-            Frontend chỉ mở link PayOS do backend trả về, không xử lý thông tin
+            Giao diện chỉ mở link PayOS do máy chủ trả về, không xử lý thông tin
             thanh toán.
           </div>
         </div>
@@ -6373,114 +6850,897 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
   );
 }
 
+function formatFinanceDate(value, options = { day: "2-digit", month: "2-digit" }) {
+  if (!value) return "--";
+  return new Intl.DateTimeFormat("vi-VN", options).format(
+    new Date(`${value}T00:00:00`),
+  );
+}
+
+function getPromotionSpendAmount(promotion) {
+  const spentAmount = Number(promotion?.spentAmount || 0);
+  if (spentAmount > 0) return spentAmount;
+  const initialBudget = Number(promotion?.initialBudget || 0);
+  const remainingBudget = Number(promotion?.remainingBudget || 0);
+  const budgetSpent = Math.max(0, initialBudget - remainingBudget);
+  if (budgetSpent > 0) return budgetSpent;
+  return Number(promotion?.customerClicks || 0) * Number(promotion?.roiPerClick || 0);
+}
+
+function getPromotionTitle(promotion) {
+  return (
+    promotion?.postTitle ||
+    promotion?.productName ||
+    promotion?.product?.name ||
+    `Promotion #${getPromotionEntityId(promotion) || "--"}`
+  );
+}
+
+function getPromotionFinancialDate(promotion) {
+  return String(
+    promotion?.updatedAt ||
+      promotion?.lastClickAt ||
+      promotion?.createdAt ||
+      promotion?.startDate ||
+      promotion?.endDate ||
+      new Date().toISOString(),
+  ).slice(0, 10);
+}
+
+function getWalletTransactionDate(transaction) {
+  return String(
+    transaction?.createdAt ||
+      transaction?.paidAt ||
+      transaction?.updatedAt ||
+      new Date().toISOString(),
+  ).slice(0, 10);
+}
+
+function getWalletTransactionKind(transaction) {
+  return [
+    transaction?.type,
+    transaction?.transactionType,
+    transaction?.category,
+    transaction?.source,
+    transaction?.description,
+    transaction?.note,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toUpperCase();
+}
+
+function isWalletTopUpTransaction(transaction) {
+  const kind = getWalletTransactionKind(transaction);
+  return kind.includes("TOP_UP") || kind.includes("DEPOSIT") || kind.includes("NAP");
+}
+
+function isSuccessfulWalletTransaction(transaction) {
+  const status = String(transaction?.status || "").toUpperCase();
+  return !status || ["SUCCESS", "PAID", "COMPLETED", "DONE"].includes(status);
+}
+
+function formatWalletTransactionStatus(status) {
+  const normalized = String(status || "SUCCESS").toUpperCase();
+  const statusLabels = {
+    SUCCESS: "Thành công",
+    PAID: "Đã thanh toán",
+    COMPLETED: "Hoàn tất",
+    DONE: "Hoàn tất",
+    PENDING: "Đang xử lý",
+    FAILED: "Thất bại",
+    CANCELLED: "Đã hủy",
+    CANCELED: "Đã hủy",
+  };
+  return statusLabels[normalized] || status || "Thành công";
+}
+
+function isWalletSpendTransaction(transaction) {
+  const amount = Number(transaction?.amount || 0);
+  const kind = getWalletTransactionKind(transaction);
+  return (
+    amount < 0 ||
+    kind.includes("SPEND") ||
+    kind.includes("DEBIT") ||
+    kind.includes("PROMOTION") ||
+    kind.includes("CLICK") ||
+    kind.includes("AD")
+  );
+}
+
+function FinanceMetricCard({ label, value, meta, icon: Icon, tone = "is-teal" }) {
+  return (
+    <Panel className="p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+            {label}
+          </p>
+          <p className="mt-3 truncate text-2xl font-extrabold tracking-tight text-stone-950">
+            {value}
+          </p>
+          {meta && (
+            <p className="mt-3 text-xs font-semibold text-stone-400">{meta}</p>
+          )}
+        </div>
+        <span className={cn("vendor-stat-icon", tone)}>
+          <Icon className="h-5 w-5" />
+        </span>
+      </div>
+    </Panel>
+  );
+}
+
+function FinanceLineChart({ data }) {
+  const points = (data || []).map((item) => ({
+    date: item.date,
+    spend: Number(item.spend || 0),
+    clicks: Number(item.clicks || 0),
+    ctr: Number(item.ctr || 0),
+  }));
+
+  if (!points.length) {
+    return (
+      <div className="mt-5 flex min-h-[280px] items-center justify-center rounded-xl border border-dashed border-stone-200 bg-stone-50/70 p-6 text-center">
+        <div>
+          <BarChart3 className="mx-auto h-9 w-9 text-stone-300" />
+          <p className="mt-3 text-sm font-extrabold text-stone-700">
+            Chưa có dòng tiền quảng cáo
+          </p>
+          <p className="mt-1 text-xs font-semibold text-stone-400">
+            Khi người mua đã đăng nhập nhấp vào bài quảng bá, dữ liệu sẽ xuất hiện tại đây.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const width = 760;
+  const height = 300;
+  const padding = { top: 24, right: 26, bottom: 48, left: 72 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const maxSpend = Math.max(...points.map((point) => point.spend), 1);
+  const coordinates = points.map((point, index) => {
+    const x =
+      points.length === 1
+        ? padding.left + chartWidth / 2
+        : padding.left + (index / (points.length - 1)) * chartWidth;
+    const y =
+      padding.top + chartHeight - (point.spend / maxSpend) * chartHeight;
+    return { ...point, x, y };
+  });
+  const linePath = coordinates
+    .map((point) => `${point.x},${point.y}`)
+    .join(" ");
+  const areaPath = [
+    `${coordinates[0].x},${padding.top + chartHeight}`,
+    ...coordinates.map((point) => `${point.x},${point.y}`),
+    `${coordinates[coordinates.length - 1].x},${padding.top + chartHeight}`,
+  ].join(" ");
+  const xLabels = [
+    coordinates[0],
+    coordinates[Math.floor((coordinates.length - 1) / 2)],
+    coordinates[coordinates.length - 1],
+  ].filter(Boolean);
+  const yTicks = [1, 0.5, 0].map((ratio) => ({
+    ratio,
+    y: padding.top + chartHeight - ratio * chartHeight,
+    value: maxSpend * ratio,
+  }));
+
+  return (
+    <div className="mt-5 overflow-hidden rounded-xl border border-stone-100 bg-white">
+      <svg
+        className="h-[300px] w-full"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label="Biểu đồ dòng tiền tiếp thị quảng cáo"
+      >
+        <defs>
+          <linearGradient id="financeSpendGradient" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#f97316" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#14b8a6" stopOpacity="0.04" />
+          </linearGradient>
+        </defs>
+        {yTicks.map((tick) => (
+          <g key={tick.ratio}>
+            <line
+              x1={padding.left}
+              x2={width - padding.right}
+              y1={tick.y}
+              y2={tick.y}
+              stroke="#e7e5e4"
+              strokeDasharray="5 5"
+            />
+            <text
+              x={padding.left - 12}
+              y={tick.y + 4}
+              textAnchor="end"
+              className="fill-stone-400 text-[11px] font-bold"
+            >
+              {formatShortCurrency(tick.value)}
+            </text>
+          </g>
+        ))}
+        <polyline
+          points={areaPath}
+          fill="url(#financeSpendGradient)"
+          stroke="none"
+        />
+        <polyline
+          points={linePath}
+          fill="none"
+          stroke="#f97316"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="4"
+        />
+        {coordinates.map((point) => (
+          <g key={`${point.date}-${point.x}`}>
+            <circle
+              cx={point.x}
+              cy={point.y}
+              r="6"
+              fill="#fff7ed"
+              stroke="#f97316"
+              strokeWidth="3"
+            />
+            <title>
+              {formatFinanceDate(point.date, {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}{" "}
+              · {formatCurrency(point.spend)} · {point.clicks} lượt nhấp
+            </title>
+          </g>
+        ))}
+        {xLabels.map((point, index) => (
+          <text
+            key={`${point.date}-${index}`}
+            x={point.x}
+            y={height - 18}
+            textAnchor="middle"
+            className="fill-stone-400 text-[11px] font-bold"
+          >
+            {formatFinanceDate(point.date)}
+          </text>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 function FinancePage({ onToast }) {
-  const exportStatement = () => {
+  const [wallet, setWallet] = useState(null);
+  const [transactions, setTransactions] = useState([]);
+  const [promotions, setPromotions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadReport = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [walletResult, transactionsResult, promotionsResult] = await Promise.allSettled([
+        promotionApi.getPromotionWallet(),
+        promotionApi.getWalletTransactions(200),
+        promotionApi.getPromotions(),
+      ]);
+
+      if (walletResult.status === "rejected" && promotionsResult.status === "rejected") {
+        throw promotionsResult.reason || walletResult.reason;
+      }
+
+      const promotionList =
+        promotionsResult.status === "fulfilled" && Array.isArray(promotionsResult.value)
+          ? promotionsResult.value
+          : [];
+      const detailedPromotions = await Promise.all(
+        promotionList.map(async (promotion) => {
+          const promotionId = getPromotionEntityId(promotion);
+          if (!promotionId) return promotion;
+          try {
+            const detail = await promotionApi.getPromotionDetail(promotionId);
+            return {
+              ...promotion,
+              ...detail,
+              id: detail?.id ?? promotion?.id,
+              promotionId: detail?.promotionId ?? detail?.id ?? promotionId,
+            };
+          } catch {
+            return promotion;
+          }
+        }),
+      );
+
+      setWallet(walletResult.status === "fulfilled" ? walletResult.value : null);
+      setTransactions(
+        transactionsResult.status === "fulfilled" && Array.isArray(transactionsResult.value)
+          ? transactionsResult.value
+          : [],
+      );
+      setPromotions(detailedPromotions);
+    } catch (err) {
+      setError(getApiMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadReport();
+  }, [loadReport]);
+
+  const cashFlow = useMemo(() => {
+    const byDate = new Map();
+
+    promotions.forEach((promotion) => {
+      const date = getPromotionFinancialDate(promotion);
+      const spend = getPromotionSpendAmount(promotion);
+      const clicks = Number(promotion.customerClicks || 0);
+      const impressions = Number(promotion.impressions || 0);
+      const current = byDate.get(date) || {
+        date,
+        spend: 0,
+        clicks: 0,
+        impressions: 0,
+      };
+      current.spend += spend;
+      current.clicks += clicks;
+      current.impressions += impressions;
+      byDate.set(date, current);
+    });
+
+    return Array.from(byDate.values())
+      .sort((left, right) => String(left.date).localeCompare(String(right.date)))
+      .map((item) => ({
+        ...item,
+        averageRoiPerClick: item.clicks ? item.spend / item.clicks : 0,
+        ctr: item.impressions ? (item.clicks / item.impressions) * 100 : 0,
+      }));
+  }, [promotions]);
+  const topUpTransactions = transactions.filter(
+    (transaction) =>
+      isWalletTopUpTransaction(transaction) &&
+      isSuccessfulWalletTransaction(transaction),
+  );
+  const spendTransactions = transactions.filter(
+    (transaction) =>
+      isWalletSpendTransaction(transaction) &&
+      isSuccessfulWalletTransaction(transaction),
+  );
+  const fallbackDeposited = transactions
+    .filter(
+      (transaction) =>
+        isWalletTopUpTransaction(transaction) &&
+        isSuccessfulWalletTransaction(transaction),
+    )
+    .reduce((sum, transaction) => sum + Math.abs(Number(transaction.amount || 0)), 0);
+  const fallbackSpent = transactions
+    .filter(
+      (transaction) =>
+        isWalletSpendTransaction(transaction) &&
+        isSuccessfulWalletTransaction(transaction),
+    )
+    .reduce((sum, transaction) => sum + Math.abs(Number(transaction.amount || 0)), 0);
+  const totalDeposited = Number(wallet?.totalDeposited ?? fallbackDeposited);
+  const totalSpent = Number(wallet?.totalSpent ?? fallbackSpent);
+  const availableBalance = Number(wallet?.availableBalance ?? wallet?.balance ?? 0);
+  const lockedBalance = Number(wallet?.lockedBalance ?? 0);
+  const marketingSpent = promotions.reduce(
+    (sum, promotion) => sum + getPromotionSpendAmount(promotion),
+    0,
+  );
+  const marketingClicks = promotions.reduce(
+    (sum, promotion) => sum + Number(promotion.customerClicks || 0),
+    0,
+  );
+  const marketingImpressions = promotions.reduce(
+    (sum, promotion) => sum + Number(promotion.impressions || 0),
+    0,
+  );
+  const averageRoiPerClick = marketingClicks ? marketingSpent / marketingClicks : 0;
+  const ctr = marketingImpressions ? (marketingClicks / marketingImpressions) * 100 : 0;
+  const activeCampaigns = promotions.filter((promotion) =>
+    ["ACTIVE", "SCHEDULED", "PAUSED"].includes(String(promotion.status || "").toUpperCase()),
+  ).length;
+  const budgetReserved = promotions.reduce(
+    (sum, promotion) => sum + Number(promotion.initialBudget || 0),
+    0,
+  );
+  const remainingMarketingBudget = promotions.reduce(
+    (sum, promotion) => sum + Number(promotion.remainingBudget || 0),
+    0,
+  );
+  const efficiency = budgetReserved ? (marketingSpent / budgetReserved) * 100 : 0;
+  const campaignRows = promotions
+    .map((promotion) => {
+      const budget = Number(promotion.initialBudget || 0);
+      const spent = getPromotionSpendAmount(promotion);
+      const clicks = Number(promotion.customerClicks || 0);
+      const impressions = Number(promotion.impressions || 0);
+      return {
+        id: getPromotionEntityId(promotion),
+        productName: getPromotionTitle(promotion),
+        status: promotion.status || "UNKNOWN",
+        budget,
+        spent,
+        remaining: Number(promotion.remainingBudget || 0),
+        roiPerClick: Number(promotion.roiPerClick || 0),
+        clicks,
+        impressions,
+        ctr: impressions ? (clicks / impressions) * 100 : 0,
+        spendRate: budget ? (spent / budget) * 100 : 0,
+      };
+    })
+    .sort((left, right) => right.spent - left.spent);
+
+  const exportReport = () => {
     downloadCsv(
-      "seller-statement.csv",
-      ["Mã đơn", "Khách hàng", "Giá trị", "Thời gian"],
-      orders.map((order) => [
-        order.id,
-        order.buyer,
-        formatCurrency(order.total),
-        order.time,
+      "seller-finance-report.csv",
+      [
+        "Tên sản phẩm",
+        "Trạng thái",
+        "Ngân sách",
+        "Đã chi",
+        "Còn lại",
+        "ROI/lượt nhấp",
+        "Lượt nhấp",
+        "Hiển thị",
+        "CTR",
+      ],
+      campaignRows.map((item) => [
+        item.productName,
+        getPromotionStatusLabel(item.status),
+        formatCurrency(item.budget),
+        formatCurrency(item.spent),
+        formatCurrency(item.remaining),
+        formatCurrency(item.roiPerClick),
+        item.clicks,
+        item.impressions,
+        formatPercent(item.ctr),
       ]),
     );
-    onToast({
-      title: "Đã xuất sao kê",
-      message: "Sao kê giao dịch đã được tải xuống.",
+    onToast?.({
+      title: "Đã xuất báo cáo",
+      message: "Báo cáo chiến dịch quảng cáo đã được tải xuống.",
     });
   };
+
+  if (loading && !wallet && promotions.length === 0) {
+    return (
+      <div className="space-y-5">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((item) => (
+            <Panel key={item} className="p-5">
+              <div className="h-4 w-28 animate-pulse rounded bg-stone-100" />
+              <div className="mt-4 h-8 w-40 animate-pulse rounded bg-stone-100" />
+              <div className="mt-4 h-3 w-32 animate-pulse rounded bg-stone-100" />
+            </Panel>
+          ))}
+        </section>
+        <Panel className="min-h-[360px] p-5">
+          <div className="h-5 w-48 animate-pulse rounded bg-stone-100" />
+          <div className="mt-5 h-[280px] animate-pulse rounded-xl bg-stone-100" />
+        </Panel>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          [
-            "Số dư khả dụng",
-            "86,2 triệu",
-            "Có thể rút hôm nay",
-            WalletCards,
-            "is-green",
-          ],
-          ["Chờ đối soát", "24,9 triệu", "128 đơn hàng", Clock3, "is-orange"],
-          [
-            "Phí nền tảng",
-            "3,12 triệu",
-            "7 ngày gần nhất",
-            CreditCard,
-            "is-teal",
-          ],
-          ["Hoàn tiền", "1,48 triệu", "5 yêu cầu", Banknote, "is-red"],
-        ].map(([label, value, change, icon, tone]) => (
-          <StatCard
-            key={label}
-            stat={{ label, value, change, note: "", icon, tone }}
-          />
-        ))}
-      </section>
-      <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-        <Panel className="p-5">
-          <PanelHeader
-            title="Giao dịch gần đây"
-            subtitle="Các khoản thu từ đơn hàng"
-          >
+      {error && (
+        <Panel className="border-red-100 bg-red-50/70 p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
+              <div>
+                <p className="text-sm font-extrabold text-red-700">
+                  Không thể tải báo cáo tài chính
+                </p>
+                <p className="mt-1 text-xs font-semibold text-red-500">
+                  {error}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="vendor-secondary-button justify-center"
+              onClick={loadReport}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Thử lại
+            </button>
+          </div>
+        </Panel>
+      )}
+
+      <section className="rounded-2xl border border-stone-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-teal-700">
+              Quản lý tài chính người bán
+            </p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-stone-950">
+              Báo cáo dòng tiền quảng cáo
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-stone-500">
+              Theo dõi tiền nạp, tiền chi và hiệu quả lượt nhấp từ dữ liệu ví cùng
+              chiến dịch tiếp thị quảng cáo thật.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               className="vendor-secondary-button"
-              onClick={exportStatement}
+              disabled={loading}
+              onClick={loadReport}
+            >
+              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+              Làm mới
+            </button>
+            <button
+              type="button"
+              className="vendor-primary-button"
+              onClick={exportReport}
             >
               <Download className="h-4 w-4" />
-              Sao kê
+              Xuất CSV
             </button>
-          </PanelHeader>
-          <div className="mt-3 divide-y divide-stone-100">
-            {orders.slice(0, 6).map((order) => (
+          </div>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            {
+              label: "Số dư khả dụng",
+              value: formatCurrency(availableBalance),
+              icon: WalletCards,
+            },
+            {
+              label: "Đang giữ cho quảng cáo",
+              value: formatCurrency(lockedBalance),
+              icon: Lock,
+            },
+            {
+              label: "Chiến dịch quản lý",
+              value: `${activeCampaigns}/${promotions.length}`,
+              icon: Megaphone,
+            },
+            {
+              label: "CTR quảng cáo",
+              value: formatPercent(ctr),
+              icon: TrendingUp,
+            },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
               <div
-                key={order.id}
-                className="flex items-center justify-between py-3"
+                key={item.label}
+                className="rounded-xl border border-stone-100 bg-stone-50/70 px-4 py-3"
               >
-                <div>
-                  <p className="text-sm font-extrabold text-stone-700">
-                    {order.id}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-stone-400">
-                    {order.buyer} · {order.time}
-                  </p>
+                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+                  <Icon className="h-4 w-4 text-orange-500" />
+                  {item.label}
                 </div>
-                <p className="text-sm font-extrabold text-teal-700">
-                  +{formatCurrency(order.total)}
+                <p className="mt-2 text-lg font-black text-stone-950">
+                  {item.value}
                 </p>
               </div>
-            ))}
-          </div>
-        </Panel>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <FinanceMetricCard
+          label="Tổng số tiền đã nạp"
+          value={formatCurrency(totalDeposited)}
+          meta={`${topUpTransactions.length} giao dịch nạp thành công`}
+          icon={Banknote}
+          tone="is-green"
+        />
+        <FinanceMetricCard
+          label="Tổng số tiền đã chi"
+          value={formatCurrency(totalSpent)}
+          meta={`${spendTransactions.length} giao dịch chi khỏi tài khoản`}
+          icon={CircleDollarSign}
+          tone="is-red"
+        />
+        <FinanceMetricCard
+          label="Chi tiếp thị quảng cáo"
+          value={formatCurrency(marketingSpent)}
+          meta={`${new Intl.NumberFormat("vi-VN").format(marketingClicks)} lượt nhấp đã tính phí`}
+          icon={Megaphone}
+          tone="is-orange"
+        />
+        <FinanceMetricCard
+          label="ROI trung bình/lượt nhấp"
+          value={formatCurrency(averageRoiPerClick)}
+          meta={`Hiệu suất dùng ngân sách ${formatPercent(efficiency)}`}
+          icon={BarChart3}
+          tone="is-teal"
+        />
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
         <Panel className="p-5">
           <PanelHeader
-            title="Tài khoản nhận tiền"
-            subtitle="Đã xác minh bởi ShopVN"
+            title="Dòng tiền tiếp thị quảng cáo"
+            subtitle="Biểu đồ đường theo số tiền bị trừ khi người mua nhấp vào bài đăng quảng bá."
           />
-          <div className="mt-4 rounded-xl border border-stone-100 bg-stone-50 p-4">
-            <p className="font-extrabold text-stone-800">Vietcombank</p>
-            <p className="mt-1 text-sm font-semibold text-stone-500">
-              Nguyen Tai Phat · **** 8421
-            </p>
-            <StatusBadge className="mt-3" status="Đã xác minh" />
+          <FinanceLineChart data={cashFlow} />
+        </Panel>
+
+        <Panel className="p-5">
+          <PanelHeader
+            title="Hiệu quả ngân sách"
+            subtitle="Theo dõi tốc độ tiêu ngân sách và hiệu quả lượt nhấp."
+          />
+          <div className="mt-4 space-y-4">
+            <div>
+              <div className="flex items-center justify-between text-xs font-extrabold uppercase tracking-[0.08em] text-stone-400">
+                <span>Đã dùng ngân sách</span>
+                <span>{formatPercent(efficiency)}</span>
+              </div>
+              <div className="mt-2 h-2 rounded-full bg-stone-100">
+                <div
+                  className="h-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500"
+                  style={{ width: `${Math.min(Math.max(efficiency, 0), 100)}%` }}
+                />
+              </div>
+              <div className="mt-2 flex items-center justify-between text-xs font-bold text-stone-500">
+                <span>{formatCurrency(marketingSpent)} đã chi</span>
+                <span>{formatCurrency(budgetReserved)} ngân sách</span>
+              </div>
+            </div>
+            <PromotionPreviewItem
+              label="Ngân sách còn lại"
+              value={formatCurrency(remainingMarketingBudget)}
+              tone="text-teal-700"
+            />
+            <PromotionPreviewItem
+              label="Lượt nhấp tính phí"
+              value={new Intl.NumberFormat("vi-VN").format(marketingClicks)}
+              tone="text-stone-900"
+            />
+            <PromotionPreviewItem
+              label="CTR"
+              value={formatPercent(ctr)}
+              tone="text-teal-700"
+            />
+            <PromotionPreviewItem
+              label="Chiến dịch đang quản lý"
+              value={`${activeCampaigns}/${promotions.length}`}
+              tone="text-stone-900"
+            />
           </div>
-          <button
-            type="button"
-            className="vendor-secondary-button mt-4 w-full justify-center"
-            onClick={() =>
-              onToast({
-                title: "Cập nhật tài khoản",
-                message:
-                  "Thông tin ngân hàng sẽ cần xác minh lại sau khi thay đổi.",
-              })
-            }
-          >
-            <PenLine className="h-4 w-4" />
-            Cập nhật tài khoản
-          </button>
         </Panel>
       </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+        <Panel className="overflow-hidden">
+          <div className="p-5">
+            <PanelHeader
+              title="Hiệu quả theo chiến dịch"
+              subtitle="Tổng hợp ngân sách, ROI và lượt nhấp từ dữ liệu quảng bá của người bán."
+            />
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-stone-100 text-left">
+              <thead className="bg-stone-50 text-[11px] font-extrabold uppercase tracking-[0.08em] text-stone-400">
+                <tr>
+                  <th className="px-5 py-3">Bài đăng</th>
+                  <th className="px-5 py-3">Trạng thái</th>
+                  <th className="px-5 py-3">Ngân sách</th>
+                  <th className="px-5 py-3">Đã chi</th>
+                  <th className="px-5 py-3">Còn lại</th>
+                  <th className="px-5 py-3">ROI/lượt nhấp</th>
+                  <th className="px-5 py-3">Lượt nhấp/CTR</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100 text-sm">
+                {campaignRows.length ? (
+                  campaignRows.map((item) => (
+                    <tr key={item.id || item.productName}>
+                      <td className="min-w-[240px] px-5 py-4">
+                        <p className="line-clamp-2 font-extrabold text-stone-900">
+                          {item.productName}
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-stone-400">
+                          PRM-{item.id || "--"}
+                        </p>
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2.5 py-1 text-xs font-extrabold",
+                            String(item.status).toUpperCase() === "ACTIVE"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-stone-100 text-stone-500",
+                          )}
+                        >
+                          {getPromotionStatusLabel(item.status)}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-stone-700">
+                        {formatCurrency(item.budget)}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4 font-extrabold text-red-600">
+                        -{formatCurrency(item.spent)}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-stone-600">
+                        {formatCurrency(item.remaining)}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-stone-600">
+                        {formatCurrency(item.roiPerClick)}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4 font-semibold text-stone-600">
+                        <div className="flex flex-col gap-1">
+                          <span>{new Intl.NumberFormat("vi-VN").format(item.clicks)} lượt nhấp</span>
+                          <span className="text-xs font-extrabold text-teal-700">
+                            CTR {formatPercent(item.ctr)}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan="7"
+                      className="px-5 py-10 text-center text-sm font-semibold text-stone-400"
+                    >
+                      Chưa có chiến dịch quảng cáo nào.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+
+        <Panel className="overflow-hidden">
+          <div className="p-5">
+            <PanelHeader
+              title="Giao dịch ví gần nhất"
+              subtitle="Theo dõi tiền nạp và khoản chi đã ghi nhận."
+            />
+          </div>
+          <div className="divide-y divide-stone-100">
+            {transactions.length ? (
+              transactions.slice(0, 8).map((transaction, index) => {
+                const isTopUp = isWalletTopUpTransaction(transaction);
+                const amount = Math.abs(Number(transaction.amount || 0));
+                return (
+                  <div
+                    key={transaction.id || `${transaction.code || "tx"}-${index}`}
+                    className="flex items-center justify-between gap-4 px-5 py-4"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div
+                        className={cn(
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                          isTopUp
+                            ? "bg-emerald-50 text-emerald-600"
+                            : "bg-red-50 text-red-600",
+                        )}
+                      >
+                        {isTopUp ? (
+                          <ArrowUpRight className="h-5 w-5" />
+                        ) : (
+                          <CreditCard className="h-5 w-5" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-extrabold text-stone-900">
+                          {transaction.description ||
+                            transaction.type ||
+                            (isTopUp ? "Nạp tiền ví" : "Chi từ ví")}
+                        </p>
+                        <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-stone-400">
+                          <Clock3 className="h-3.5 w-3.5" />
+                          {formatFinanceDate(getWalletTransactionDate(transaction), {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p
+                        className={cn(
+                          "whitespace-nowrap text-sm font-black",
+                          isTopUp ? "text-emerald-600" : "text-red-600",
+                        )}
+                      >
+                        {isTopUp ? "+" : "-"}
+                        {formatCurrency(amount)}
+                      </p>
+                      <p className="mt-1 text-xs font-extrabold uppercase text-stone-400">
+                        {formatWalletTransactionStatus(transaction.status)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="px-5 py-10 text-center">
+                <History className="mx-auto h-8 w-8 text-stone-300" />
+                <p className="mt-3 text-sm font-semibold text-stone-400">
+                  Chưa có giao dịch ví.
+                </p>
+              </div>
+            )}
+          </div>
+        </Panel>
+      </section>
+
+      <Panel className="overflow-hidden">
+        <div className="p-5">
+          <PanelHeader
+            title="Chi tiết dòng tiền theo ngày"
+            subtitle="Mỗi dòng thể hiện số tiền quảng cáo đã bị trừ theo lượt nhấp trong ngày."
+          />
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-stone-100 text-left">
+            <thead className="bg-stone-50 text-[11px] font-extrabold uppercase tracking-[0.08em] text-stone-400">
+              <tr>
+                <th className="px-5 py-3">Ngày</th>
+                <th className="px-5 py-3">Chi quảng cáo</th>
+                <th className="px-5 py-3">Lượt nhấp</th>
+                <th className="px-5 py-3">Hiển thị</th>
+                <th className="px-5 py-3">ROI/lượt nhấp</th>
+                <th className="px-5 py-3">CTR</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100 text-sm">
+              {cashFlow.length ? (
+                cashFlow.map((item) => (
+                  <tr key={item.date}>
+                    <td className="whitespace-nowrap px-5 py-4 font-extrabold text-stone-800">
+                      {formatFinanceDate(item.date, {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })}
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4 font-extrabold text-red-600">
+                      -{formatCurrency(Number(item.spend || 0))}
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4 font-semibold text-stone-600">
+                      {new Intl.NumberFormat("vi-VN").format(Number(item.clicks || 0))}
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4 font-semibold text-stone-600">
+                      {new Intl.NumberFormat("vi-VN").format(
+                        Number(item.impressions || 0),
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4 font-semibold text-stone-600">
+                      {formatCurrency(Number(item.averageRoiPerClick || 0))}
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4 font-semibold text-teal-700">
+                      {formatPercent(Number(item.ctr || 0))}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan="6"
+                    className="px-5 py-10 text-center text-sm font-semibold text-stone-400"
+                  >
+                    Chưa có dữ liệu phát sinh.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
     </div>
   );
 }
@@ -6607,7 +7867,7 @@ function SettingsPage({ onToast }) {
 
     try {
       const vendorId = vendorData.id || vendorInfo?.vendorId;
-      if (!vendorId) throw new Error("Không tìm thấy Vendor ID");
+      if (!vendorId) throw new Error("Không tìm thấy mã người bán");
 
       setSaving(true);
       const response = await sellerApi.updateVendor(vendorId, {
@@ -6688,7 +7948,7 @@ function SettingsPage({ onToast }) {
           </span>
           <div>
             <p className="font-extrabold text-stone-800">
-              {vendorData.shopName || "ShopVN Seller"}
+              {vendorData.shopName || "ShopVN Người bán"}
             </p>
             <p className="mt-1 text-xs font-semibold text-stone-400">
               Mã shop: VND-{vendorData.id || vendorInfo?.vendorId || "N/A"}
@@ -7402,6 +8662,7 @@ const pageComponents = {
   "van-chuyen": ShippingPage,
   ...(VENDOR_FEATURES.warehouse ? { "kho-hang": WarehousePage } : {}),
   "tin-nhan": MessagesPage,
+  "chatbox-ai": () => <AiChatboxPage mode="vendor" />,
   "nghien-cuu-thi-truong": MarketResearchPage,
   marketing: MarketingPage,
   "tai-chinh": FinancePage,

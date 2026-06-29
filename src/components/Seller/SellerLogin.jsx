@@ -84,7 +84,7 @@ export function SellerLogin({ onSwitchToRegister }) {
     return (
       <Card className="mx-auto max-w-md border-0 shadow-elevated">
         <CardHeader className="text-center">
-          <CardTitle>Quên mật khẩu Vendor</CardTitle>
+          <CardTitle>Quên mật khẩu người bán</CardTitle>
           <p className="text-sm text-gray-500">Xác thực OTP email để đặt lại mật khẩu</p>
         </CardHeader>
         <CardContent>
@@ -100,7 +100,7 @@ export function SellerLogin({ onSwitchToRegister }) {
         <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-brand shadow-glow">
           <LogIn className="h-7 w-7 text-white" />
         </div>
-        <CardTitle>Đăng nhập Seller</CardTitle>
+        <CardTitle>Đăng nhập người bán</CardTitle>
         <p className="text-sm text-gray-500">
           Đăng nhập để quản lý shop và đơn hàng của bạn
         </p>
@@ -115,7 +115,7 @@ export function SellerLogin({ onSwitchToRegister }) {
           <Input
             label="Email hoặc Số điện thoại"
             name="identifier"
-            placeholder="seller@email.com hoặc 09xxxxxxxx"
+            placeholder="nguoi-ban@email.com hoặc 09xxxxxxxx"
             value={form.identifier}
             onChange={handleChange}
             error={errors.identifier}
@@ -168,7 +168,7 @@ export function SellerLogin({ onSwitchToRegister }) {
         </div>
 
         <p className="text-center text-sm text-gray-600">
-          Chưa có tài khoản Seller?{' '}
+          Chưa có tài khoản người bán?{' '}
           <button
             type="button"
             onClick={onSwitchToRegister}

@@ -37,7 +37,7 @@ export function BrandLogo({ to = '/', className, size = 'default', light = false
             light ? 'text-white/60' : 'text-brand-muted'
           )}
         >
-          Live Commerce
+          Thương mại trực tiếp
         </p>
       </div>
     </Link>

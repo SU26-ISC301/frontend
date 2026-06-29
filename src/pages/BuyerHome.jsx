@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
   Bell,
+  Bot,
   Camera,
   CheckCircle2,
   ChevronRight,
@@ -28,6 +29,7 @@ import { DateInput } from '../components/ui/date-input';
 import { Modal } from '../components/ui/modal';
 import { ChatWorkspace } from '../components/Messaging/ChatWorkspace';
 import { MessageLauncher } from '../components/Messaging/MessageLauncher';
+import { AiChatboxLauncher, AiChatboxPage } from '../components/AiChatbox/AiChatbox';
 import { authApi } from '../api/authAPI';
 import { buyerMessageApi } from '../api/buyerMessageAPI';
 import { cn } from '../lib/utils';
@@ -41,6 +43,7 @@ const navItems = [
   { slug: 'vi-voucher', label: 'Ví & Voucher', icon: WalletCards },
   { slug: 'danh-gia', label: 'Đánh giá', icon: Star },
   { slug: 'ho-tro', label: 'Hỗ trợ', icon: MessageSquareText },
+  { slug: 'chatbox-ai', label: 'Chatbox AI', icon: Bot },
   { slug: 'bao-mat', label: 'Bảo mật', icon: ShieldCheck },
 ];
 
@@ -52,6 +55,7 @@ const pageTitles = {
   'vi-voucher': 'Ví & Voucher',
   'danh-gia': 'Đánh giá sản phẩm',
   'ho-tro': 'Trung tâm hỗ trợ',
+  'chatbox-ai': 'Chatbox AI',
   'bao-mat': 'Bảo mật tài khoản',
 };
 
@@ -81,7 +85,10 @@ function BuyerLayout({ profile, activeSlug, children }) {
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('buyerAccessToken');
+    localStorage.removeItem('buyerRefreshToken');
     localStorage.removeItem('vendorInfo');
+    window.dispatchEvent(new CustomEvent('buyer-auth-changed', { detail: { loggedIn: false } }));
     navigate('/');
     window.location.reload();
   };
@@ -95,11 +102,11 @@ function BuyerLayout({ profile, activeSlug, children }) {
             <div className="flex items-center gap-3">
               <img
                 src={getAvatarSrc(profile?.avatarUrl)}
-                alt={profile?.fullName || 'Buyer'}
+                alt={profile?.fullName || 'Người mua'}
                 className="h-14 w-14 rounded-full object-cover"
               />
               <div className="min-w-0">
-                <p className="truncate font-bold text-gray-950">{profile?.fullName || 'Tài khoản Buyer'}</p>
+                <p className="truncate font-bold text-gray-950">{profile?.fullName || 'Tài khoản người mua'}</p>
                 <p className="truncate text-sm text-gray-500">{profile?.email}</p>
               </div>
             </div>
@@ -141,6 +148,7 @@ function BuyerLayout({ profile, activeSlug, children }) {
         </section>
       </main>
       <Footer />
+      <AiChatboxLauncher mode="buyer" fullPagePath="/buyer/chatbox-ai" />
       <MessageLauncher mode="buyer" />
     </div>
   );
@@ -681,6 +689,7 @@ const pageComponents = {
   'vi-voucher': (props) => <SimplePanel {...props} icon={TicketPercent} title="Ví & Voucher" desc="Theo dõi ví, điểm thưởng và mã giảm giá." items={['12 voucher đang có', '8.420 điểm tích lũy', 'Hoàn tiền đang chờ', 'Lịch sử sử dụng voucher']} />,
   'danh-gia': (props) => <SimplePanel {...props} icon={Star} title="Đánh giá" desc="Các sản phẩm bạn đã mua và có thể đánh giá." items={['3 sản phẩm chờ đánh giá', 'Ảnh/video đã tải lên', 'Đánh giá 5 sao gần đây', 'Lịch sử nhận xu đánh giá']} />,
   'ho-tro': BuyerMessagesPage,
+  'chatbox-ai': () => <AiChatboxPage mode="buyer" />,
   'bao-mat': (props) => <SimplePanel {...props} icon={KeyRound} title="Bảo mật" desc="Quản lý đăng nhập, thiết bị và bảo vệ tài khoản." items={['Đổi mật khẩu', 'Thiết bị đã đăng nhập', 'Xác thực email', 'Nhật ký bảo mật']} />,
 };
 
@@ -700,7 +709,7 @@ export default function BuyerHome() {
       })
       .catch(() => {
         if (!mounted) return;
-        setError('Vui lòng đăng nhập để xem tài khoản Buyer');
+        setError('Vui lòng đăng nhập để xem tài khoản người mua');
       })
       .finally(() => {
         if (mounted) setLoading(false);

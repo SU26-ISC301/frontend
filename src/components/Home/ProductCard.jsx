@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Crown, Heart, Megaphone, Star } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { BuyerAuthModal } from '../Auth/BuyerAuthModal';
@@ -14,7 +15,8 @@ function hasBuyerSession() {
   );
 }
 
-export function ProductCard({ id, index, title, price, oldPrice, sold, rating, image, badge, isPremiumHighlighted, isPromoted, initialFavorite = false, vendorId }) {
+export function ProductCard({ id, index, title, price, oldPrice, sold, rating, image, badge, isPremiumHighlighted, isPromoted, promotionId, initialFavorite = false, vendorId }) {
+  const navigate = useNavigate();
   const [authOpen, setAuthOpen] = useState(false);
   const [favorite, setFavorite] = useState(initialFavorite);
   const [pendingFavorite, setPendingFavorite] = useState(false);
@@ -22,7 +24,12 @@ export function ProductCard({ id, index, title, price, oldPrice, sold, rating, i
 
   const openProduct = () => {
     if (!id) return;
-    window.open(`/products/${id}`, '_blank', 'noopener,noreferrer');
+    navigate(`/products/${id}`, {
+      state: {
+        promotionId: isPromoted ? promotionId : null,
+        promotionStatus: isPromoted ? 'ACTIVE' : null,
+      },
+    });
   };
 
   const addFavorite = async () => {
@@ -137,7 +144,7 @@ export function ProductCard({ id, index, title, price, oldPrice, sold, rating, i
         {isPremiumHighlighted && (
           <p className="mb-1 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-extrabold text-amber-700 ring-1 ring-amber-100">
             <Crown className="h-3 w-3" />
-            Premium
+            Nổi bật
           </p>
         )}
         <h3 className="line-clamp-2 min-h-[2.6rem] text-sm font-semibold leading-snug text-[#16202a]">

@@ -43,7 +43,7 @@ export function SellerRegisterPhoneStep({ onNext }) {
         label="Email"
         name="email"
         type="email"
-        placeholder="seller@email.com"
+        placeholder="nguoi-ban@email.com"
         value={email}
         onChange={(e) => {
           setEmail(e.target.value);
@@ -68,7 +68,7 @@ export function SellerRegisterPhoneStep({ onNext }) {
       </Button>
       <p className="flex items-center justify-center gap-1 text-xs text-gray-500">
         <Mail className="h-3.5 w-3.5" />
-        Email này sẽ dùng để xác thực đăng ký Seller
+        Email này sẽ dùng để xác thực đăng ký người bán
       </p>
     </form>
   );

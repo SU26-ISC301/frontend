@@ -18,7 +18,7 @@ export default function SellerCenter() {
       <div className="mb-8 text-center">
         <span className="pill mb-3 border border-white/20 bg-white/10 text-white">
           <Sparkles className="h-3.5 w-3.5 text-brand-accent" />
-          Seller Center
+          Trung tâm người bán
         </span>
         <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
           Bán hàng cùng ShopVN
@@ -51,7 +51,7 @@ export default function SellerCenter() {
               : "text-white/70 hover:text-white",
           )}
         >
-          Đăng ký Seller
+          Đăng ký người bán
         </button>
       </div>
 

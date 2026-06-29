@@ -362,7 +362,7 @@ const AddWarehouseModal = ({ isOpen, onClose, onSave, currentTab, existingWareho
           {/* Cài đặt mặc định */}
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-900 border-b pb-2 text-sm">
-              Cài đặt mặc định (Set Default)
+              Cài đặt mặc định
             </h3>
 
             <label

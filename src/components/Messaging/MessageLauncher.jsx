@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ExternalLink, Maximize2, MessageCircle, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { buyerMessageApi } from '../../api/buyerMessageAPI';
 import { vendorMessageApi } from '../../api/vendorMessageAPI';
 import { ChatWorkspace } from './ChatWorkspace';
+import {
+  hasAuthenticatedSession,
+  subscribeAuthSessionChanges,
+} from '../../utils/authSession';
 
 function getApiMessage(error) {
   return error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Không thể tải tin nhắn';
@@ -11,8 +15,10 @@ function getApiMessage(error) {
 
 export function MessageLauncher({ mode = 'buyer' }) {
   const navigate = useNavigate();
+  const launcherRef = useRef(null);
   const isVendor = mode === 'vendor';
   const api = isVendor ? vendorMessageApi : buyerMessageApi;
+  const [authenticated, setAuthenticated] = useState(() => hasAuthenticatedSession(mode));
   const [open, setOpen] = useState(false);
   const [vendors, setVendors] = useState([]);
   const [conversations, setConversations] = useState([]);
@@ -26,12 +32,29 @@ export function MessageLauncher({ mode = 'buyer' }) {
   const [error, setError] = useState('');
   const activeChat = conversations.find((conversation) => conversation.id === activeConversationId);
 
+  useEffect(() => {
+    return subscribeAuthSessionChanges(() => {
+      const nextAuthenticated = hasAuthenticatedSession(mode);
+      setAuthenticated(nextAuthenticated);
+      if (!nextAuthenticated) {
+        setOpen(false);
+        setVendors([]);
+        setConversations([]);
+        setActiveConversationId(null);
+        setMessages([]);
+        setMessage('');
+        setError('');
+      }
+    });
+  }, [mode]);
+
   const unreadCount = useMemo(
     () => conversations.reduce((sum, conversation) => sum + Number(conversation.unreadCount || 0), 0),
     [conversations],
   );
 
   const loadConversations = useCallback(async () => {
+    if (!authenticated) return;
     setLoadingConversations(true);
     try {
       const data = await api.getConversations();
@@ -48,9 +71,10 @@ export function MessageLauncher({ mode = 'buyer' }) {
     } finally {
       setLoadingConversations(false);
     }
-  }, [api]);
+  }, [api, authenticated]);
 
   const loadVendors = useCallback(async () => {
+    if (!authenticated) return;
     if (isVendor || !buyerMessageApi.getVendors) return;
     try {
       const data = await buyerMessageApi.getVendors();
@@ -58,9 +82,10 @@ export function MessageLauncher({ mode = 'buyer' }) {
     } catch (requestError) {
       setError(getApiMessage(requestError));
     }
-  }, [isVendor]);
+  }, [authenticated, isVendor]);
 
   const loadMessages = useCallback(async (conversationId, silent = false) => {
+    if (!authenticated) return;
     if (!conversationId) {
       setMessages([]);
       return;
@@ -80,14 +105,15 @@ export function MessageLauncher({ mode = 'buyer' }) {
     } finally {
       if (!silent) setLoadingMessages(false);
     }
-  }, [api]);
+  }, [api, authenticated]);
 
   useEffect(() => {
+    if (!authenticated) return undefined;
     loadConversations();
     if (!isVendor) loadVendors();
     const intervalId = window.setInterval(loadConversations, open ? 10000 : 30000);
     return () => window.clearInterval(intervalId);
-  }, [isVendor, loadConversations, loadVendors, open]);
+  }, [authenticated, isVendor, loadConversations, loadVendors, open]);
 
   useEffect(() => {
     if (!open || !activeConversationId) return undefined;
@@ -95,6 +121,18 @@ export function MessageLauncher({ mode = 'buyer' }) {
     const intervalId = window.setInterval(() => loadMessages(activeConversationId, true), 10000);
     return () => window.clearInterval(intervalId);
   }, [activeConversationId, loadMessages, open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (launcherRef.current?.contains(event.target)) return;
+      setOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [open]);
 
   const selectConversation = (conversationId) => {
     setActiveConversationId(conversationId);
@@ -106,6 +144,7 @@ export function MessageLauncher({ mode = 'buyer' }) {
   };
 
   const startConversation = async (vendorId) => {
+    if (!authenticated) return;
     setStartingVendorId(vendorId);
     try {
       const conversation = await buyerMessageApi.startConversation(vendorId);
@@ -122,7 +161,7 @@ export function MessageLauncher({ mode = 'buyer' }) {
 
   const sendMessage = async () => {
     const content = message.trim();
-    if (!content || !activeChat || sending) return;
+    if (!authenticated || !content || !activeChat || sending) return;
     setSending(true);
     try {
       const sentMessage = await api.sendMessage(activeChat.id, content);
@@ -143,8 +182,12 @@ export function MessageLauncher({ mode = 'buyer' }) {
     setOpen(false);
   };
 
+  if (!authenticated) {
+    return null;
+  }
+
   return (
-    <div className="fixed bottom-24 right-6 z-[80]">
+    <div ref={launcherRef} className="fixed bottom-24 right-6 z-[80]">
       {!open && (
         <button
           type="button"

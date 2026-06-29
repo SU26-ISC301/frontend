@@ -12,15 +12,21 @@ import ProductDetail from "./pages/ProductDetail";
 import Favorites from "./pages/Favorites";
 import ShopDetail from "./pages/ShopDetail";
 import { MessageLauncher } from "./components/Messaging/MessageLauncher";
+import { AiChatboxLauncher } from "./components/AiChatbox/AiChatbox";
 
-function BuyerChannelMessageShortcut() {
+function BuyerChannelShortcuts() {
   const { pathname } = useLocation();
   const hiddenPrefixes = ["/vendor", "/seller", "/admin", "/quantri", "/buyer"];
   const shouldHide = hiddenPrefixes.some((prefix) => pathname.startsWith(prefix));
 
   if (shouldHide) return null;
 
-  return <MessageLauncher mode="buyer" />;
+  return (
+    <>
+      <AiChatboxLauncher mode="buyer" />
+      <MessageLauncher mode="buyer" />
+    </>
+  );
 }
 
 function App() {
@@ -65,7 +71,7 @@ function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <BuyerChannelMessageShortcut />
+      <BuyerChannelShortcuts />
       <ThemeToggle />
     </BrowserRouter>
   );

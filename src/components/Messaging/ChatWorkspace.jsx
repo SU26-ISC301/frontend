@@ -208,7 +208,7 @@ export function ChatWorkspace({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className={`text-xs font-extrabold uppercase tracking-[0.18em] ${isVendor ? 'text-teal-600' : 'text-orange-600'}`}>
-                  {isVendor ? 'Seller chat' : 'Shop chat'}
+                  {isVendor ? 'Tin nhắn người bán' : 'Tin nhắn với shop'}
                 </p>
                 <h2 className="mt-1 text-2xl font-black text-slate-950">Tin nhắn</h2>
                 <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -462,7 +462,7 @@ export function ChatWorkspace({
                 <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
                   {isVendor
                     ? 'Nội dung trao đổi với khách hàng sẽ hiển thị tại đây.'
-                    : 'Hoặc bắt đầu chat với shop ở danh sách bên cạnh.'}
+                    : 'Hoặc bắt đầu trò chuyện với shop ở danh sách bên cạnh.'}
                 </p>
               </div>
             </div>
@@ -649,7 +649,7 @@ export function ChatWorkspace({
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-black text-slate-800">{vendor.shopName}</span>
                         <span className="mt-0.5 block text-xs font-semibold text-slate-400">
-                          {existingConversation ? 'Mở hội thoại' : 'Bắt đầu chat'}
+                          {existingConversation ? 'Mở hội thoại' : 'Bắt đầu trò chuyện'}
                         </span>
                       </span>
                       {startingId === vendor.id ? (

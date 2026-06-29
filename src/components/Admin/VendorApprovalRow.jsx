@@ -24,7 +24,7 @@ export function VendorApprovalRow({ vendor, onApprove, onReject }) {
               onClick={() => onApprove(vendor.id)}
             >
               <Check className="h-3.5 w-3.5" />
-              Approve
+              Duyệt
             </Button>
             <Button
               size="sm"
@@ -32,7 +32,7 @@ export function VendorApprovalRow({ vendor, onApprove, onReject }) {
               onClick={() => onReject(vendor.id)}
             >
               <X className="h-3.5 w-3.5" />
-              Reject
+              Từ chối
             </Button>
           </div>
         </td>
@@ -48,7 +48,7 @@ export function VendorApprovalRow({ vendor, onApprove, onReject }) {
                 {vendor.shopName}
               </p>
               <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                pending
+                Chờ duyệt
               </span>
             </div>
           </div>
@@ -73,7 +73,7 @@ export function VendorApprovalRow({ vendor, onApprove, onReject }) {
               onClick={() => onApprove(vendor.id)}
             >
               <Check className="h-3.5 w-3.5" />
-              Approve
+              Duyệt
             </Button>
             <Button
               size="sm"
@@ -81,7 +81,7 @@ export function VendorApprovalRow({ vendor, onApprove, onReject }) {
               onClick={() => onReject(vendor.id)}
             >
               <X className="h-3.5 w-3.5" />
-              Reject
+              Từ chối
             </Button>
           </div>
         </CardContent>

@@ -18,6 +18,106 @@ import SubscriptionPlanModal, {
   getVendorPlan,
 } from './SubscriptionPlanModal';
 
+const PUBLIC_PRODUCTS_PAGE_SIZE = 100;
+
+function normalizeShopFilterValue(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function getStoredVendorId(vendorInfo = {}) {
+  return vendorInfo?.vendorId || vendorInfo?.id || vendorInfo?.vendor?.id || null;
+}
+
+function isProductOwnedByStoredVendor(product, vendorInfo = {}) {
+  if (!product) return false;
+
+  const vendorId = getStoredVendorId(vendorInfo);
+  const productVendorIds = [
+    product.vendorId,
+    product.vendor_id,
+    product.vendor?.id,
+    product.shopId,
+    product.shop_id,
+  ].filter((value) => value !== undefined && value !== null && value !== '');
+
+  if (vendorId && productVendorIds.some((id) => String(id) === String(vendorId))) {
+    return true;
+  }
+
+  const shopNames = [
+    vendorInfo?.shopName,
+    vendorInfo?.vendorName,
+    vendorInfo?.vendor?.shopName,
+    vendorInfo?.vendor?.name,
+  ]
+    .map(normalizeShopFilterValue)
+    .filter(Boolean);
+
+  const productShopNames = [
+    product.vendorName,
+    product.shopName,
+    product.vendor?.shopName,
+    product.vendor?.name,
+  ]
+    .map(normalizeShopFilterValue)
+    .filter(Boolean);
+
+  return shopNames.some((shopName) => productShopNames.includes(shopName));
+}
+
+function hasStoredVendorIdentity(vendorInfo = {}) {
+  return Boolean(
+    getStoredVendorId(vendorInfo) ||
+      vendorInfo?.shopName ||
+      vendorInfo?.vendorName ||
+      vendorInfo?.vendor?.shopName ||
+      vendorInfo?.vendor?.name,
+  );
+}
+
+function getProductsPageContent(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.content)) return data.content;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.data)) return data.data;
+  return [];
+}
+
+function getProductsTotalPages(data) {
+  if (Array.isArray(data)) return 1;
+  return Math.max(1, Number(data?.totalPages ?? data?.page?.totalPages ?? 1) || 1);
+}
+
+async function getPublicProductsOwnedByVendor(vendorInfo = {}) {
+  const firstPage = await sellerApi.getPublicProducts({
+    page: 0,
+    size: PUBLIC_PRODUCTS_PAGE_SIZE,
+  });
+  const products = [...getProductsPageContent(firstPage)];
+  const totalPages = getProductsTotalPages(firstPage);
+
+  if (totalPages > 1) {
+    const remainingPages = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, index) =>
+        sellerApi.getPublicProducts({
+          page: index + 1,
+          size: PUBLIC_PRODUCTS_PAGE_SIZE,
+        }).catch(() => null),
+      ),
+    );
+
+    remainingPages.forEach((page) => {
+      products.push(...getProductsPageContent(page));
+    });
+  }
+
+  return products.filter((product) => isProductOwnedByStoredVendor(product, vendorInfo));
+}
+
 export function ProductAddFormComplete({ isEdit }) {
   const navigate = useNavigate();
   const { sku } = useParams();
@@ -307,9 +407,8 @@ export function ProductAddFormComplete({ isEdit }) {
           if (!product) {
             try {
               const vendorInfo = JSON.parse(localStorage.getItem("vendorInfo") || "{}");
-              const vendorId = vendorInfo?.id || vendorInfo?.vendorId;
-              if (vendorId) {
-                const backendProducts = await sellerApi.getProductsByVendor(vendorId);
+              if (hasStoredVendorIdentity(vendorInfo)) {
+                const backendProducts = await getPublicProductsOwnedByVendor(vendorInfo);
                 if (Array.isArray(backendProducts)) {
                   const beProd = backendProducts.find(p => {
                     const mapped = mapBackendProductToLocal(p, categories);
@@ -637,7 +736,7 @@ export function ProductAddFormComplete({ isEdit }) {
   const buildBackendProductPayload = (uploadedImages, uploadedVideo, status, backendCategories = categoriesList) => {
     const categoryId = resolveBackendCategoryId(formData.category, backendCategories);
     if (!categoryId) {
-      throw new Error('Không xác định được danh mục hợp lệ từ backend. Vui lòng tải lại trang và chọn lại danh mục.');
+      throw new Error('Không xác định được danh mục hợp lệ từ máy chủ. Vui lòng tải lại trang và chọn lại danh mục.');
     }
 
     const mediaList = [];
@@ -776,8 +875,8 @@ export function ProductAddFormComplete({ isEdit }) {
           uploadedVideo = urlsList[urlIdx++];
         }
       } catch (uploadError) {
-        console.warn('Lỗi tải media lên Backend, sử dụng dự phòng local URLs:', uploadError);
-        alert('Lưu ý: Không thể tải ảnh/video lên server Backend (Lỗi mạng hoặc server quá tải).\nHệ thống sẽ tạm thời dùng liên kết cục bộ để bạn tiếp tục lưu bản nháp.');
+        console.warn('Lỗi tải media lên máy chủ, sử dụng liên kết cục bộ dự phòng:', uploadError);
+        alert('Lưu ý: Không thể tải ảnh/video lên máy chủ (lỗi mạng hoặc máy chủ quá tải).\nHệ thống sẽ tạm thời dùng liên kết cục bộ để bạn tiếp tục lưu bản nháp.');
 
         uploadedImages = formData.images.map(img => {
           if (img.file instanceof File) {
@@ -818,7 +917,7 @@ export function ProductAddFormComplete({ isEdit }) {
       const backendCategories = await ensureBackendCategories();
       backendPayload = buildBackendProductPayload(uploadedImages, uploadedVideo, 'draft', backendCategories);
     } catch (payloadError) {
-      alert(payloadError.message || 'Không thể tải danh mục sản phẩm từ backend.');
+      alert(payloadError.message || 'Không thể tải danh mục sản phẩm từ máy chủ.');
       setIsSubmitting(false);
       return;
     }
@@ -835,8 +934,8 @@ export function ProductAddFormComplete({ isEdit }) {
         beProduct = await sellerApi.createProduct(backendPayload);
       }
     } catch (apiError) {
-      console.error('Lỗi lưu bản nháp lên Backend:', apiError);
-      alert('Không thể lưu bản nháp lên máy chủ Backend.\nChi tiết lỗi: ' + (apiError.response?.data?.message || apiError.response?.data?.error || apiError.message));
+      console.error('Lỗi lưu bản nháp lên máy chủ:', apiError);
+      alert('Không thể lưu bản nháp lên máy chủ.\nChi tiết lỗi: ' + (apiError.response?.data?.message || apiError.response?.data?.error || apiError.message));
       setIsSubmitting(false);
       return;
     }
@@ -930,7 +1029,7 @@ export function ProductAddFormComplete({ isEdit }) {
           uploadedVideo = urlsList[urlIdx++];
         }
       } catch (uploadError) {
-        console.warn('Lỗi tải media lên Backend, sử dụng dự phòng local URLs:', uploadError);
+        console.warn('Lỗi tải media lên máy chủ, sử dụng liên kết cục bộ dự phòng:', uploadError);
         setSubmitNotice({
           tone: 'orange',
           title: 'Media chưa được tải lên máy chủ',
@@ -987,7 +1086,7 @@ export function ProductAddFormComplete({ isEdit }) {
       setSubmitNotice({
         tone: 'red',
         title: 'Không thể gửi xét duyệt',
-        message: payloadError.message || 'Không thể tải danh mục sản phẩm từ backend.',
+        message: payloadError.message || 'Không thể tải danh mục sản phẩm từ máy chủ.',
       });
       mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       setIsSubmitting(false);
@@ -1006,7 +1105,7 @@ export function ProductAddFormComplete({ isEdit }) {
         beProduct = await sellerApi.createProduct(backendPayload);
       }
     } catch (apiError) {
-      console.error('Lỗi khi gửi sản phẩm lên Backend:', apiError);
+      console.error('Lỗi khi gửi sản phẩm lên máy chủ:', apiError);
       const apiMessage = apiError.response?.data?.message || apiError.response?.data?.error || apiError.message;
       if (apiMessage?.toLowerCase().includes('hết lượt')) {
         await syncPlanStatus();
@@ -1759,7 +1858,7 @@ export function ProductAddFormComplete({ isEdit }) {
                     className="w-full h-full text-sm placeholder-slate-400 bg-transparent focus:outline-none pr-28 text-slate-800"
                   />
                   <span className="absolute right-4 text-xs font-semibold text-slate-400 pointer-events-none select-none">
-                    Centimet (cm)
+                    Xentimét (cm)
                   </span>
                 </div>
 
@@ -1773,7 +1872,7 @@ export function ProductAddFormComplete({ isEdit }) {
                     className="w-full h-full text-sm placeholder-slate-400 bg-transparent focus:outline-none pr-28 text-slate-800"
                   />
                   <span className="absolute right-4 text-xs font-semibold text-slate-400 pointer-events-none select-none">
-                    Centimet (cm)
+                    Xentimét (cm)
                   </span>
                 </div>
 
@@ -1787,7 +1886,7 @@ export function ProductAddFormComplete({ isEdit }) {
                     className="w-full h-full text-sm placeholder-slate-400 bg-transparent focus:outline-none pr-28 text-slate-800"
                   />
                   <span className="absolute right-4 text-xs font-semibold text-slate-400 pointer-events-none select-none">
-                    Centimet (cm)
+                    Xentimét (cm)
                   </span>
                 </div>
               </div>

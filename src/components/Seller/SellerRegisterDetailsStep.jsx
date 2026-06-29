@@ -614,7 +614,7 @@ export function SellerRegisterDetailsStep({ email, otpResult, credentials, onNex
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-gray-900">{facePhoto.fileName}</p>
                     <p className="mt-1 text-xs text-gray-500">
-                      File ảnh sẽ được gửi xuống Backend, dung lượng dưới {MAX_IMAGE_SIZE_MB}MB.
+                      File ảnh sẽ được gửi xuống máy chủ, dung lượng dưới {MAX_IMAGE_SIZE_MB}MB.
                     </p>
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                       <Button type="button" variant="outline" size="sm" onClick={openCamera}>
@@ -662,7 +662,7 @@ export function SellerRegisterDetailsStep({ email, otpResult, credentials, onNex
                   </p>
                   {scanSeconds >= 15 && (
                     <p className="text-xs text-gray-500">
-                      Bước này đang chờ backend gọi FPT.AI, có thể lâu hơn khi server vừa khởi động hoặc ảnh có dung lượng lớn.
+                      Bước này đang chờ máy chủ gọi FPT.AI, có thể lâu hơn khi máy chủ vừa khởi động hoặc ảnh có dung lượng lớn.
                     </p>
                   )}
                 </div>

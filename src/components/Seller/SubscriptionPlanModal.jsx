@@ -250,7 +250,7 @@ function PlanCard({ plan, currentPlanId, onSelect }) {
           </>
         ) : (
           <>
-            {plan.id === 'free' ? 'Giữ gói Free' : `Chọn ${plan.name}`}
+            {plan.id === 'free' ? 'Giữ gói miễn phí' : `Chọn ${plan.name}`}
             {plan.id !== 'free' && <ArrowRight className="h-3.5 w-3.5" />}
           </>
         )}

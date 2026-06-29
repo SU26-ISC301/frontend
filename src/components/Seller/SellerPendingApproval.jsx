@@ -10,11 +10,11 @@ export function SellerPendingApproval({ onBackToLogin }) {
           <CheckCircle2 className="h-7 w-7 text-emerald-600" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900">
-          Đăng ký Seller thành công
+          Đăng ký người bán thành công
         </h3>
         <p className="mx-auto mt-2 max-w-sm text-sm text-gray-600">
-          Hồ sơ đăng ký Seller của bạn đã được gửi thành công. Vui lòng quay lại
-          phần đăng nhập để tiếp tục sử dụng Seller Center.
+          Hồ sơ đăng ký người bán của bạn đã được gửi thành công. Vui lòng quay lại
+          phần đăng nhập để tiếp tục sử dụng Trung tâm người bán.
         </p>
         <Button
           type="button"

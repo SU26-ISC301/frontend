@@ -261,12 +261,12 @@ const DEFAULT_MARKET_CATEGORY_ID = 'op-lung-bao-da';
 const orders = [
   ['SPV-10291', 'Minh Anh', 'TechZone VN', '389.000đ', 'Cần xác nhận'],
   ['SPV-10290', 'Gia Hân', 'Beauty Corner', '259.000đ', 'Đang đóng gói'],
-  ['SPV-10289', 'Hoàng Nam', 'ShopVN Seller', '499.000đ', 'Chờ lấy hàng'],
+  ['SPV-10289', 'Hoàng Nam', 'ShopVN Người bán', '499.000đ', 'Chờ lấy hàng'],
   ['SPV-10288', 'Thanh Vy', 'Green Grocery', '189.000đ', 'Đang giao'],
 ];
 
 const financeRows = [
-  ['Đối soát seller', '24,9 tỷ', 'Đang chạy', 'Hoàn tất 18:00'],
+  ['Đối soát người bán', '24,9 tỷ', 'Đang chạy', 'Hoàn tất 18:00'],
   ['Yêu cầu rút tiền', '86,2 triệu', 'Chờ duyệt', '12 lệnh'],
   ['Phí nền tảng', '3,12 tỷ', 'Ổn định', '+6,8% tuần này'],
   ['Hoàn tiền', '148 triệu', 'Cần kiểm tra', '5 yêu cầu lớn'],
@@ -276,13 +276,13 @@ const moderationItems = [
   ['Nội dung sản phẩm', '43 mục', 'Ảnh, mô tả, từ khóa cần duyệt'],
   ['Khiếu nại khách hàng', '17 ticket', '8 ticket quá 12 giờ'],
   ['Rủi ro thanh toán', '6 cảnh báo', '2 giao dịch giá trị cao'],
-  ['Vi phạm seller', '9 hồ sơ', '3 shop cần khóa tạm thời'],
+  ['Vi phạm người bán', '9 hồ sơ', '3 shop cần khóa tạm thời'],
 ];
 
 const recentOrders = [
   ['#SPV-10291', 'Minh Anh', 'TechZone VN', '389.000đ', 'Cần xác nhận'],
   ['#SPV-10290', 'Gia Hân', 'Beauty Corner', '259.000đ', 'Đang đóng gói'],
-  ['#SPV-10289', 'Hoàng Nam', 'ShopVN Seller', '499.000đ', 'Đang giao'],
+  ['#SPV-10289', 'Hoàng Nam', 'ShopVN Người bán', '499.000đ', 'Đang giao'],
   ['#SPV-10288', 'Thanh Vy', 'Green Grocery', '189.000đ', 'Hoàn thành'],
 ];
 
@@ -316,7 +316,7 @@ const conversionSteps = [
 ];
 
 const notificationItems = [
-  ['Seller mới chờ duyệt', '4 hồ sơ được gửi trong 30 phút qua', 'orange'],
+  ['Người bán mới chờ duyệt', '4 hồ sơ được gửi trong 30 phút qua', 'orange'],
   ['Cảnh báo thanh toán', '2 giao dịch trên 20 triệu cần kiểm tra', 'red'],
   ['SLA giao hàng', 'Tuyến TP.HCM đang giảm 1,4%', 'blue'],
 ];
@@ -414,7 +414,7 @@ export default function AdminDashboard() {
         setVendors(mapped);
       }
     } catch (err) {
-      console.warn('Lỗi khi tải danh sách vendor từ Backend:', err);
+      console.warn('Lỗi khi tải danh sách người bán từ máy chủ:', err);
     }
   }, []);
 
@@ -480,8 +480,8 @@ export default function AdminDashboard() {
       const shop = vendors.find((vendor) => vendor.id === id)?.shop;
       setToast({ title: 'Đã cập nhật gian hàng', message: `${shop || id}: ${status}.`, tone: status === 'Từ chối' ? 'red' : 'green' });
     } catch (err) {
-      console.error('Lỗi khi cập nhật trạng thái vendor lên Backend:', err);
-      alert('Không thể cập nhật trạng thái shop lên Backend.\nChi tiết lỗi: ' + (err.response?.data?.message || err.message));
+      console.error('Lỗi khi cập nhật trạng thái người bán lên máy chủ:', err);
+      alert('Không thể cập nhật trạng thái shop lên máy chủ.\nChi tiết lỗi: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -521,7 +521,7 @@ function AdminSidebar({ active, mobileOpen, pendingCount, session, onClose, onLo
           </span>
           <div>
             <p className="text-base font-extrabold tracking-tight text-white">ShopVN Admin</p>
-            <p className="text-xs font-semibold text-slate-400">Management Hub</p>
+            <p className="text-xs font-semibold text-slate-400">Trung tâm quản lý</p>
           </div>
           <button type="button" aria-label="Đóng menu" className="ml-auto text-slate-400 lg:hidden" onClick={onClose}>
             <X className="h-5 w-5" />
@@ -753,20 +753,20 @@ function AdminLogin({ onLogin }) {
             </span>
             <div>
               <p className="text-lg font-extrabold">ShopVN Admin</p>
-              <p className="text-xs font-semibold text-indigo-200">Management Hub</p>
+              <p className="text-xs font-semibold text-indigo-200">Trung tâm quản lý</p>
             </div>
           </div>
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-indigo-200">Control center</p>
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-indigo-200">Trung tâm điều phối</p>
             <h1 className="mt-4 max-w-lg text-5xl font-extrabold leading-[1.08] tracking-tight">
               Điều hành nền tảng trong một không gian tập trung.
             </h1>
             <p className="mt-5 max-w-lg text-sm font-medium leading-6 text-indigo-100/85">
-              Theo dõi vận hành, duyệt seller và xử lý các hàng đợi ưu tiên với dữ liệu được tổ chức rõ ràng.
+              Theo dõi vận hành, duyệt người bán và xử lý các hàng đợi ưu tiên với dữ liệu được tổ chức rõ ràng.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            {[['24/7', 'Giám sát'], ['97,6%', 'SLA hệ thống'], ['Secure', 'Audit log']].map(([value, label]) => (
+            {[['24/7', 'Giám sát'], ['97,6%', 'SLA hệ thống'], ['Bảo mật', 'Nhật ký kiểm tra']].map(([value, label]) => (
               <div key={label} className="rounded-xl border border-white/10 bg-white/10 p-3 backdrop-blur">
                 <p className="text-lg font-extrabold">{value}</p>
                 <p className="mt-1 text-xs font-semibold text-indigo-200">{label}</p>
@@ -847,9 +847,9 @@ function AdminSection({ active, vendors, onNavigate, onToast, onVendorStatus }) 
   if (active === 'nghien-cuu-thi-truong') return <MarketResearchSection onToast={onToast} />;
   if (active === 'nguoi-dung') return <UserManagementSection onToast={onToast} />;
   if (active === 'nhat-ky-van-hanh') return <AuditLogSection onToast={onToast} />;
-  if (active === 'don-hang') return <DataSection title="Giám sát đơn hàng" subtitle="Theo dõi trạng thái đơn, SLA xử lý, seller phụ trách và giá trị giao dịch." columns={['Mã đơn', 'Khách hàng', 'Shop', 'Giá trị', 'Trạng thái']} rows={orders} onToast={onToast} />;
-  if (active === 'tai-chinh') return <DataSection title="Tài chính & đối soát" subtitle="Quản lý rút tiền, hoàn tiền, phí nền tảng và kỳ đối soát seller." columns={['Hạng mục', 'Giá trị', 'Trạng thái', 'Ghi chú']} rows={financeRows} onToast={onToast} />;
-  if (active === 'kiem-duyet') return <DataSection title="Trung tâm kiểm duyệt" subtitle="Xử lý nội dung, khiếu nại, gian lận thanh toán và vi phạm seller." columns={['Hàng đợi', 'Số lượng', 'Mô tả']} rows={moderationItems} onToast={onToast} />;
+  if (active === 'don-hang') return <DataSection title="Giám sát đơn hàng" subtitle="Theo dõi trạng thái đơn, SLA xử lý, người bán phụ trách và giá trị giao dịch." columns={['Mã đơn', 'Khách hàng', 'Shop', 'Giá trị', 'Trạng thái']} rows={orders} onToast={onToast} />;
+  if (active === 'tai-chinh') return <DataSection title="Tài chính & đối soát" subtitle="Quản lý rút tiền, hoàn tiền, phí nền tảng và kỳ đối soát người bán." columns={['Hạng mục', 'Giá trị', 'Trạng thái', 'Ghi chú']} rows={financeRows} onToast={onToast} />;
+  if (active === 'kiem-duyet') return <DataSection title="Trung tâm kiểm duyệt" subtitle="Xử lý nội dung, khiếu nại, gian lận thanh toán và vi phạm người bán." columns={['Hàng đợi', 'Số lượng', 'Mô tả']} rows={moderationItems} onToast={onToast} />;
   if (active === 'bao-cao') return <ReportsSection onToast={onToast} />;
   return <SettingsSection />;
 }
@@ -1306,7 +1306,7 @@ function ProductsSection({ onToast }) {
 
       setProductsList(mappedProducts);
     } catch (err) {
-      console.error('Lỗi khi tải danh sách sản phẩm từ Backend:', err);
+      console.error('Lỗi khi tải danh sách sản phẩm từ máy chủ:', err);
       setLoadError(err.response?.data?.message || err.response?.data?.error || err.message || 'Không thể tải danh sách sản phẩm.');
       setProductsList([]);
     } finally {
@@ -1966,7 +1966,7 @@ function MarketResearchSection({ onToast }) {
   const syncMarketData = () => {
     const now = new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit' }).format(new Date());
     setLastSync(`${now} hôm nay`);
-    onToast({ title: 'Đã cập nhật dữ liệu mẫu', message: `Mock data cho ${selectedCategory.name} đã được làm mới.`, tone: 'green' });
+    onToast({ title: 'Đã cập nhật dữ liệu mẫu', message: `Dữ liệu mẫu cho ${selectedCategory.name} đã được làm mới.`, tone: 'green' });
   };
 
   const exportMarketRows = () => {
@@ -2011,7 +2011,7 @@ function MarketResearchSection({ onToast }) {
           <div>
             <div className="mb-2 flex items-center justify-between gap-3">
               <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-slate-400">Hạng mục nghiên cứu</p>
-              <span className="hidden text-[11px] font-bold text-slate-400 sm:inline">Dùng chung cây hạng mục SellerCenter</span>
+              <span className="hidden text-[11px] font-bold text-slate-400 sm:inline">Dùng chung cây hạng mục Trung tâm người bán</span>
             </div>
             <MarketCategoryPicker
               value={selectedCategoryId}
@@ -2427,12 +2427,12 @@ function VendorApprovalSection({ vendors, onToast, onVendorStatus }) {
   const visibleVendors = filteredVendors.slice((page - 1) * pageSize, page * pageSize);
   const exportVendors = () => {
     downloadCsv('shopvn-seller-approval.csv', ['Mã shop', 'Gian hàng', 'Chủ shop', 'Email', 'SĐT', 'Ngành hàng', 'Rủi ro', 'Trạng thái'], filteredVendors.map((vendor) => [vendor.id, vendor.shop, vendor.owner, vendor.email, vendor.phone, vendor.category, vendor.risk, vendor.status]));
-    onToast({ title: 'Đã xuất danh sách', message: `${filteredVendors.length} hồ sơ seller đã được tải xuống.`, tone: 'green' });
+    onToast({ title: 'Đã xuất danh sách', message: `${filteredVendors.length} hồ sơ người bán đã được tải xuống.`, tone: 'green' });
   };
 
   return (
     <div>
-      <PageHeader title="Duyệt gian hàng Seller" subtitle="Kiểm tra hồ sơ, mức độ rủi ro và quyết định kích hoạt gian hàng.">
+      <PageHeader title="Duyệt gian hàng người bán" subtitle="Kiểm tra hồ sơ, mức độ rủi ro và quyết định kích hoạt gian hàng.">
         <button type="button" className="admin-secondary-button" onClick={exportVendors}>
           <ArrowDownToLine className="h-4 w-4" />
           Xuất danh sách
@@ -2533,7 +2533,7 @@ function ReportsSection({ onToast }) {
       <section className="grid gap-4 md:grid-cols-3">
         {[
           ['Báo cáo doanh thu', 'Xuất GMV, phí nền tảng và hoàn tiền theo ngày.', BarChart3, 'purple'],
-          ['Báo cáo vận hành', 'SLA xử lý đơn, giao hàng và hiệu suất seller.', PackageCheck, 'blue'],
+          ['Báo cáo vận hành', 'SLA xử lý đơn, giao hàng và hiệu suất người bán.', PackageCheck, 'blue'],
           ['Báo cáo kiểm duyệt', 'Vi phạm sản phẩm, khiếu nại và quyết định xử lý.', ShieldCheck, 'orange'],
         ].map(([title, text, Icon, tone]) => (
           <div key={title} className="admin-panel p-5">
@@ -2558,7 +2558,7 @@ function SettingsSection() {
         <div className="admin-panel p-5">
           <PanelHeader title="Phân quyền quản trị" subtitle="Thiết lập phạm vi thao tác nội bộ" />
           <div className="mt-4 divide-y divide-slate-100">
-            {['Duyệt seller', 'Quản lý hoàn tiền', 'Khóa sản phẩm vi phạm', 'Xuất báo cáo tài chính'].map((label, index) => (
+            {['Duyệt người bán', 'Quản lý hoàn tiền', 'Khóa sản phẩm vi phạm', 'Xuất báo cáo tài chính'].map((label, index) => (
               <label key={label} className="flex items-center justify-between gap-3 py-4 text-sm font-bold text-slate-700">
                 {label}
                 <input type="checkbox" defaultChecked={index !== 1} className="h-4 w-4 accent-indigo-600" />

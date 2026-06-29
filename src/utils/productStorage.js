@@ -315,7 +315,7 @@ export const productStorage = {
 export function buildBackendPayloadFromLocal(product, status, categoriesList = []) {
   const categoryId = resolveBackendCategoryId(product.category, categoriesList);
   if (!categoryId) {
-    throw new Error('Không xác định được danh mục hợp lệ từ backend. Vui lòng tải lại trang và chọn lại danh mục.');
+    throw new Error('Không xác định được danh mục hợp lệ từ máy chủ. Vui lòng tải lại trang và chọn lại danh mục.');
   }
 
   const mediaList = [];

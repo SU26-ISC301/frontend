@@ -241,7 +241,7 @@ function PaymentQRStep({ paymentData, plan, onSuccess, onCancel }) {
           <div className="space-y-3">
             <div className="flex justify-between items-center text-sm">
               <span className="font-semibold text-stone-500">Hóa đơn gia hạn</span>
-              <span className="font-bold text-stone-800">ShopVN Vendor</span>
+              <span className="font-bold text-stone-800">ShopVN Người bán</span>
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="font-semibold text-stone-500">Mã đơn hàng</span>
@@ -252,7 +252,7 @@ function PaymentQRStep({ paymentData, plan, onSuccess, onCancel }) {
                   onClick={handleCopy}
                   className="text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded"
                 >
-                  {copyToast ? 'Đã copy' : 'Copy'}
+                  {copyToast ? 'Đã sao chép' : 'Sao chép'}
                 </button>
               </div>
             </div>
@@ -545,6 +545,12 @@ export default function VendorSubscriptionCheckout() {
 
   const handlePaymentCreated = useCallback((data) => {
     setPaymentData(data);
+    if (data?.paidByBalance || data?.paymentStatus === 'paid') {
+      getSubscriptionStatus().catch(() => {});
+      setStep('success');
+      window.dispatchEvent(new Event('seller-wallet-refresh'));
+      return;
+    }
     setStep('qr');
   }, []);
 

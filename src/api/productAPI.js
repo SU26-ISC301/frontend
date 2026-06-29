@@ -8,8 +8,10 @@ export const productApi = {
     return unwrap(response);
   },
 
-  getPublicProductById: async (productId) => {
-    const response = await axiosClient.get(`/api/products/${productId}`);
+  getPublicProductById: async (productId, options = {}) => {
+    const response = await axiosClient.get(`/api/products/${productId}`, {
+      headers: options.buyerAuth ? { 'X-Role-Token': 'buyer-strict' } : undefined,
+    });
     return unwrap(response);
   },
 };
