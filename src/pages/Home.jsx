@@ -24,10 +24,10 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Smartphone,
-  Truck,
   Tv,
   Watch,
   X,
+  Zap,
 } from 'lucide-react';
 import { productApi } from '../api/productAPI';
 import { categoryApi } from '../api/categoryAPI';
@@ -41,15 +41,15 @@ const highlights = [
     accent: 'from-[#ff4d2e] to-[#ff8a3d]',
   },
   {
-    icon: Truck,
-    title: 'Giao nhanh trong ngày',
-    desc: 'Theo dõi đơn mượt, cập nhật liên tục',
+    icon: Zap,
+    title: 'Tìm kiếm tiện lợi',
+    desc: 'Lọc sản phẩm nhanh, vào bài đăng chỉ một chạm',
     accent: 'from-[#0ea5a3] to-[#22c55e]',
   },
   {
     icon: ShieldCheck,
-    title: 'Mua hàng an tâm',
-    desc: 'Đổi trả dễ dàng, shop đã xác minh',
+    title: 'Tin đăng đáng tin',
+    desc: 'Ưu tiên shop xác minh và sản phẩm có dữ liệu rõ ràng',
     accent: 'from-[#2563eb] to-[#7c3aed]',
   },
 ];
@@ -602,7 +602,7 @@ export default function Home() {
       <button
         type="button"
         onClick={() => setIsCategoryMenuOpen((open) => !open)}
-        className="flex h-10 w-full items-center justify-between gap-2 rounded-2xl bg-gradient-to-r from-white to-[#fff6f1] px-3 text-left text-sm font-extrabold text-[#f05a22] shadow-sm ring-1 ring-orange-100 transition hover:from-[#fffaf7] hover:to-white focus:outline-none focus:ring-4 focus:ring-orange-100 sm:w-[150px]"
+        className="flex h-11 w-full items-center justify-between gap-2 rounded-2xl border border-orange-100 bg-white px-3 text-left text-sm font-extrabold text-[#f05a22] shadow-sm shadow-orange-100/60 transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50 focus:outline-none focus:ring-4 focus:ring-orange-100 sm:w-[160px]"
         aria-expanded={isCategoryMenuOpen}
       >
         <span className="flex min-w-0 items-center gap-2">
@@ -748,9 +748,13 @@ export default function Home() {
       <Header categoryMenuSlot={categoryMenuSlot} />
 
       <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
-        <HeroBanner />
+        <HeroBanner
+          products={(allMatchedProducts.length ? allMatchedProducts : visibleProducts).slice(0, 12)}
+          isLoading={isLoadingProducts}
+          totalProducts={pageMeta.totalElements || allMatchedProducts.length}
+        />
 
-        <section className="mb-8 grid gap-4 sm:grid-cols-3">
+        <section className="mb-10 grid gap-4 sm:grid-cols-3">
           {highlights.map(({ icon: Icon, title, desc, accent }) => (
             <Card key={title} className="card-interactive depth-card overflow-hidden rounded-[1rem] border-white/80 bg-white/90">
               <CardContent className="relative flex items-center gap-4 p-4 sm:p-5">
@@ -768,14 +772,14 @@ export default function Home() {
           ))}
         </section>
 
-        <section className="pb-8">
-          <div className="mb-5 flex items-end justify-between gap-4">
+        <section id="catalog-products" className="scroll-mt-36 pb-8">
+          <div className="mb-6 flex items-end justify-between gap-4">
             <div>
               <span className="mb-2 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-[#f05a35]">
                 <Flame className="h-3.5 w-3.5" />
                 Đang được săn
               </span>
-              <h2 className="section-title">
+              <h2 className="section-title text-3xl">
                 {searchQuery ? `Kết quả cho "${searchQuery}"` : selectedCategory ? selectedCategory.name : 'Gợi ý hôm nay'}
               </h2>
               <p className="text-sm text-slate-500">
@@ -791,25 +795,35 @@ export default function Home() {
               Cập nhật trực tiếp
             </span>
           </div>
-          <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
-            <aside className="h-fit rounded-2xl border border-white/80 bg-white/90 p-4 shadow-sm lg:sticky lg:top-28">
-              <div className="flex items-center justify-between gap-3">
-                <span className="inline-flex items-center gap-2 rounded-full border border-orange-100 bg-orange-50 px-3 py-2 text-sm font-extrabold text-[#f05a22]">
-                  <SlidersHorizontal className="h-4 w-4" />
-                  Xem theo giá
-                </span>
-                {hasPriceFilter && (
-                  <button
-                    type="button"
-                    onClick={clearPriceFilter}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-orange-50 hover:text-[#f05a22]"
-                    aria-label="Xóa lọc giá"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
+          <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+            <aside className="h-fit overflow-hidden rounded-[1.5rem] border border-white/90 bg-[linear-gradient(180deg,#ffffff_0%,#fff8f3_100%)] p-4 shadow-[0_24px_70px_-54px_rgba(15,23,42,0.72)] ring-1 ring-orange-100/70 lg:sticky lg:top-32">
+              <div className="rounded-[1.15rem] border border-orange-100 bg-white/85 p-4 shadow-[0_18px_46px_-38px_rgba(255,107,44,0.72)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#ff4d2e] to-[#ff8a3d] text-white shadow-lg shadow-orange-500/20">
+                      <SlidersHorizontal className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#f05a22]">Bộ lọc cá nhân</p>
+                      <h3 className="mt-1 text-base font-black text-slate-950">Xem theo ngân sách</h3>
+                    </div>
+                  </div>
+                  {hasPriceFilter && (
+                    <button
+                      type="button"
+                      onClick={clearPriceFilter}
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-50 text-[#f05a22] transition hover:bg-orange-100"
+                      aria-label="Xóa lọc giá"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">Chọn khoảng giá phù hợp để tìm nhanh sản phẩm C2C đang bán.</p>
               </div>
-              <p className="mt-4 text-sm font-extrabold text-slate-800">Hãy chọn mức giá phù hợp với bạn</p>
+
+              <div className="px-1 pb-1 pt-5">
+              <p className="text-sm font-extrabold text-slate-800">Khoảng giá mong muốn</p>
 
               <div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                 <label className="sr-only" htmlFor="min-price-filter">Giá thấp nhất</label>
@@ -820,9 +834,9 @@ export default function Home() {
                   value={formatCurrencyInput(priceDraft.min)}
                   onChange={(event) => updatePriceDraft('min', event.target.value)}
                   placeholder="0"
-                  className="h-12 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-right text-sm font-bold text-slate-700 outline-none transition focus:border-[#ff7a45] focus:ring-4 focus:ring-orange-100"
+                  className="h-12 min-w-0 rounded-2xl border border-orange-100 bg-white px-3 text-right text-sm font-black text-slate-800 shadow-inner shadow-orange-50/50 outline-none transition placeholder:text-slate-300 focus:border-[#ff7a45] focus:ring-4 focus:ring-orange-100"
                 />
-                <span className="font-extrabold text-slate-400">-</span>
+                <span className="font-extrabold text-orange-300">-</span>
                 <label className="sr-only" htmlFor="max-price-filter">Giá cao nhất</label>
                 <input
                   id="max-price-filter"
@@ -831,11 +845,11 @@ export default function Home() {
                   value={formatCurrencyInput(priceDraft.max)}
                   onChange={(event) => updatePriceDraft('max', event.target.value)}
                   placeholder={formatCurrencyInput(PRICE_FILTER_MAX)}
-                  className="h-12 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-right text-sm font-bold text-slate-700 outline-none transition focus:border-[#ff7a45] focus:ring-4 focus:ring-orange-100"
+                  className="h-12 min-w-0 rounded-2xl border border-orange-100 bg-white px-3 text-right text-sm font-black text-slate-800 shadow-inner shadow-orange-50/50 outline-none transition placeholder:text-slate-300 focus:border-[#ff7a45] focus:ring-4 focus:ring-orange-100"
                 />
               </div>
 
-              <div className="mt-5 space-y-3">
+              <div className="mt-5 rounded-2xl border border-orange-100 bg-white/75 px-4 py-4 shadow-sm">
                 <input
                   type="range"
                   min="0"
@@ -846,14 +860,14 @@ export default function Home() {
                   className="h-2 w-full accent-[#ff6b2c]"
                   aria-label="Chọn giá cao nhất"
                 />
-                <div className="flex justify-between text-xs font-bold text-slate-400">
+                <div className="mt-3 flex justify-between text-xs font-black text-slate-400">
                   <span>0đ</span>
                   <span>{formatCurrencyInput(PRICE_FILTER_MAX)}đ</span>
                 </div>
               </div>
 
               {hasPriceFilter && (
-                <p className="mt-4 rounded-xl bg-orange-50 px-3 py-2 text-xs font-bold text-[#f05a22]">
+                <p className="mt-4 rounded-2xl border border-orange-100 bg-orange-50 px-3 py-2 text-xs font-bold text-[#f05a22]">
                   Đang lọc: {formatCurrencyInput(appliedPrice.min || 0)}đ - {appliedPrice.max ? `${formatCurrencyInput(appliedPrice.max)}đ` : 'không giới hạn'}
                 </p>
               )}
@@ -862,33 +876,34 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={clearPriceFilter}
-                  className="h-12 rounded-xl border border-orange-100 bg-white text-sm font-extrabold text-slate-700 shadow-sm transition hover:border-orange-200 hover:text-[#f05a22]"
+                  className="h-12 rounded-2xl border border-orange-100 bg-white text-sm font-extrabold text-slate-700 shadow-sm transition hover:border-orange-200 hover:bg-orange-50 hover:text-[#f05a22]"
                 >
                   Đóng
                 </button>
                 <button
                   type="button"
                   onClick={applyPriceFilter}
-                  className="h-12 rounded-xl border border-orange-200 bg-white text-sm font-extrabold text-[#f05a22] shadow-sm transition hover:border-orange-300 hover:bg-orange-50"
+                  className="h-12 rounded-2xl bg-gradient-to-r from-[#ff315c] to-[#ff6b2c] text-sm font-extrabold text-white shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:shadow-orange-500/30"
                 >
                   Xem kết quả
                 </button>
               </div>
+              </div>
             </aside>
 
             <div className="min-w-0">
-              <div className="mb-4 flex w-full max-w-[560px] flex-col gap-2 rounded-xl border border-white/80 bg-white/90 p-3 shadow-sm sm:flex-row sm:items-center">
+              <div className="mb-5 flex w-full flex-col gap-3 rounded-[1.35rem] border border-white/80 bg-white/90 p-3 shadow-[0_18px_46px_-38px_rgba(15,23,42,0.58)] sm:flex-row sm:items-center sm:justify-between">
                 <div className="inline-flex shrink-0 items-center gap-2 text-xs font-extrabold uppercase tracking-wide text-slate-500">
                   <SlidersHorizontal className="h-4 w-4 text-[#ff6b2c]" />
                   Bộ lọc
                 </div>
-                <div className="grid flex-1 gap-2 sm:max-w-xs">
+                <div className="grid flex-1 gap-2 sm:max-w-sm">
                   <label className="sr-only" htmlFor="menu-sort-filter">Sắp xếp sản phẩm</label>
                   <select
                     id="menu-sort-filter"
                     value={menuSortMode}
                     onChange={(event) => setMenuSortMode(event.target.value)}
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-extrabold text-slate-700 outline-none transition focus:border-[#ff7a45] focus:ring-4 focus:ring-orange-100"
+                    className="h-12 w-full rounded-2xl border border-orange-100 bg-white px-4 text-sm font-extrabold text-slate-700 outline-none transition focus:border-[#ff7a45] focus:ring-4 focus:ring-orange-100"
                   >
                     {MENU_SORT_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -905,7 +920,7 @@ export default function Home() {
                 </div>
               ) : visibleProducts.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
                     {visibleProducts.map((product, i) => (
                       <ProductCard key={`${product.id || product.title}-${i}`} index={i} {...product} />
                     ))}

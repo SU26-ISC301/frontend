@@ -2,7 +2,7 @@ import { forwardRef } from 'react';
 import { cn } from '../../lib/utils';
 
 export const Input = forwardRef(function Input(
-  { className, label, error, id, ...props },
+  { className, label, labelClassName, error, id, ...props },
   ref
 ) {
   const inputId = id || props.name;
@@ -12,7 +12,7 @@ export const Input = forwardRef(function Input(
       {label && (
         <label
           htmlFor={inputId}
-          className="block text-sm font-semibold text-brand-dark/80"
+          className={cn('block text-sm font-semibold text-brand-dark/80', labelClassName)}
         >
           {label}
         </label>

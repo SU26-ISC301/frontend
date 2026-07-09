@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { NavLink, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { NavLink, Navigate, useNavigate, useParams } from "react-router-dom";
 import {
   Bell,
   Bot,
@@ -20,54 +20,58 @@ import {
   Truck,
   User,
   WalletCards,
-} from 'lucide-react';
-import { Header } from '../components/Home/Header';
-import { Footer } from '../components/layout/Footer';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { DateInput } from '../components/ui/date-input';
-import { Modal } from '../components/ui/modal';
-import { ChatWorkspace } from '../components/Messaging/ChatWorkspace';
-import { MessageLauncher } from '../components/Messaging/MessageLauncher';
-import { AiChatboxLauncher, AiChatboxPage } from '../components/AiChatbox/AiChatbox';
-import { authApi } from '../api/authAPI';
-import { buyerMessageApi } from '../api/buyerMessageAPI';
-import { cn } from '../lib/utils';
-import { getAvatarSrc } from '../utils/avatar';
+} from "lucide-react";
+import { Header } from "../components/Home/Header";
+import { Footer } from "../components/layout/Footer";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { DateInput } from "../components/ui/date-input";
+import { Modal } from "../components/ui/modal";
+import { ChatWorkspace } from "../components/Messaging/ChatWorkspace";
+import { MessageLauncher } from "../components/Messaging/MessageLauncher";
+import {
+  AiChatboxLauncher,
+  AiChatboxPage,
+} from "../components/AiChatbox/AiChatbox";
+import { authApi } from "../api/authAPI";
+import { buyerMessageApi } from "../api/buyerMessageAPI";
+import { cn } from "../lib/utils";
+import { getAvatarSrc } from "../utils/avatar";
 
 const navItems = [
-  { slug: 'tong-quan', label: 'Tổng quan', icon: Home },
-  { slug: 'don-mua', label: 'Đơn mua', icon: ShoppingBag },
-  { slug: 'thong-tin', label: 'Thông tin người dùng', icon: User },
-  { slug: 'dia-chi', label: 'Sổ địa chỉ', icon: MapPin },
-  { slug: 'vi-voucher', label: 'Ví & Voucher', icon: WalletCards },
-  { slug: 'danh-gia', label: 'Đánh giá', icon: Star },
-  { slug: 'ho-tro', label: 'Hỗ trợ', icon: MessageSquareText },
-  { slug: 'chatbox-ai', label: 'Chatbox AI', icon: Bot },
-  { slug: 'bao-mat', label: 'Bảo mật', icon: ShieldCheck },
+  { slug: "tong-quan", label: "Tổng quan", icon: Home },
+  { slug: "don-mua", label: "Đơn mua", icon: ShoppingBag },
+  { slug: "thong-tin", label: "Thông tin người dùng", icon: User },
+  { slug: "dia-chi", label: "Sổ địa chỉ", icon: MapPin },
+  { slug: "vi-voucher", label: "Ví & Voucher", icon: WalletCards },
+  { slug: "danh-gia", label: "Đánh giá", icon: Star },
+  { slug: "ho-tro", label: "Hỗ trợ", icon: MessageSquareText },
+  { slug: "chatbox-ai", label: "Chatbox AI", icon: Bot },
+  { slug: "bao-mat", label: "Bảo mật", icon: ShieldCheck },
 ];
 
 const pageTitles = {
-  'tong-quan': 'Tổng quan tài khoản',
-  'don-mua': 'Đơn mua của tôi',
-  'thong-tin': 'Thông tin người dùng',
-  'dia-chi': 'Sổ địa chỉ',
-  'vi-voucher': 'Ví & Voucher',
-  'danh-gia': 'Đánh giá sản phẩm',
-  'ho-tro': 'Trung tâm hỗ trợ',
-  'chatbox-ai': 'Chatbox AI',
-  'bao-mat': 'Bảo mật tài khoản',
+  "tong-quan": "Tổng quan tài khoản",
+  "don-mua": "Đơn mua của tôi",
+  "thong-tin": "Thông tin người dùng",
+  "dia-chi": "Sổ địa chỉ",
+  "vi-voucher": "Ví & Voucher",
+  "danh-gia": "Đánh giá sản phẩm",
+  "ho-tro": "Trung tâm hỗ trợ",
+  "chatbox-ai": "Chatbox AI",
+  "bao-mat": "Bảo mật tài khoản",
 };
 
-const orderTabs = ['Chờ xác nhận', 'Đang giao', 'Đã giao', 'Đổi trả'];
-const orders = [
-  { id: 'ORD-58291', product: 'Áo khoác chống nắng UV', status: 'Đang giao', total: '389.000đ', eta: 'Dự kiến hôm nay' },
-  { id: 'ORD-58214', product: 'Set son tint 3 màu', status: 'Đã giao', total: '259.000đ', eta: 'Đã nhận 24/05' },
-  { id: 'ORD-58177', product: 'Bình giữ nhiệt 750ml', status: 'Chờ xác nhận', total: '189.000đ', eta: 'Shop đang xử lý' },
-];
+const orderTabs = ["Chờ xác nhận", "Đang giao", "Đã giao", "Đổi trả"];
+const orders = [];
 
 function getApiMessage(error) {
-  return error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Có lỗi xảy ra';
+  return (
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    error?.message ||
+    "Có lỗi xảy ra"
+  );
 }
 
 function unwrap(response) {
@@ -75,7 +79,7 @@ function unwrap(response) {
 }
 
 function formatDateInput(value) {
-  if (!value) return '';
+  if (!value) return "";
   return value.slice(0, 10);
 }
 
@@ -83,13 +87,15 @@ function BuyerLayout({ profile, activeSlug, children }) {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('buyerAccessToken');
-    localStorage.removeItem('buyerRefreshToken');
-    localStorage.removeItem('vendorInfo');
-    window.dispatchEvent(new CustomEvent('buyer-auth-changed', { detail: { loggedIn: false } }));
-    navigate('/');
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("buyerAccessToken");
+    localStorage.removeItem("buyerRefreshToken");
+    localStorage.removeItem("vendorInfo");
+    window.dispatchEvent(
+      new CustomEvent("buyer-auth-changed", { detail: { loggedIn: false } }),
+    );
+    navigate("/");
     window.location.reload();
   };
 
@@ -98,29 +104,35 @@ function BuyerLayout({ profile, activeSlug, children }) {
       <Header />
       <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[280px_1fr] lg:px-8">
         <aside className="space-y-4">
-          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="shopvn-surface p-4">
             <div className="flex items-center gap-3">
               <img
                 src={getAvatarSrc(profile?.avatarUrl)}
-                alt={profile?.fullName || 'Người mua'}
+                alt={profile?.fullName || "Người mua"}
                 className="h-14 w-14 rounded-full object-cover"
               />
               <div className="min-w-0">
-                <p className="truncate font-bold text-gray-950">{profile?.fullName || 'Tài khoản người mua'}</p>
-                <p className="truncate text-sm text-gray-500">{profile?.email}</p>
+                <p className="truncate font-bold text-gray-950">
+                  {profile?.fullName || "Tài khoản người mua"}
+                </p>
+                <p className="truncate text-sm text-gray-500">
+                  {profile?.email}
+                </p>
               </div>
             </div>
           </div>
 
-          <nav className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
+          <nav className="shopvn-surface p-2">
             {navItems.map(({ slug, label, icon: Icon }) => (
               <NavLink
                 key={slug}
                 to={`/buyer/${slug}`}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors',
-                    isActive ? 'bg-shopee-light text-shopee' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-950'
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+                    isActive
+                      ? "bg-orange-50 text-[#f05a22] ring-1 ring-orange-100"
+                      : "text-gray-600 hover:bg-orange-50 hover:text-[#f05a22]",
                   )
                 }
               >
@@ -140,9 +152,13 @@ function BuyerLayout({ profile, activeSlug, children }) {
         </aside>
 
         <section className="min-w-0 space-y-6">
-          <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase text-gray-500">Tài khoản mua hàng</p>
-            <h1 className="mt-1 text-2xl font-bold text-gray-950">{pageTitles[activeSlug]}</h1>
+          <div className="shopvn-surface p-5">
+            <p className="text-xs font-semibold uppercase text-gray-500">
+              Tài khoản mua hàng
+            </p>
+            <h1 className="mt-1 text-2xl font-bold text-gray-950">
+              {pageTitles[activeSlug]}
+            </h1>
           </div>
           {children}
         </section>
@@ -156,18 +172,46 @@ function BuyerLayout({ profile, activeSlug, children }) {
 
 function OverviewPage({ profile }) {
   const cards = [
-    { label: 'Đơn đang giao', value: '2', icon: Truck, tone: 'bg-blue-50 text-blue-600' },
-    { label: 'Voucher khả dụng', value: '12', icon: TicketPercent, tone: 'bg-orange-50 text-orange-600' },
-    { label: 'Điểm tích lũy', value: '8.420', icon: Star, tone: 'bg-amber-50 text-amber-600' },
-    { label: 'Thông báo mới', value: '5', icon: Bell, tone: 'bg-emerald-50 text-emerald-600' },
+    {
+      label: "Đơn đang giao",
+      value: "0",
+      icon: Truck,
+      tone: "bg-blue-50 text-blue-600",
+    },
+    {
+      label: "Voucher khả dụng",
+      value: "0",
+      icon: TicketPercent,
+      tone: "bg-orange-50 text-orange-600",
+    },
+    {
+      label: "Điểm tích lũy",
+      value: "0",
+      icon: Star,
+      tone: "bg-amber-50 text-amber-600",
+    },
+    {
+      label: "Thông báo mới",
+      value: "0",
+      icon: Bell,
+      tone: "bg-emerald-50 text-emerald-600",
+    },
   ];
 
   return (
     <>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map(({ label, value, icon: Icon, tone }) => (
-          <div key={label} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <span className={cn('mb-4 flex h-10 w-10 items-center justify-center rounded-lg', tone)}>
+          <div
+            key={label}
+            className="shopvn-surface p-4 transition hover:-translate-y-1"
+          >
+            <span
+              className={cn(
+                "mb-4 flex h-10 w-10 items-center justify-center rounded-lg",
+                tone,
+              )}
+            >
               <Icon className="h-5 w-5" />
             </span>
             <p className="text-2xl font-bold">{value}</p>
@@ -177,18 +221,34 @@ function OverviewPage({ profile }) {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-          <SectionHeader title="Đơn hàng gần đây" action="Xem tất cả" to="/buyer/don-mua" />
+        <div className="shopvn-surface p-4">
+          <SectionHeader
+            title="Đơn hàng gần đây"
+            action="Xem tất cả"
+            to="/buyer/don-mua"
+          />
           <OrderList />
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-          <SectionHeader title="Hồ sơ của bạn" action="Cập nhật" to="/buyer/thong-tin" />
+        <div className="shopvn-surface p-4">
+          <SectionHeader
+            title="Hồ sơ của bạn"
+            action="Cập nhật"
+            to="/buyer/thong-tin"
+          />
           <div className="flex items-center gap-4">
-            <img src={getAvatarSrc(profile?.avatarUrl)} alt="Avatar" className="h-16 w-16 rounded-full object-cover" />
+            <img
+              src={getAvatarSrc(profile?.avatarUrl)}
+              alt="Avatar"
+              className="h-16 w-16 rounded-full object-cover"
+            />
             <div>
               <p className="font-bold">{profile?.fullName}</p>
-              <p className="text-sm text-gray-500">{profile?.phone || 'Chưa có số điện thoại'}</p>
-              <p className="text-sm text-gray-500">{formatDateInput(profile?.dateOfBirth) || 'Chưa có ngày sinh'}</p>
+              <p className="text-sm text-gray-500">
+                {profile?.phone || "Chưa có số điện thoại"}
+              </p>
+              <p className="text-sm text-gray-500">
+                {formatDateInput(profile?.dateOfBirth) || "Chưa có ngày sinh"}
+              </p>
             </div>
           </div>
         </div>
@@ -202,7 +262,10 @@ function SectionHeader({ title, action, to }) {
     <div className="mb-4 flex items-center justify-between gap-3">
       <h2 className="font-bold text-gray-950">{title}</h2>
       {action && (
-        <NavLink to={to} className="inline-flex items-center gap-1 text-sm font-semibold text-shopee">
+        <NavLink
+          to={to}
+          className="inline-flex items-center gap-1 text-sm font-semibold text-shopee"
+        >
           {action}
           <ChevronRight className="h-4 w-4" />
         </NavLink>
@@ -214,28 +277,51 @@ function SectionHeader({ title, action, to }) {
 function OrderList() {
   return (
     <div className="space-y-3">
-      {orders.map((order) => (
-        <div key={order.id} className="flex flex-col gap-3 rounded-lg border border-gray-100 p-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="font-semibold">{order.product}</p>
-            <p className="mt-1 text-sm text-gray-500">{order.id} · {order.eta}</p>
+      {orders.length > 0 ? (
+        orders.map((order) => (
+          <div
+            key={order.id}
+            className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white/70 p-3 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div>
+              <p className="font-semibold">{order.product}</p>
+              <p className="mt-1 text-sm text-gray-500">
+                {order.id} · {order.eta}
+              </p>
+            </div>
+            <div className="text-left sm:text-right">
+              <p className="font-bold">{order.total}</p>
+              <p className="text-sm text-shopee">{order.status}</p>
+            </div>
           </div>
-          <div className="text-left sm:text-right">
-            <p className="font-bold">{order.total}</p>
-            <p className="text-sm text-shopee">{order.status}</p>
-          </div>
+        ))
+      ) : (
+        <div className="empty-state-panel">
+          <ShoppingBag className="mx-auto h-8 w-8 text-[#ff6b2c]" />
+          <p className="mt-3 font-extrabold text-slate-900">Chưa có đơn mua</p>
+          <p className="mt-1 text-sm font-semibold text-slate-500">
+            Các đơn hàng thật của bạn sẽ hiển thị tại đây sau khi mua sản phẩm.
+          </p>
         </div>
-      ))}
+      )}
     </div>
   );
 }
 
 function OrdersPage() {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="shopvn-surface p-4">
       <div className="mb-4 flex gap-2 overflow-x-auto">
         {orderTabs.map((tab, index) => (
-          <button key={tab} className={cn('shrink-0 rounded-lg px-3 py-2 text-sm font-semibold', index === 0 ? 'bg-shopee text-white' : 'bg-gray-100 text-gray-600')}>
+          <button
+            key={tab}
+            className={cn(
+              "shrink-0 rounded-lg px-3 py-2 text-sm font-semibold",
+              index === 0
+                ? "bg-shopee text-white"
+                : "bg-gray-100 text-gray-600",
+            )}
+          >
             {tab}
           </button>
         ))}
@@ -259,7 +345,10 @@ function SimplePanel({ icon: Icon, title, desc, items }) {
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         {items.map((item) => (
-          <button key={item} className="rounded-lg border border-gray-100 px-4 py-3 text-left text-sm font-semibold text-gray-700 hover:border-shopee/40 hover:bg-shopee-light/40">
+          <button
+            key={item}
+            className="rounded-lg border border-gray-100 px-4 py-3 text-left text-sm font-semibold text-gray-700 hover:border-shopee/40 hover:bg-shopee-light/40"
+          >
             {item}
           </button>
         ))}
@@ -269,20 +358,23 @@ function SimplePanel({ icon: Icon, title, desc, items }) {
 }
 
 function ProfilePage({ profile, onProfileUpdated }) {
-  const initialForm = useMemo(() => ({
-    fullName: profile?.fullName || '',
-    email: profile?.email || '',
-    phone: profile?.phone || '',
-    dateOfBirth: formatDateInput(profile?.dateOfBirth),
-  }), [profile]);
+  const initialForm = useMemo(
+    () => ({
+      fullName: profile?.fullName || "",
+      email: profile?.email || "",
+      phone: profile?.phone || "",
+      dateOfBirth: formatDateInput(profile?.dateOfBirth),
+    }),
+    [profile],
+  );
   const [form, setForm] = useState(initialForm);
   const [avatarFile, setAvatarFile] = useState(null);
-  const [avatarPreview, setAvatarPreview] = useState('');
+  const [avatarPreview, setAvatarPreview] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [otpTarget, setOtpTarget] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [otp, setOtp] = useState("");
+  const [otpTarget, setOtpTarget] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
@@ -294,43 +386,46 @@ function ProfilePage({ profile, onProfileUpdated }) {
     setForm(initialForm);
   }, [initialForm]);
 
-  const contactChanged = form.email.trim().toLowerCase() !== (profile?.email || '')
-    || form.phone.trim() !== (profile?.phone || '');
+  const contactChanged =
+    form.email.trim().toLowerCase() !== (profile?.email || "") ||
+    form.phone.trim() !== (profile?.phone || "");
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
     setOtpSent(false);
-    setOtp('');
+    setOtp("");
   };
 
   const handleAvatar = (file) => {
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      setError('Ảnh đại diện phải dưới 5MB');
+      setError("Ảnh đại diện phải dưới 5MB");
       return;
     }
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      setError('Ảnh đại diện chỉ hỗ trợ JPG, PNG hoặc WEBP');
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Ảnh đại diện chỉ hỗ trợ JPG, PNG hoặc WEBP");
       return;
     }
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
-    setError('');
+    setError("");
   };
 
   const startCamera = async () => {
     try {
       setCameraReady(false);
       setCameraOpen(true);
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+      });
       streamRef.current = stream;
       setCameraStream(stream);
     } catch {
       setCameraOpen(false);
-      setError('Không thể mở camera. Vui lòng kiểm tra quyền truy cập camera.');
+      setError("Không thể mở camera. Vui lòng kiểm tra quyền truy cập camera.");
     }
   };
 
@@ -351,7 +446,7 @@ function ProfilePage({ profile, onProfileUpdated }) {
     const playPromise = video.play();
     if (playPromise?.catch) {
       playPromise.catch(() => {
-        setError('Không thể phát camera. Vui lòng đóng rồi mở lại camera.');
+        setError("Không thể phát camera. Vui lòng đóng rồi mở lại camera.");
       });
     }
 
@@ -364,30 +459,40 @@ function ProfilePage({ profile, onProfileUpdated }) {
     const video = videoRef.current;
     if (!video) return;
     if (!cameraReady || !video.videoWidth || !video.videoHeight) {
-      setError('Camera chưa sẵn sàng, vui lòng thử lại sau vài giây.');
+      setError("Camera chưa sẵn sàng, vui lòng thử lại sau vài giây.");
       return;
     }
-    const canvas = document.createElement('canvas');
+    const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      handleAvatar(new File([blob], `buyer-avatar-${Date.now()}.jpg`, { type: 'image/jpeg' }));
-      stopCamera();
-    }, 'image/jpeg', 0.9);
+    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        handleAvatar(
+          new File([blob], `buyer-avatar-${Date.now()}.jpg`, {
+            type: "image/jpeg",
+          }),
+        );
+        stopCamera();
+      },
+      "image/jpeg",
+      0.9,
+    );
   };
 
   const requestOtp = async () => {
     setLoading(true);
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
     try {
       const response = await authApi.requestProfileUpdateOtp(form);
       const data = unwrap(response);
       setOtpTarget(data?.otpTarget || form.email);
       setOtpSent(true);
-      setSuccess('OTP đã được gửi. Vui lòng kiểm tra email để xác thực thay đổi.');
+      setSuccess(
+        "OTP đã được gửi. Vui lòng kiểm tra email để xác thực thay đổi.",
+      );
     } catch (err) {
       setError(getApiMessage(err));
     } finally {
@@ -398,19 +503,19 @@ function ProfilePage({ profile, onProfileUpdated }) {
   const saveProfile = async (event) => {
     event.preventDefault();
     if (!form.fullName.trim()) {
-      setError('Vui lòng nhập họ tên');
+      setError("Vui lòng nhập họ tên");
       return;
     }
     if (!form.email.trim()) {
-      setError('Vui lòng nhập email');
+      setError("Vui lòng nhập email");
       return;
     }
     if (!form.phone.trim()) {
-      setError('Vui lòng nhập số điện thoại');
+      setError("Vui lòng nhập số điện thoại");
       return;
     }
     if (!form.dateOfBirth) {
-      setError('Vui lòng chọn ngày sinh');
+      setError("Vui lòng chọn ngày sinh");
       return;
     }
     if (contactChanged && !otpSent) {
@@ -418,24 +523,26 @@ function ProfilePage({ profile, onProfileUpdated }) {
       return;
     }
     if (contactChanged && !otp.trim()) {
-      setError('Vui lòng nhập OTP xác thực thay đổi');
+      setError("Vui lòng nhập OTP xác thực thay đổi");
       return;
     }
 
     setLoading(true);
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
     try {
-      let updatedProfile = unwrap(await authApi.updateCurrentProfile({ ...form, otp }));
+      let updatedProfile = unwrap(
+        await authApi.updateCurrentProfile({ ...form, otp }),
+      );
       if (avatarFile) {
         updatedProfile = unwrap(await authApi.uploadAvatar(avatarFile));
       }
       onProfileUpdated(updatedProfile);
       setAvatarFile(null);
-      setAvatarPreview('');
+      setAvatarPreview("");
       setOtpSent(false);
-      setOtp('');
-      setSuccess('Cập nhật thông tin thành công');
+      setOtp("");
+      setSuccess("Cập nhật thông tin thành công");
     } catch (err) {
       setError(getApiMessage(err));
     } finally {
@@ -445,7 +552,10 @@ function ProfilePage({ profile, onProfileUpdated }) {
 
   return (
     <>
-      <form onSubmit={saveProfile} className="grid gap-6 xl:grid-cols-[320px_1fr]">
+      <form
+        onSubmit={saveProfile}
+        className="grid gap-6 xl:grid-cols-[320px_1fr]"
+      >
         <div className="rounded-lg border border-gray-200 bg-white p-5 text-center shadow-sm">
           <img
             src={avatarPreview || getAvatarSrc(profile?.avatarUrl)}
@@ -457,7 +567,12 @@ function ProfilePage({ profile, onProfileUpdated }) {
             <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 text-sm font-semibold text-brand-dark hover:bg-shopee-light">
               <ImagePlus className="h-4 w-4" />
               Tải ảnh lên
-              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => handleAvatar(e.target.files?.[0])} />
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => handleAvatar(e.target.files?.[0])}
+              />
             </label>
             <Button type="button" variant="outline" onClick={startCamera}>
               <Camera className="h-4 w-4" />
@@ -468,21 +583,57 @@ function ProfilePage({ profile, onProfileUpdated }) {
 
         <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <div className="grid gap-4 md:grid-cols-2">
-            <Input label="Họ và tên" name="fullName" value={form.fullName} onChange={handleChange} />
-            <DateInput label="Ngày tháng năm sinh" name="dateOfBirth" value={form.dateOfBirth} onChange={handleChange} min="1900-01-01" max={new Date().toISOString().split('T')[0]} />
-            <Input label="Email" name="email" type="email" value={form.email} onChange={handleChange} />
-            <Input label="Số điện thoại" name="phone" type="tel" value={form.phone} onChange={handleChange} />
+            <Input
+              label="Họ và tên"
+              name="fullName"
+              value={form.fullName}
+              onChange={handleChange}
+            />
+            <DateInput
+              label="Ngày tháng năm sinh"
+              name="dateOfBirth"
+              value={form.dateOfBirth}
+              onChange={handleChange}
+              min="1900-01-01"
+              max={new Date().toISOString().split("T")[0]}
+            />
+            <Input
+              label="Email"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={handleChange}
+            />
+            <Input
+              label="Số điện thoại"
+              name="phone"
+              type="tel"
+              value={form.phone}
+              onChange={handleChange}
+            />
           </div>
 
           {contactChanged && (
             <div className="mt-4 rounded-lg border border-orange-200 bg-orange-50 p-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-end">
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-orange-700">Email hoặc số điện thoại đã thay đổi, cần OTP để xác thực.</p>
-                  {otpSent && <p className="mt-1 text-xs text-orange-700">OTP đã gửi đến {otpTarget}</p>}
+                  <p className="text-sm font-semibold text-orange-700">
+                    Email hoặc số điện thoại đã thay đổi, cần OTP để xác thực.
+                  </p>
+                  {otpSent && (
+                    <p className="mt-1 text-xs text-orange-700">
+                      OTP đã gửi đến {otpTarget}
+                    </p>
+                  )}
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={requestOtp} disabled={loading}>
-                  {otpSent ? 'Gửi lại OTP' : 'Gửi OTP'}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={requestOtp}
+                  disabled={loading}
+                >
+                  {otpSent ? "Gửi lại OTP" : "Gửi OTP"}
                 </Button>
               </div>
               {otpSent && (
@@ -493,19 +644,33 @@ function ProfilePage({ profile, onProfileUpdated }) {
                   inputMode="numeric"
                   maxLength={6}
                   value={otp}
-                  onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onChange={(event) =>
+                    setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
                 />
               )}
             </div>
           )}
 
-          {error && <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600">{error}</div>}
-          {success && <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm font-medium text-green-700">{success}</div>}
+          {error && (
+            <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm font-medium text-green-700">
+              {success}
+            </div>
+          )}
 
           <div className="mt-5 flex justify-end">
             <Button type="submit" disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              {contactChanged && !otpSent ? 'Gửi OTP xác thực' : 'Lưu thay đổi'}
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4" />
+              )}
+              {contactChanged && !otpSent ? "Gửi OTP xác thực" : "Lưu thay đổi"}
             </Button>
           </div>
         </div>
@@ -529,7 +694,11 @@ function ProfilePage({ profile, onProfileUpdated }) {
             )}
           </div>
           <div className="flex gap-2">
-            <Button className="flex-1" onClick={captureAvatar} disabled={!cameraReady}>
+            <Button
+              className="flex-1"
+              onClick={captureAvatar}
+              disabled={!cameraReady}
+            >
               <Camera className="h-4 w-4" />
               Chụp ảnh
             </Button>
@@ -548,25 +717,28 @@ function BuyerMessagesPage() {
   const [conversations, setConversations] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [startingVendorId, setStartingVendorId] = useState(null);
-  const [error, setError] = useState('');
-  const activeChat = conversations.find((conversation) => conversation.id === activeConversationId);
+  const [error, setError] = useState("");
+  const activeChat = conversations.find(
+    (conversation) => conversation.id === activeConversationId,
+  );
 
   const loadConversations = useCallback(async () => {
     try {
       const data = await buyerMessageApi.getConversations();
       const nextConversations = Array.isArray(data) ? data : [];
       setConversations(nextConversations);
-      setActiveConversationId((current) => (
-        current && nextConversations.some((conversation) => conversation.id === current)
+      setActiveConversationId((current) =>
+        current &&
+        nextConversations.some((conversation) => conversation.id === current)
           ? current
-          : nextConversations[0]?.id ?? null
-      ));
-      setError('');
+          : (nextConversations[0]?.id ?? null),
+      );
+      setError("");
     } catch (requestError) {
       setError(getApiMessage(requestError));
     } finally {
@@ -592,10 +764,14 @@ function BuyerMessagesPage() {
     try {
       const data = await buyerMessageApi.getMessages(conversationId);
       setMessages(Array.isArray(data) ? data : []);
-      setConversations((current) => current.map((conversation) => (
-        conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation
-      )));
-      setError('');
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.id === conversationId
+            ? { ...conversation, unreadCount: 0 }
+            : conversation,
+        ),
+      );
+      setError("");
     } catch (requestError) {
       setError(getApiMessage(requestError));
     } finally {
@@ -616,15 +792,22 @@ function BuyerMessagesPage() {
       return undefined;
     }
     loadMessages(activeConversationId);
-    const intervalId = setInterval(() => loadMessages(activeConversationId, true), 10000);
+    const intervalId = setInterval(
+      () => loadMessages(activeConversationId, true),
+      10000,
+    );
     return () => clearInterval(intervalId);
   }, [activeConversationId, loadMessages]);
 
   const selectConversation = (conversationId) => {
     setActiveConversationId(conversationId);
-    setConversations((current) => current.map((conversation) => (
-      conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation
-    )));
+    setConversations((current) =>
+      current.map((conversation) =>
+        conversation.id === conversationId
+          ? { ...conversation, unreadCount: 0 }
+          : conversation,
+      ),
+    );
   };
 
   const startConversation = async (vendorId) => {
@@ -633,7 +816,7 @@ function BuyerMessagesPage() {
       const conversation = await buyerMessageApi.startConversation(vendorId);
       await loadConversations();
       setActiveConversationId(conversation.id);
-      setError('');
+      setError("");
     } catch (requestError) {
       setError(getApiMessage(requestError));
     } finally {
@@ -646,11 +829,16 @@ function BuyerMessagesPage() {
     if (!content || !activeChat || sending) return;
     setSending(true);
     try {
-      const sentMessage = await buyerMessageApi.sendMessage(activeChat.id, content);
-      setMessages((current) => current.some((item) => item.id === sentMessage.id)
-        ? current
-        : [...current, sentMessage]);
-      setMessage('');
+      const sentMessage = await buyerMessageApi.sendMessage(
+        activeChat.id,
+        content,
+      );
+      setMessages((current) =>
+        current.some((item) => item.id === sentMessage.id)
+          ? current
+          : [...current, sentMessage],
+      );
+      setMessage("");
       await loadConversations();
     } catch (requestError) {
       setError(getApiMessage(requestError));
@@ -682,34 +870,83 @@ function BuyerMessagesPage() {
 }
 
 const pageComponents = {
-  'tong-quan': OverviewPage,
-  'don-mua': OrdersPage,
-  'thong-tin': ProfilePage,
-  'dia-chi': (props) => <SimplePanel {...props} icon={MapPin} title="Sổ địa chỉ" desc="Quản lý địa chỉ giao hàng thường dùng." items={['Nhà riêng · Hóc Môn, TP Hồ Chí Minh', 'Văn phòng · Quận 1, TP Hồ Chí Minh', 'Thêm địa chỉ mới', 'Đặt địa chỉ mặc định']} />,
-  'vi-voucher': (props) => <SimplePanel {...props} icon={TicketPercent} title="Ví & Voucher" desc="Theo dõi ví, điểm thưởng và mã giảm giá." items={['12 voucher đang có', '8.420 điểm tích lũy', 'Hoàn tiền đang chờ', 'Lịch sử sử dụng voucher']} />,
-  'danh-gia': (props) => <SimplePanel {...props} icon={Star} title="Đánh giá" desc="Các sản phẩm bạn đã mua và có thể đánh giá." items={['3 sản phẩm chờ đánh giá', 'Ảnh/video đã tải lên', 'Đánh giá 5 sao gần đây', 'Lịch sử nhận xu đánh giá']} />,
-  'ho-tro': BuyerMessagesPage,
-  'chatbox-ai': () => <AiChatboxPage mode="buyer" />,
-  'bao-mat': (props) => <SimplePanel {...props} icon={KeyRound} title="Bảo mật" desc="Quản lý đăng nhập, thiết bị và bảo vệ tài khoản." items={['Đổi mật khẩu', 'Thiết bị đã đăng nhập', 'Xác thực email', 'Nhật ký bảo mật']} />,
+  "tong-quan": OverviewPage,
+  "don-mua": OrdersPage,
+  "thong-tin": ProfilePage,
+  "dia-chi": (props) => (
+    <SimplePanel
+      {...props}
+      icon={MapPin}
+      title="Sổ địa chỉ"
+      desc="Quản lý địa chỉ giao hàng thường dùng."
+      items={[
+        "Chưa có địa chỉ giao hàng",
+        "Thêm địa chỉ mới",
+        "Đặt địa chỉ mặc định",
+      ]}
+    />
+  ),
+  "vi-voucher": (props) => (
+    <SimplePanel
+      {...props}
+      icon={TicketPercent}
+      title="Ví & Voucher"
+      desc="Theo dõi ví, điểm thưởng và mã giảm giá."
+      items={[
+        "Chưa có voucher khả dụng",
+        "Chưa có điểm tích lũy",
+        "Lịch sử sử dụng voucher",
+      ]}
+    />
+  ),
+  "danh-gia": (props) => (
+    <SimplePanel
+      {...props}
+      icon={Star}
+      title="Đánh giá"
+      desc="Các sản phẩm bạn đã mua và có thể đánh giá."
+      items={[
+        "Chưa có sản phẩm chờ đánh giá",
+        "Lịch sử đánh giá sẽ hiển thị tại đây",
+      ]}
+    />
+  ),
+  "ho-tro": BuyerMessagesPage,
+  "chatbox-ai": () => <AiChatboxPage mode="buyer" />,
+  "bao-mat": (props) => (
+    <SimplePanel
+      {...props}
+      icon={KeyRound}
+      title="Bảo mật"
+      desc="Quản lý đăng nhập, thiết bị và bảo vệ tài khoản."
+      items={[
+        "Đổi mật khẩu",
+        "Thiết bị đã đăng nhập",
+        "Xác thực email",
+        "Nhật ký bảo mật",
+      ]}
+    />
+  ),
 };
 
 export default function BuyerHome() {
-  const { section = 'tong-quan' } = useParams();
+  const { section = "tong-quan" } = useParams();
   const Page = pageComponents[section];
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let mounted = true;
-    authApi.getMe()
+    authApi
+      .getMe()
       .then((response) => {
         if (!mounted) return;
         setProfile(response.data?.data || response.data);
       })
       .catch(() => {
         if (!mounted) return;
-        setError('Vui lòng đăng nhập để xem tài khoản người mua');
+        setError("Vui lòng đăng nhập để xem tài khoản người mua");
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -735,7 +972,9 @@ export default function BuyerHome() {
       <div className="page-mesh min-h-screen">
         <Header />
         <div className="mx-auto max-w-md px-4 py-24 text-center">
-          <p className="rounded-lg bg-white p-5 font-semibold text-gray-700 shadow-sm">{error}</p>
+          <p className="rounded-lg bg-white p-5 font-semibold text-gray-700 shadow-sm">
+            {error}
+          </p>
         </div>
       </div>
     );

@@ -371,7 +371,7 @@ function PaymentQRStep({ paymentData, plan, onSuccess, onCancel }) {
 
       {/* RIGHT COLUMN: Iframe PayOS Checkout Frame */}
       <div className="lg:col-span-7">
-        {/* Mock Browser/Device Terminal window */}
+        {/* PayOS checkout preview frame */}
         <div className="rounded-3xl border border-stone-200/80 bg-white shadow-xl overflow-hidden">
           {/* Top window Bar */}
           <div className="bg-stone-50 border-b border-stone-150 px-5 py-3 flex items-center gap-3">
@@ -382,7 +382,7 @@ function PaymentQRStep({ paymentData, plan, onSuccess, onCancel }) {
               <span className="h-3 w-3 rounded-full bg-green-400 block" />
             </div>
             
-            {/* Address bar mockup */}
+            {/* Address bar preview */}
             <div className="flex-1 bg-white border border-stone-200 rounded-xl px-4 py-1 text-center text-xs font-bold text-stone-400 flex items-center justify-center gap-1.5 shadow-inner max-w-sm mx-auto">
               <Lock className="h-3 w-3 text-teal-600 shrink-0" />
               <span className="truncate select-none text-stone-500">pay.payos.vn/secure</span>

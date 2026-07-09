@@ -1,29 +1,7 @@
 import React, { useState } from "react";
 import AddWarehouseModal from "./AddWarehouseModal";
 
-// Mock Data ban đầu
-const initialWarehouses = [
-  {
-    id: 1,
-    warehouse_type: "PICKUP",
-    warehouse_name: "Kho Lấy Hàng Trung Tâm (HCM)",
-    contact_name: "Nguyễn Văn A",
-    phone_number: "0901234567",
-    address: "123 Lê Lợi, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
-    is_default: true,
-    status: "ACTIVE",
-  },
-  {
-    id: 2,
-    warehouse_type: "RETURN",
-    warehouse_name: "Kho Trả Hàng (HN)",
-    contact_name: "Trần Thị B",
-    phone_number: "0987654321",
-    address: "456 Đại Cồ Việt, Hai Bà Trưng, Hà Nội",
-    is_default: true,
-    status: "ACTIVE",
-  },
-];
+const initialWarehouses = [];
 
 const WarehouseManagement = () => {
   const [warehouses, setWarehouses] = useState(() => {
@@ -55,7 +33,6 @@ const WarehouseManagement = () => {
   const [activeTab, setActiveTab] = useState("PICKUP"); // 'PICKUP' hoặc 'RETURN'
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMultiWarehouseApproved] = useState(false);
-  // Mock status Đa kho
 
   // Lọc kho theo tab hiện tại
   const currentWarehouses = warehouses.filter(
@@ -99,17 +76,19 @@ const WarehouseManagement = () => {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
+    <div className="vendor-app min-h-screen px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-6xl">
+      <div className="mb-6 flex flex-col justify-between gap-4 rounded-2xl border border-orange-100 bg-white/90 p-5 shadow-sm sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Quản lý Kho vận</h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-orange-500">Kho vận</p>
+          <h1 className="mt-1 text-2xl font-extrabold text-stone-950">Quản lý kho vận</h1>
+          <p className="mt-1 text-sm font-semibold text-stone-500">
             Quản lý địa chỉ lấy hàng và trả hàng của Shop.
           </p>
         </div>
         <button
           onClick={handleAddClick}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium flex items-center shadow-sm"
+          className="vendor-primary-button"
         >
           <svg
             className="w-5 h-5 mr-2"
@@ -129,17 +108,17 @@ const WarehouseManagement = () => {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6 flex space-x-6">
+      <div className="mb-6 flex gap-2 rounded-xl border border-orange-100 bg-white/80 p-1 shadow-sm">
         <button
           onClick={() => setActiveTab("PICKUP")}
-          className={`py-3 px-1 border-b-2 font-medium text-sm ${activeTab === "PICKUP" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+          className={`rounded-lg px-4 py-2 text-sm font-extrabold transition ${activeTab === "PICKUP" ? "bg-orange-500 text-white shadow-sm" : "text-stone-500 hover:bg-orange-50 hover:text-orange-600"}`}
         >
           Tất cả kho lấy hàng (
           {warehouses.filter((w) => w.warehouse_type === "PICKUP").length})
         </button>
         <button
           onClick={() => setActiveTab("RETURN")}
-          className={`py-3 px-1 border-b-2 font-medium text-sm ${activeTab === "RETURN" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+          className={`rounded-lg px-4 py-2 text-sm font-extrabold transition ${activeTab === "RETURN" ? "bg-orange-500 text-white shadow-sm" : "text-stone-500 hover:bg-orange-50 hover:text-orange-600"}`}
         >
           Kho trả hàng (
           {warehouses.filter((w) => w.warehouse_type === "RETURN").length})
@@ -147,9 +126,9 @@ const WarehouseManagement = () => {
       </div>
 
       {/* Warehouse List */}
-      <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
+      <div className="vendor-panel overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="vendor-table-head">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Thông tin kho
@@ -167,14 +146,17 @@ const WarehouseManagement = () => {
               <tr>
                 <td
                   colSpan="3"
-                  className="px-6 py-10 text-center text-gray-500"
+                  className="px-6 py-12 text-center text-gray-500"
                 >
-                  Chưa có dữ liệu kho hàng. Hãy thêm kho mới.
+                  <div className="empty-state-panel mx-auto max-w-md">
+                    <p className="font-extrabold text-stone-900">Chưa có kho {activeTab === "PICKUP" ? "lấy hàng" : "trả hàng"}</p>
+                    <p className="mt-1 text-sm font-semibold text-stone-500">Thêm kho thật của shop để cấu hình vận hành giao nhận.</p>
+                  </div>
                 </td>
               </tr>
             ) : (
               currentWarehouses.map((wh) => (
-                <tr key={wh.id} className="hover:bg-gray-50">
+                <tr key={wh.id} className="vendor-table-row">
                   <td className="px-6 py-4">
                     <div className="text-sm font-medium text-gray-900">
                       {wh.warehouse_name}
@@ -204,7 +186,7 @@ const WarehouseManagement = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
-                    <button className="text-blue-600 hover:text-blue-900 mr-4">
+                    <button className="mr-4 font-extrabold text-orange-600 hover:text-orange-700">
                       Chỉnh sửa
                     </button>
                   </td>
@@ -223,6 +205,7 @@ const WarehouseManagement = () => {
         currentTab={activeTab}
         existingWarehouses={warehouses}
       />
+    </div>
     </div>
   );
 };

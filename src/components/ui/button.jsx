@@ -2,15 +2,15 @@ import { cn } from '../../lib/utils';
 
 const variants = {
   default:
-    'bg-gradient-brand text-white shadow-glow hover:brightness-110 hover:shadow-glow disabled:opacity-50 disabled:pointer-events-none',
+    'border border-transparent bg-gradient-to-r from-[#ff315c] via-[#ff4d2e] to-[#ff7a2f] text-white shadow-[0_14px_30px_-18px_rgba(255,77,46,0.85)] hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-20px_rgba(255,77,46,0.95)] disabled:pointer-events-none disabled:opacity-50',
   dark:
-    'bg-brand-dark text-white shadow-md hover:bg-brand-darker disabled:opacity-50',
+    'border border-[#13252f] bg-[#13252f] text-white shadow-[0_14px_28px_-18px_rgba(19,37,47,0.8)] hover:-translate-y-0.5 hover:bg-[#203a48] disabled:opacity-50',
   accent:
-    'bg-brand-accent text-brand-dark font-semibold hover:brightness-105 disabled:opacity-50',
+    'border border-amber-200 bg-amber-100 text-amber-950 font-semibold hover:-translate-y-0.5 hover:bg-amber-200 disabled:opacity-50',
   outline:
-    'border-2 border-gray-200 bg-white text-brand-dark hover:border-brand-primary/40 hover:bg-shopee-light disabled:opacity-50',
+    'border border-orange-100 bg-white/92 text-slate-800 shadow-sm hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50 hover:text-[#f05a22] disabled:opacity-50',
   ghost:
-    'text-brand-muted hover:bg-gray-100 hover:text-brand-dark disabled:opacity-50',
+    'text-slate-500 hover:bg-orange-50 hover:text-[#f05a22] disabled:opacity-50',
   link: 'text-brand-primary hover:text-shopee-hover underline-offset-4 hover:underline p-0 h-auto shadow-none',
 };
 
@@ -33,7 +33,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 active:scale-[0.98]',
+        'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b45] focus-visible:ring-offset-2 active:scale-[0.98]',
         variants[variant],
         sizes[size],
         className

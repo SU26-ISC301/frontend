@@ -82,10 +82,10 @@ export function SellerLogin({ onSwitchToRegister }) {
 
   if (isForgotPassword) {
     return (
-      <Card className="mx-auto max-w-md border-0 shadow-elevated">
+      <Card className="mx-auto max-w-md border border-white/90 bg-white/[0.96] text-slate-950 shadow-[0_28px_80px_-46px_rgba(15,23,42,0.95)] ring-1 ring-orange-100/70">
         <CardHeader className="text-center">
-          <CardTitle>Quên mật khẩu người bán</CardTitle>
-          <p className="text-sm text-gray-500">Xác thực OTP email để đặt lại mật khẩu</p>
+          <CardTitle className="text-slate-950">Quên mật khẩu người bán</CardTitle>
+          <p className="text-sm font-medium text-slate-500">Xác thực OTP email để đặt lại mật khẩu</p>
         </CardHeader>
         <CardContent>
           <ForgotPasswordForm onBackToLogin={() => setIsForgotPassword(false)} />
@@ -95,13 +95,13 @@ export function SellerLogin({ onSwitchToRegister }) {
   }
 
   return (
-    <Card className="mx-auto max-w-md border-0 shadow-elevated">
+    <Card className="mx-auto max-w-md border border-white/90 bg-white/[0.96] text-slate-950 shadow-[0_30px_90px_-48px_rgba(15,23,42,0.95)] ring-1 ring-orange-100/80">
       <CardHeader className="text-center">
-        <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-brand shadow-glow">
+        <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-brand shadow-[0_18px_38px_-18px_rgba(255,77,46,0.92)]">
           <LogIn className="h-7 w-7 text-white" />
         </div>
-        <CardTitle>Đăng nhập người bán</CardTitle>
-        <p className="text-sm text-gray-500">
+        <CardTitle className="text-slate-950">Đăng nhập người bán</CardTitle>
+        <p className="text-sm font-medium text-slate-500">
           Đăng nhập để quản lý shop và đơn hàng của bạn
         </p>
       </CardHeader>
@@ -119,6 +119,8 @@ export function SellerLogin({ onSwitchToRegister }) {
             value={form.identifier}
             onChange={handleChange}
             error={errors.identifier}
+            labelClassName="text-slate-700"
+            className="border-slate-200 bg-white text-slate-950 placeholder:text-slate-400 focus:border-[#ff6b45] focus:ring-orange-100"
           />
           <div className="relative">
             <Input
@@ -129,15 +131,17 @@ export function SellerLogin({ onSwitchToRegister }) {
               value={form.password}
               onChange={handleChange}
               error={errors.password}
+              labelClassName="text-slate-700"
+              className="border-slate-200 bg-white pr-10 text-slate-950 placeholder:text-slate-400 focus:border-[#ff6b45] focus:ring-orange-100"
             />
-            <Lock className="pointer-events-none absolute right-3 top-[2.125rem] h-4 w-4 text-gray-400" />
+            <Lock className="pointer-events-none absolute right-3 top-[2.125rem] h-4 w-4 text-slate-400" />
           </div>
 
           <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2 text-gray-600">
+            <label className="flex items-center gap-2 font-medium text-slate-600">
               <input
                 type="checkbox"
-                className="rounded border-gray-300"
+                className="rounded border-slate-300 accent-[#ff5a2f]"
                 checked={rememberLogin}
                 onChange={(event) => setRememberLogin(event.target.checked)}
               />
@@ -160,14 +164,14 @@ export function SellerLogin({ onSwitchToRegister }) {
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200" />
+            <div className="w-full border-t border-slate-200" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white px-2 text-gray-500">hoặc</span>
+            <span className="bg-white px-2 font-semibold text-slate-500">hoặc</span>
           </div>
         </div>
 
-        <p className="text-center text-sm text-gray-600">
+        <p className="text-center text-sm font-medium text-slate-600">
           Chưa có tài khoản người bán?{' '}
           <button
             type="button"

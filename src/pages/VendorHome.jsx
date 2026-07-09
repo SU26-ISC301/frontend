@@ -163,113 +163,11 @@ const pageTitles = {
   ],
 };
 
-const orders = [
-  {
-    id: "SPV-10291",
-    buyer: "Minh Anh",
-    item: "Áo khoác chống nắng UV",
-    total: 389000,
-    status: "Chờ xác nhận",
-    channel: "TikTok Live",
-    time: "09:28",
-  },
-  {
-    id: "SPV-10290",
-    buyer: "Gia Hân",
-    item: "Set son tint 3 màu",
-    total: 259000,
-    status: "Đang xử lý",
-    channel: "ShopVN Mall",
-    time: "09:12",
-  },
-  {
-    id: "SPV-10289",
-    buyer: "Hoàng Nam",
-    item: "Tai nghe bluetooth mini",
-    total: 499000,
-    status: "Đang giao",
-    channel: "Web ShopVN",
-    time: "08:44",
-  },
-  {
-    id: "SPV-10288",
-    buyer: "Thanh Vy",
-    item: "Bình giữ nhiệt 750ml",
-    total: 189000,
-    status: "Hoàn tất",
-    channel: "Flash Sale",
-    time: "08:02",
-  },
-  {
-    id: "SPV-10287",
-    buyer: "Bảo Trân",
-    item: "Máy xay sinh tố mini",
-    total: 329000,
-    status: "Đang xử lý",
-    channel: "Web ShopVN",
-    time: "07:54",
-  },
-  {
-    id: "SPV-10286",
-    buyer: "Tuấn Kiệt",
-    item: "Kem chống nắng SPF50+",
-    total: 438000,
-    status: "Chờ xác nhận",
-    channel: "ShopVN Mall",
-    time: "07:41",
-  },
-  {
-    id: "SPV-10285",
-    buyer: "Hà My",
-    item: "Túi tote canvas basic",
-    total: 149000,
-    status: "Trả hàng",
-    channel: "TikTok Live",
-    time: "07:26",
-  },
-  {
-    id: "SPV-10284",
-    buyer: "Đức Anh",
-    item: "Bàn phím cơ không dây",
-    total: 899000,
-    status: "Hoàn tất",
-    channel: "Web ShopVN",
-    time: "07:10",
-  },
-];
+const orders = [];
 
 const DEFAULT_VENDOR_PARENT_CATEGORY_ID = "dt-do-dien-tu";
 
-const shipments = [
-  {
-    id: "GHN-78422",
-    order: "SPV-10289",
-    carrier: "GHN Express",
-    deadline: "15:00 hôm nay",
-    status: "Chờ bàn giao",
-  },
-  {
-    id: "SPX-48110",
-    order: "SPV-10288",
-    carrier: "SPX Express",
-    deadline: "Đang giao",
-    status: "Trên đường giao",
-  },
-  {
-    id: "GHTK-33918",
-    order: "SPV-10283",
-    carrier: "GHTK",
-    deadline: "11:30 hôm nay",
-    status: "Cần in nhãn",
-  },
-  {
-    id: "VTP-55608",
-    order: "SPV-10280",
-    carrier: "Viettel Post",
-    deadline: "16:30 hôm nay",
-    status: "Đã lên lịch",
-  },
-];
+const shipments = [];
 
 const PROMOTION_CONFIG = {
   minBudget: 10000,
@@ -284,45 +182,18 @@ const PROMOTION_CONFIG = {
 const salesTrend = Array.from({ length: 180 }, (_, index) => {
   const date = new Date();
   date.setDate(date.getDate() - (179 - index));
-  const weekdayFactor = [0.82, 0.92, 1.01, 1.06, 1.08, 1.24, 1.18][
-    date.getDay()
-  ];
-  const campaignBoost = index > 170 && index < 175 ? 1.15 : 1;
-  const revenue =
-    Math.round(
-      (12.6 + Math.sin(index / 2.9) * 2.5 + index * 0.03) *
-        weekdayFactor *
-        campaignBoost *
-        10,
-    ) / 10;
   return {
     date,
     label: new Intl.DateTimeFormat("vi-VN", {
       day: "2-digit",
       month: "2-digit",
     }).format(date),
-    revenue,
-    orders: Math.round(revenue * 8.7),
+    revenue: 0,
+    orders: 0,
   };
 });
 
-const sellerNotifications = [
-  [
-    "12 đơn mới cần xác nhận",
-    "Ưu tiên xử lý trước 11:00 để giữ SLA.",
-    "orange",
-  ],
-  [
-    "4 sản phẩm sắp hết hàng",
-    "Cập nhật tồn kho để không bỏ lỡ doanh thu.",
-    "red",
-  ],
-  [
-    "Flash Sale đạt 72% ngân sách",
-    "Chiến dịch đang mang về ROAS 5,8x.",
-    "teal",
-  ],
-];
+const sellerNotifications = [];
 
 function getVendorInfo() {
   try {
@@ -1065,7 +936,9 @@ function VendorLayout({
                 }}
               >
                 <Bell className="h-5 w-5" />
-                <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-orange-500" />
+                {sellerNotifications.length > 0 && (
+                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-orange-500" />
+                )}
               </button>
               {notificationsOpen && (
                 <div className="vendor-dropdown absolute right-0 top-12 w-80 p-2">
@@ -1074,11 +947,11 @@ function VendorLayout({
                       Thông báo cửa hàng
                     </p>
                     <span className="rounded-full bg-orange-50 px-2 py-1 text-[10px] font-extrabold text-orange-700">
-                      3 mới
+                      {sellerNotifications.length} mới
                     </span>
                   </div>
-                  {sellerNotifications.map(
-                    ([notificationTitle, message, tone]) => (
+                  {sellerNotifications.length > 0 ? (
+                    sellerNotifications.map(([notificationTitle, message, tone]) => (
                       <button
                         key={notificationTitle}
                         type="button"
@@ -1103,7 +976,13 @@ function VendorLayout({
                           </span>
                         </span>
                       </button>
-                    ),
+                    ))
+                  ) : (
+                    <div className="px-3 py-6 text-center">
+                      <Bell className="mx-auto h-7 w-7 text-orange-400" />
+                      <p className="mt-2 text-xs font-extrabold text-stone-700">Chưa có thông báo mới</p>
+                      <p className="mt-1 text-[11px] font-semibold text-stone-400">Thông báo thật từ hệ thống sẽ xuất hiện tại đây.</p>
+                    </div>
                   )}
                 </div>
               )}
@@ -1465,7 +1344,7 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
       value: new Intl.NumberFormat("vi-VN").format(
         isRealData && statsData
           ? statsData.todayVisits
-          : Math.round(latest.revenue * 240),
+          : 0,
       ),
       change: `${change >= 0 ? "+" : ""}${change.toFixed(1).replace(".", ",")}%`,
       note: "so với hôm qua",
@@ -1479,12 +1358,10 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
       value: new Intl.NumberFormat("vi-VN").format(
         isRealData && statsData
           ? statsData.totalVisits
-          : Math.round(
-              trend.reduce((sum, item) => sum + item.revenue * 240, 0),
-            ),
+          : 0,
       ),
-      change: "+14,2%",
-      note: "so với tuần trước",
+      change: "0%",
+      note: "chờ dữ liệu thật",
       icon: Users,
       tone: "is-teal",
       target: "trangchu",
@@ -1495,10 +1372,10 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
       value: new Intl.NumberFormat("vi-VN").format(
         isRealData && statsData
           ? Math.round(statsData.todayVisits * 0.08)
-          : Math.round(latest.revenue * 15),
+          : 0,
       ),
-      change: "+5,3%",
-      note: "so với tuần trước",
+      change: "0%",
+      note: "chờ dữ liệu thật",
       icon: MessageSquareText,
       tone: "is-green",
       target: "tin-nhan",
@@ -1506,9 +1383,9 @@ function OverviewPage({ navigateTo, onToast, onOpenPlanModal }) {
     },
     {
       label: "Đánh giá shop",
-      value: "4,8 / 5",
-      change: "2.431",
-      note: "đánh giá đã xác minh",
+      value: "0 / 5",
+      change: "0",
+      note: "chưa có đánh giá",
       icon: Star,
       tone: "is-yellow",
       target: "cai-dat-shop",
@@ -1902,8 +1779,10 @@ function VendorRevenueChart({ data }) {
     visits: Math.round(item.revenue * visitsFactor),
   }));
 
-  const max =
-    Math.ceil(Math.max(...chartData.map((item) => item.visits)) / 500) * 500;
+  const max = Math.max(
+    1,
+    Math.ceil(Math.max(...chartData.map((item) => item.visits), 0) / 500) * 500,
+  );
   const points = chartData.map((item, index) => ({
     ...item,
     x: (index / (chartData.length - 1)) * width,
@@ -2075,7 +1954,7 @@ function OrderTable({ rows, compact = false }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-100">
-          {rows.map((order) => (
+          {rows.length > 0 ? rows.map((order) => (
             <tr key={order.id} className="vendor-table-row">
               <td className="px-5 py-4 font-extrabold text-stone-800">
                 {order.id}
@@ -2099,10 +1978,15 @@ function OrderTable({ rows, compact = false }) {
                 {order.channel}
               </td>
             </tr>
-          ))}
+          )) : (
+            <tr>
+              <td colSpan={6} className="px-5 py-10">
+                <EmptyState />
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
-      {!compact && rows.length === 0 && <EmptyState />}
     </div>
   );
 }
@@ -3381,7 +3265,7 @@ function WarehousePage({ action, navigate, onToast }) {
     setSelectedOutcome("LINKED");
   };
 
-  // Reset demo state
+  // Reset local warehouse setup state
   const handleResetDemo = () => {
     localStorage.removeItem("sellerWarehouses");
     setWarehouses([]);
@@ -4129,7 +4013,7 @@ function ShippingPage({ onToast }) {
         <Panel className="p-5">
           <PanelHeader
             title="Lịch bàn giao hôm nay"
-            subtitle="4 chuyến đã được lên lịch"
+            subtitle="Dữ liệu sẽ hiển thị khi có đơn giao thật"
           >
             <button
               type="button"
@@ -4146,7 +4030,7 @@ function ShippingPage({ onToast }) {
             </button>
           </PanelHeader>
           <div className="mt-4 space-y-3">
-            {shipments.map((shipment) => (
+            {shipments.length > 0 ? shipments.map((shipment) => (
               <div key={shipment.id} className="vendor-list-item">
                 <div>
                   <p className="font-extrabold text-stone-800">{shipment.id}</p>
@@ -4161,7 +4045,9 @@ function ShippingPage({ onToast }) {
                   </span>
                 </div>
               </div>
-            ))}
+            )) : (
+              <EmptyState />
+            )}
           </div>
         </Panel>
         <Panel className="p-5">
@@ -6087,7 +5973,7 @@ function MarketingPage({ onToast, navigateTo }) {
         <Panel className="p-5">
           <PanelHeader
             title="Cách tính theo dữ liệu thật"
-            subtitle="Không dùng dữ liệu mẫu."
+            subtitle="Chỉ tính từ ngân sách, ROI và lượt nhấp được ghi nhận."
           />
           <div className="mt-4 space-y-3">
             <PromotionPreviewItem

@@ -60,12 +60,7 @@ const adminNavItems = [
   { id: 'cai-dat', label: 'Cài đặt', icon: Settings },
 ];
 
-const initialVendors = [
-  { id: 'VND-1008', shop: 'TechZone VN', owner: 'Nguyễn Văn An', email: 'an.nguyen@techzone.vn', phone: '0901234567', category: 'Điện tử', risk: 'Thấp', status: 'Chờ duyệt' },
-  { id: 'VND-1009', shop: 'Fashion Hub', owner: 'Trần Thị Bình', email: 'binh.tran@fashionhub.com', phone: '0912345678', category: 'Thời trang', risk: 'Trung bình', status: 'Chờ duyệt' },
-  { id: 'VND-1010', shop: 'Green Grocery', owner: 'Lê Minh Cường', email: 'cuong.le@greengrocery.vn', phone: '0923456789', category: 'Thực phẩm', risk: 'Thấp', status: 'Chờ duyệt' },
-  { id: 'VND-1011', shop: 'Beauty Corner', owner: 'Phạm Thu Dung', email: 'dung.pham@beautycorner.vn', phone: '0934567890', category: 'Làm đẹp', risk: 'Cao', status: 'Cần xem xét' },
-];
+const initialVendors = [];
 
 
 
@@ -237,7 +232,7 @@ function buildFallbackMarketCategory(categoryId) {
     competitorCount: sourceTemplates.length,
     sampleCount: 54 + (seed % 96),
     status: seed % 3 === 0 ? 'Theo dõi' : 'Có cơ hội',
-    strategy: `Dùng dữ liệu mẫu cho ${path.map((item) => item.name).join(' > ') || leaf.name}; nên kiểm tra thêm giá thực tế trước khi nhập hàng hoặc chạy khuyến mãi.`,
+    strategy: `Chưa có dữ liệu nghiên cứu thật cho ${path.map((item) => item.name).join(' > ') || leaf.name}. Hãy đồng bộ nguồn thị trường trước khi nhập hàng hoặc chạy khuyến mãi.`,
     sources: sourceTemplates.map(([source, minFactor, avgFactor, maxFactor, sales, rating, promo, trust]) => ({
       source,
       min: Math.round((basePrice * minFactor) / 10000) * 10000,
@@ -258,68 +253,40 @@ function getMarketCategoryById(categoryId) {
 const DEFAULT_MARKET_CATEGORY_ID = 'op-lung-bao-da';
 
 
-const orders = [
-  ['SPV-10291', 'Minh Anh', 'TechZone VN', '389.000đ', 'Cần xác nhận'],
-  ['SPV-10290', 'Gia Hân', 'Beauty Corner', '259.000đ', 'Đang đóng gói'],
-  ['SPV-10289', 'Hoàng Nam', 'ShopVN Người bán', '499.000đ', 'Chờ lấy hàng'],
-  ['SPV-10288', 'Thanh Vy', 'Green Grocery', '189.000đ', 'Đang giao'],
-];
+const orders = [];
 
-const financeRows = [
-  ['Đối soát người bán', '24,9 tỷ', 'Đang chạy', 'Hoàn tất 18:00'],
-  ['Yêu cầu rút tiền', '86,2 triệu', 'Chờ duyệt', '12 lệnh'],
-  ['Phí nền tảng', '3,12 tỷ', 'Ổn định', '+6,8% tuần này'],
-  ['Hoàn tiền', '148 triệu', 'Cần kiểm tra', '5 yêu cầu lớn'],
-];
+const financeRows = [];
 
-const moderationItems = [
-  ['Nội dung sản phẩm', '43 mục', 'Ảnh, mô tả, từ khóa cần duyệt'],
-  ['Khiếu nại khách hàng', '17 ticket', '8 ticket quá 12 giờ'],
-  ['Rủi ro thanh toán', '6 cảnh báo', '2 giao dịch giá trị cao'],
-  ['Vi phạm người bán', '9 hồ sơ', '3 shop cần khóa tạm thời'],
-];
+const moderationItems = [];
 
-const recentOrders = [
-  ['#SPV-10291', 'Minh Anh', 'TechZone VN', '389.000đ', 'Cần xác nhận'],
-  ['#SPV-10290', 'Gia Hân', 'Beauty Corner', '259.000đ', 'Đang đóng gói'],
-  ['#SPV-10289', 'Hoàng Nam', 'ShopVN Người bán', '499.000đ', 'Đang giao'],
-  ['#SPV-10288', 'Thanh Vy', 'Green Grocery', '189.000đ', 'Hoàn thành'],
-];
+const recentOrders = [];
 
 const operationsTrend = Array.from({ length: 90 }, (_, index) => {
   const date = new Date();
   date.setDate(date.getDate() - (89 - index));
-  const weekdayFactor = [0.82, 0.94, 1.02, 1.06, 1.09, 1.23, 1.17][date.getDay()];
-  const growthFactor = 1 + index * 0.0048;
-  const campaignBoost = index > 72 && index < 81 ? 1.16 : 1;
-  const gmv = Math.round((1.58 + Math.sin(index / 4.4) * 0.18 + Math.cos(index / 9) * 0.12) * weekdayFactor * growthFactor * campaignBoost * 100) / 100;
   return {
     date,
     label: new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit' }).format(date),
-    gmv,
-    orders: Math.round(gmv * 1640),
+    gmv: 0,
+    orders: 0,
   };
 });
 
 const orderStatusBreakdown = [
-  { label: 'Đang xử lý', value: 4821, share: 42, tone: '#5546e8' },
-  { label: 'Đang giao', value: 3764, share: 33, tone: '#3b82f6' },
-  { label: 'Hoàn thành', value: 2189, share: 19, tone: '#10b981' },
-  { label: 'Cần xử lý', value: 687, share: 6, tone: '#f97316' },
+  { label: 'Đang xử lý', value: 0, share: 0, tone: '#5546e8' },
+  { label: 'Đang giao', value: 0, share: 0, tone: '#3b82f6' },
+  { label: 'Hoàn thành', value: 0, share: 0, tone: '#10b981' },
+  { label: 'Cần xử lý', value: 0, share: 0, tone: '#f97316' },
 ];
 
 const conversionSteps = [
-  { label: 'Lượt truy cập', value: '1,28 triệu', percent: 100 },
-  { label: 'Thêm vào giỏ', value: '184.620', percent: 67 },
-  { label: 'Tạo đơn hàng', value: '38.294', percent: 38 },
-  { label: 'Thanh toán', value: '34.861', percent: 29 },
+  { label: 'Lượt truy cập', value: '0', percent: 0 },
+  { label: 'Thêm vào giỏ', value: '0', percent: 0 },
+  { label: 'Tạo đơn hàng', value: '0', percent: 0 },
+  { label: 'Thanh toán', value: '0', percent: 0 },
 ];
 
-const notificationItems = [
-  ['Người bán mới chờ duyệt', '4 hồ sơ được gửi trong 30 phút qua', 'orange'],
-  ['Cảnh báo thanh toán', '2 giao dịch trên 20 triệu cần kiểm tra', 'red'],
-  ['SLA giao hàng', 'Tuyến TP.HCM đang giảm 1,4%', 'blue'],
-];
+const notificationItems = [];
 
 function readAdminSession() {
   try {
@@ -622,15 +589,17 @@ function AdminTopbar({ active, session, onNavigate, onOpenMenu }) {
         <div className="relative">
           <button type="button" aria-label="Thông báo" className="admin-icon-button relative" onClick={() => { setQuery(''); setNotificationsOpen((current) => !current); }}>
             <Bell className="h-5 w-5" />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-orange-500" />
+            {notificationItems.length > 0 && (
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-orange-500" />
+            )}
           </button>
           {notificationsOpen && (
             <div className="admin-dropdown absolute right-0 top-12 w-80 p-2">
               <div className="flex items-center justify-between px-2 py-2">
                 <p className="text-sm font-extrabold text-slate-900">Thông báo vận hành</p>
-                <span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-extrabold text-indigo-700">3 mới</span>
+                <span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-extrabold text-indigo-700">{notificationItems.length} mới</span>
               </div>
-              {notificationItems.map(([title, message, tone]) => (
+              {notificationItems.length > 0 ? notificationItems.map(([title, message, tone]) => (
                 <button key={title} type="button" className="admin-dropdown-item">
                   <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', {
                     'bg-orange-400': tone === 'orange',
@@ -642,7 +611,13 @@ function AdminTopbar({ active, session, onNavigate, onOpenMenu }) {
                     <span className="mt-1 block text-[11px] font-medium leading-4 text-slate-400">{message}</span>
                   </span>
                 </button>
-              ))}
+              )) : (
+                <div className="px-3 py-6 text-center">
+                  <Bell className="mx-auto h-7 w-7 text-indigo-400" />
+                  <p className="mt-2 text-xs font-extrabold text-slate-700">Chưa có thông báo vận hành</p>
+                  <p className="mt-1 text-[11px] font-semibold text-slate-400">Thông báo thật từ hệ thống sẽ xuất hiện tại đây.</p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1185,14 +1160,14 @@ function OverviewSection({ vendors, onNavigate, onToast }) {
   const pending = vendors.filter((vendor) => !['Đã duyệt', 'Từ chối'].includes(vendor.status)).length;
   const riskHigh = vendors.filter((vendor) => vendor.risk === 'Cao').length;
   const trend = operationsTrend.slice(-range);
-  const latest = trend.at(-1);
-  const previous = trend.at(-2);
-  const gmvChange = ((latest.gmv - previous.gmv) / previous.gmv) * 100;
+  const latest = trend.at(-1) || { gmv: 0, orders: 0 };
+  const previous = trend.at(-2) || { gmv: 0, orders: 0 };
+  const gmvChange = previous.gmv > 0 ? ((latest.gmv - previous.gmv) / previous.gmv) * 100 : 0;
   const metrics = [
     { label: 'GMV hôm nay', value: formatGmv(latest.gmv), change: `${gmvChange >= 0 ? '+' : ''}${gmvChange.toFixed(1).replace('.', ',')}%`, note: 'so với hôm qua', icon: BarChart3, tone: 'purple', target: 'tai-chinh' },
-    { label: 'Đơn đang xử lý', value: formatInteger(4821), change: '+8,6%', note: '312 đơn cần theo dõi', icon: ShoppingBag, tone: 'blue', target: 'don-hang' },
-    { label: 'Shop chờ duyệt', value: formatInteger(pending), change: '+4 hồ sơ', note: 'trong 24 giờ qua', icon: Store, tone: 'orange', target: 'duyet-shop' },
-    { label: 'Tỷ lệ SLA', value: '97,6%', change: '+1,1%', note: 'so với tuần trước', icon: Gauge, tone: 'green', target: 'kiem-duyet' },
+    { label: 'Đơn đang xử lý', value: formatInteger(0), change: '0%', note: 'chờ dữ liệu thật', icon: ShoppingBag, tone: 'blue', target: 'don-hang' },
+    { label: 'Shop chờ duyệt', value: formatInteger(pending), change: '0 hồ sơ', note: 'theo dữ liệu máy chủ', icon: Store, tone: 'orange', target: 'duyet-shop' },
+    { label: 'Tỷ lệ SLA', value: '0%', change: '0%', note: 'chờ dữ liệu thật', icon: Gauge, tone: 'green', target: 'kiem-duyet' },
   ];
 
   const exportOverview = () => {
@@ -1233,8 +1208,8 @@ function OverviewSection({ vendors, onNavigate, onToast }) {
           <div className="mt-4 space-y-2.5">
             <PriorityItem label="Duyệt shop mới" value={`${pending} hồ sơ`} tone="orange" onClick={() => onNavigate('duyet-shop')} />
             <PriorityItem label="Shop rủi ro cao" value={`${riskHigh} hồ sơ`} tone="red" onClick={() => onNavigate('duyet-shop')} />
-            <PriorityItem label="Ticket quá hạn" value="8 ticket" tone="purple" onClick={() => onNavigate('kiem-duyet')} />
-            <PriorityItem label="Giao dịch cần kiểm tra" value="5 giao dịch" tone="blue" onClick={() => onNavigate('tai-chinh')} />
+            <PriorityItem label="Ticket quá hạn" value="0 ticket" tone="purple" onClick={() => onNavigate('kiem-duyet')} />
+            <PriorityItem label="Giao dịch cần kiểm tra" value="0 giao dịch" tone="blue" onClick={() => onNavigate('tai-chinh')} />
           </div>
         </div>
       </section>
@@ -1253,6 +1228,7 @@ function OverviewSection({ vendors, onNavigate, onToast }) {
           </PanelHeader>
         </div>
         <SimpleTable columns={['Mã đơn', 'Khách hàng', 'Shop', 'Giá trị', 'Trạng thái']} rows={recentOrders} />
+        {recentOrders.length === 0 && <TableEmptyState />}
       </section>
     </div>
   );
@@ -1954,7 +1930,7 @@ function MarketResearchSection({ onToast }) {
   const metrics = [
     { label: 'Giá trung bình', value: formatShortVnd(selectedCategory.marketAverage), change: selectedCategory.trend, note: 'xu hướng nhu cầu', icon: BarChart3, tone: 'purple' },
     { label: 'Giá đề xuất', value: formatShortVnd(selectedCategory.recommendedPrice), change: avgDiff > 0 ? `-${Math.round((avgDiff / selectedCategory.marketAverage) * 100)}%` : 'Sát thị trường', note: 'so với trung bình', icon: Gauge, tone: 'green' },
-    { label: 'Nguồn đối chiếu', value: formatInteger(selectedCategory.competitorCount), change: `${selectedCategory.sampleCount} mẫu`, note: 'dữ liệu mock', icon: Store, tone: 'blue' },
+    { label: 'Nguồn đối chiếu', value: formatInteger(selectedCategory.competitorCount), change: `${selectedCategory.sampleCount} bản ghi`, note: 'nguồn tham chiếu', icon: Store, tone: 'blue' },
     { label: 'Mức quan tâm', value: `${selectedCategory.demand}/100`, change: selectedCategory.status, note: 'đánh giá cơ hội', icon: TrendingUp, tone: selectedCategory.demand >= 85 ? 'orange' : 'purple' },
   ];
 
@@ -1966,13 +1942,13 @@ function MarketResearchSection({ onToast }) {
   const syncMarketData = () => {
     const now = new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit' }).format(new Date());
     setLastSync(`${now} hôm nay`);
-    onToast({ title: 'Đã cập nhật dữ liệu mẫu', message: `Dữ liệu mẫu cho ${selectedCategory.name} đã được làm mới.`, tone: 'green' });
+    onToast({ title: 'Đã làm mới dữ liệu', message: `Nguồn tham chiếu cho ${selectedCategory.name} đã được làm mới.`, tone: 'green' });
   };
 
   const exportMarketRows = () => {
     downloadCsv(
       `market-research-${selectedCategory.id}.csv`,
-      ['Danh mục', 'Sản phẩm mẫu', 'Nguồn bán', 'Giá thấp nhất', 'Giá trung bình', 'Giá cao nhất', 'Lượt bán', 'Đánh giá', 'Khuyến mãi', 'Độ tin cậy'],
+      ['Danh mục', 'Sản phẩm tham chiếu', 'Nguồn bán', 'Giá thấp nhất', 'Giá trung bình', 'Giá cao nhất', 'Lượt bán', 'Đánh giá', 'Khuyến mãi', 'Độ tin cậy'],
       filteredSources.map((item) => [
         selectedCategory.name,
         selectedCategory.keyword,
@@ -2043,7 +2019,7 @@ function MarketResearchSection({ onToast }) {
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-2">
               <PackageSearch className="h-4 w-4 text-admin-accent" />
-              Sản phẩm mẫu: <strong className="text-slate-800">{selectedCategory.keyword}</strong>
+              Sản phẩm tham chiếu: <strong className="text-slate-800">{selectedCategory.keyword}</strong>
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-2">
               <RefreshCw className="h-4 w-4 text-slate-400" />
@@ -2059,7 +2035,7 @@ function MarketResearchSection({ onToast }) {
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.55fr_0.9fr]">
         <div className="admin-panel min-w-0 p-5">
-          <PanelHeader title="Khoảng giá theo nguồn bán" subtitle="Giá thấp nhất, trung bình và cao nhất từ dữ liệu mock">
+          <PanelHeader title="Khoảng giá theo nguồn bán" subtitle="Giá thấp nhất, trung bình và cao nhất từ nguồn tham chiếu">
             <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-extrabold text-indigo-700">
               {selectedCategory.sources.length} nguồn
             </span>
@@ -2620,7 +2596,7 @@ function AdminActivityChart({ data }) {
   const [hoverIndex, setHoverIndex] = useState(null);
   const width = 800;
   const height = 210;
-  const max = Math.ceil(Math.max(...data.map((item) => item.gmv)) + 0.5);
+  const max = Math.max(1, Math.ceil(Math.max(...data.map((item) => item.gmv), 0) + 0.5));
   const points = data.map((item, index) => ({
     ...item,
     x: (index / (data.length - 1)) * width,
@@ -2692,13 +2668,13 @@ function AdminActivityChart({ data }) {
 function OrderStatusCard({ onNavigate }) {
   return (
     <section className="admin-panel p-5">
-      <PanelHeader title="Cơ cấu đơn hàng" subtitle="11.461 đơn phát sinh trong hôm nay">
+      <PanelHeader title="Cơ cấu đơn hàng" subtitle="Chưa có dữ liệu đơn hàng thật trong phiên này">
         <button type="button" onClick={onNavigate} className="admin-link-button">Chi tiết <ChevronRight className="h-4 w-4" /></button>
       </PanelHeader>
       <div className="mt-5 flex flex-col items-center gap-6 sm:flex-row">
         <div className="admin-donut relative flex h-40 w-40 shrink-0 items-center justify-center rounded-full">
           <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white">
-            <p className="text-2xl font-extrabold text-slate-900">11.461</p>
+            <p className="text-2xl font-extrabold text-slate-900">0</p>
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Đơn hàng</p>
           </div>
         </div>
@@ -2721,7 +2697,7 @@ function ConversionCard() {
   return (
     <section className="admin-panel p-5">
       <PanelHeader title="Phễu chuyển đổi" subtitle="Hiệu suất mua hàng theo hành trình người dùng">
-        <span className="flex items-center gap-1 text-xs font-extrabold text-emerald-600"><TrendingUp className="h-4 w-4" /> +3,8%</span>
+        <span className="flex items-center gap-1 text-xs font-extrabold text-slate-400"><TrendingUp className="h-4 w-4" /> 0%</span>
       </PanelHeader>
       <div className="mt-5 space-y-4">
         {conversionSteps.map((step, index) => (

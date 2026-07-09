@@ -3,43 +3,8 @@ import { ClipboardList, Inbox } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { VendorApprovalRow } from './VendorApprovalRow';
 
-const MOCK_PENDING_VENDORS = [
-  {
-    id: 'v1',
-    shopName: 'TechZone VN',
-    fullName: 'Nguyễn Văn An',
-    email: 'an.nguyen@techzone.vn',
-    phone: '0901234567',
-    status: 'pending',
-  },
-  {
-    id: 'v2',
-    shopName: 'Fashion Hub',
-    fullName: 'Trần Thị Bình',
-    email: 'binh.tran@fashionhub.com',
-    phone: '0912345678',
-    status: 'pending',
-  },
-  {
-    id: 'v3',
-    shopName: 'Green Grocery',
-    fullName: 'Lê Minh Cường',
-    email: 'cuong.le@greengrocery.vn',
-    phone: '0923456789',
-    status: 'pending',
-  },
-  {
-    id: 'v4',
-    shopName: 'Beauty Corner',
-    fullName: 'Phạm Thu Dung',
-    email: 'dung.pham@beautycorner.vn',
-    phone: '0934567890',
-    status: 'pending',
-  },
-];
-
 export function VendorApprovalTable({
-  initialVendors = MOCK_PENDING_VENDORS,
+  initialVendors = [],
   onApprove,
   onReject,
 }) {
