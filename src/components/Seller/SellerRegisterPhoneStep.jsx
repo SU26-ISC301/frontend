@@ -35,7 +35,7 @@ export function SellerRegisterPhoneStep({ onNext }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="seller-register-form space-y-4">
       <p className="text-sm text-gray-600">
         Nhập email để nhận mã OTP xác thực trước khi tạo hồ sơ shop.
       </p>

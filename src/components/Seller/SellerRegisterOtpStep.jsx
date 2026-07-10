@@ -84,7 +84,7 @@ export function SellerRegisterOtpStep({
 
   if (verification) {
     return (
-      <div className="space-y-5">
+      <div className="seller-register-form space-y-5">
         {verification.requiresPassword ? (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
@@ -132,7 +132,7 @@ export function SellerRegisterOtpStep({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="seller-register-form space-y-4">
       <BuyerOtpForm
         target={email}
         fallbackTarget="email của bạn"

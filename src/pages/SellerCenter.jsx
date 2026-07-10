@@ -15,7 +15,7 @@ export default function SellerCenter() {
 
   return (
     <SellerLayout>
-      <div className="mb-8 text-center">
+      <div className="seller-auth-heading mb-8 text-center">
         <span className="pill mb-3 border border-white/20 bg-white/10 text-white">
           <Sparkles className="h-3.5 w-3.5 text-brand-accent" />
           Trung tâm người bán
@@ -28,14 +28,14 @@ export default function SellerCenter() {
         </p>
       </div>
 
-      <div className="mx-auto mb-6 flex max-w-md rounded-2xl border border-white/10 bg-white/10 p-1 backdrop-blur-md">
+      <div className="seller-auth-tabs mx-auto mb-6 flex max-w-md rounded-2xl border border-white/10 bg-white/10 p-1 backdrop-blur-md">
         <button
           type="button"
           onClick={() => setTab(TABS.LOGIN)}
           className={cn(
-            "flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all",
+            "seller-auth-tab flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all",
             tab === TABS.LOGIN
-              ? "bg-white text-brand-dark shadow-md"
+              ? "is-active bg-white text-brand-dark shadow-md"
               : "text-white/70 hover:text-white",
           )}
         >
@@ -45,9 +45,9 @@ export default function SellerCenter() {
           type="button"
           onClick={() => setTab(TABS.REGISTER)}
           className={cn(
-            "flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all",
+            "seller-auth-tab flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all",
             tab === TABS.REGISTER
-              ? "bg-gradient-brand text-white shadow-glow"
+              ? "is-active bg-gradient-brand text-white shadow-glow"
               : "text-white/70 hover:text-white",
           )}
         >

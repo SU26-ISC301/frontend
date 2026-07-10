@@ -2199,3 +2199,476 @@ html[data-theme='dark'] .shop-home select {
   background-color: rgba(255, 255, 255, 0.92) !important;
   color: #131b2e !important;
 }
+
+/* ============================================================
+   Premium C2C final contrast pass
+   Keeps the redesign faithful to the reference while preventing
+   cards, filters, forms and tables from disappearing into white.
+   ============================================================ */
+.premium-page,
+.shop-home {
+  background: #ffffff !important;
+}
+
+.premium-panel {
+  border-color: rgba(144, 111, 105, 0.28);
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fffaf6 100%),
+    radial-gradient(circle at 0% 0%, rgba(255, 218, 211, 0.38), transparent 22rem);
+  box-shadow:
+    0 34px 90px -58px rgba(19, 27, 46, 0.68),
+    0 12px 30px -26px rgba(219, 52, 23, 0.18);
+}
+
+.premium-glass,
+.glass-panel,
+.shopvn-surface {
+  border-color: rgba(144, 111, 105, 0.24);
+  background: rgba(255, 253, 249, 0.92);
+  box-shadow:
+    0 22px 60px -42px rgba(19, 27, 46, 0.56),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.premium-empty,
+.depth-card,
+.product-card,
+.premium-page .rounded-3xl,
+.shop-home .rounded-3xl {
+  border-color: rgba(144, 111, 105, 0.22);
+}
+
+.product-card,
+.depth-card {
+  background: #ffffff;
+  box-shadow:
+    0 24px 58px -44px rgba(19, 27, 46, 0.6),
+    0 1px 0 rgba(144, 111, 105, 0.1);
+}
+
+.product-card:hover,
+.depth-card:hover {
+  border-color: rgba(219, 52, 23, 0.32);
+  box-shadow:
+    0 30px 76px -46px rgba(19, 27, 46, 0.66),
+    0 18px 36px -34px rgba(219, 52, 23, 0.34);
+}
+
+.premium-page [class~='bg-white/60'],
+.premium-page [class~='bg-white/70'],
+.premium-page [class~='bg-white/80'],
+.premium-page [class~='bg-white/85'],
+.premium-page [class~='bg-white/88'],
+.premium-page [class~='bg-white/90'],
+.premium-page [class~='bg-white/92'],
+.premium-page [class~='bg-white/95'],
+.shop-home [class~='bg-white/60'],
+.shop-home [class~='bg-white/70'],
+.shop-home [class~='bg-white/80'],
+.shop-home [class~='bg-white/85'],
+.shop-home [class~='bg-white/88'],
+.shop-home [class~='bg-white/90'],
+.shop-home [class~='bg-white/92'],
+.shop-home [class~='bg-white/95'] {
+  background-color: rgba(255, 253, 249, 0.96) !important;
+}
+
+.premium-page [class~='bg-slate-50'],
+.premium-page [class~='bg-slate-50/30'],
+.premium-page [class~='bg-slate-50/40'],
+.premium-page [class~='bg-slate-50/50'],
+.premium-page [class~='bg-slate-50/60'],
+.premium-page [class~='bg-slate-50/70'],
+.premium-page [class~='bg-slate-50/80'],
+.premium-page [class~='bg-gray-50'],
+.premium-page [class~='bg-stone-50'],
+.shop-home [class~='bg-slate-50'],
+.shop-home [class~='bg-slate-50/30'],
+.shop-home [class~='bg-slate-50/40'],
+.shop-home [class~='bg-slate-50/50'],
+.shop-home [class~='bg-slate-50/60'],
+.shop-home [class~='bg-slate-50/70'],
+.shop-home [class~='bg-slate-50/80'],
+.shop-home [class~='bg-gray-50'],
+.shop-home [class~='bg-stone-50'] {
+  background-color: #fff8f1 !important;
+}
+
+.premium-page [class~='border-slate-100'],
+.premium-page [class~='border-slate-200'],
+.premium-page [class~='border-gray-100'],
+.premium-page [class~='border-gray-200'],
+.premium-page [class~='border-stone-200'],
+.shop-home [class~='border-slate-100'],
+.shop-home [class~='border-slate-200'],
+.shop-home [class~='border-gray-100'],
+.shop-home [class~='border-gray-200'],
+.shop-home [class~='border-stone-200'] {
+  border-color: rgba(144, 111, 105, 0.22) !important;
+}
+
+.premium-page [class~='text-slate-400'],
+.premium-page [class~='text-gray-400'],
+.shop-home [class~='text-slate-400'],
+.shop-home [class~='text-gray-400'] {
+  color: #8a776d !important;
+}
+
+.premium-page [class~='text-slate-500'],
+.premium-page [class~='text-gray-500'],
+.shop-home [class~='text-slate-500'],
+.shop-home [class~='text-gray-500'] {
+  color: #625650 !important;
+}
+
+.premium-input,
+.premium-select,
+.premium-page input,
+.premium-page textarea,
+.premium-page select,
+.shop-home input,
+.shop-home textarea,
+.shop-home select {
+  border-color: rgba(144, 111, 105, 0.26) !important;
+  background-color: rgba(255, 253, 249, 0.98) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.82), 0 14px 34px -30px rgba(19,27,46,0.54);
+}
+
+html:not([data-theme='dark']) .vendor-app,
+html:not([data-theme='dark']) .admin-app {
+  background:
+    radial-gradient(circle at 10% 4%, rgba(219, 52, 23, 0.055), transparent 30rem),
+    radial-gradient(circle at 92% 6%, rgba(0, 107, 95, 0.075), transparent 34rem),
+    linear-gradient(180deg, #fbfaf7 0%, #f4f6fa 58%, #f8fafc 100%) !important;
+  background-size: auto !important;
+}
+
+html:not([data-theme='dark']) .vendor-topbar,
+html:not([data-theme='dark']) .admin-topbar {
+  border-color: rgba(144, 111, 105, 0.24) !important;
+  background: rgba(255, 253, 249, 0.92) !important;
+  box-shadow: 0 16px 42px -34px rgba(19, 27, 46, 0.45);
+}
+
+html:not([data-theme='dark']) .vendor-panel,
+html:not([data-theme='dark']) .admin-panel,
+html:not([data-theme='dark']) .vendor-dropdown,
+html:not([data-theme='dark']) .admin-dropdown {
+  border-color: rgba(144, 111, 105, 0.24) !important;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fffaf6 100%) !important;
+  box-shadow:
+    0 24px 64px -46px rgba(15, 23, 42, 0.58),
+    0 1px 0 rgba(144, 111, 105, 0.08) !important;
+}
+
+html:not([data-theme='dark']) .vendor-app-premium .vendor-panel,
+html:not([data-theme='dark']) .vendor-app-premium .vendor-dropdown,
+html:not([data-theme='dark']) .vendor-app-premium .vendor-topbar {
+  border-color: rgba(144, 111, 105, 0.24) !important;
+}
+
+html:not([data-theme='dark']) .vendor-input,
+html:not([data-theme='dark']) .admin-search,
+html:not([data-theme='dark']) .admin-form-input,
+html:not([data-theme='dark']) .vendor-app input,
+html:not([data-theme='dark']) .vendor-app textarea,
+html:not([data-theme='dark']) .vendor-app select,
+html:not([data-theme='dark']) .admin-app input,
+html:not([data-theme='dark']) .admin-app textarea,
+html:not([data-theme='dark']) .admin-app select {
+  border-color: rgba(144, 111, 105, 0.28) !important;
+  background: #fffdf9 !important;
+  color: #131b2e !important;
+}
+
+html:not([data-theme='dark']) .vendor-input:focus,
+html:not([data-theme='dark']) .admin-search:focus,
+html:not([data-theme='dark']) .admin-form-input:focus,
+html:not([data-theme='dark']) .vendor-app input:focus,
+html:not([data-theme='dark']) .vendor-app textarea:focus,
+html:not([data-theme='dark']) .vendor-app select:focus,
+html:not([data-theme='dark']) .admin-app input:focus,
+html:not([data-theme='dark']) .admin-app textarea:focus,
+html:not([data-theme='dark']) .admin-app select:focus {
+  border-color: rgba(219, 52, 23, 0.52) !important;
+  box-shadow: 0 0 0 4px rgba(219, 52, 23, 0.12) !important;
+}
+
+html:not([data-theme='dark']) .vendor-secondary-button,
+html:not([data-theme='dark']) .admin-secondary-button,
+html:not([data-theme='dark']) .vendor-page-button,
+html:not([data-theme='dark']) .admin-page-button,
+html:not([data-theme='dark']) .vendor-task,
+html:not([data-theme='dark']) .vendor-list-item,
+html:not([data-theme='dark']) .vendor-chat-item,
+html:not([data-theme='dark']) .vendor-quick-reply {
+  border-color: rgba(144, 111, 105, 0.22) !important;
+  background: #fffdf9 !important;
+  color: #3c3531 !important;
+}
+
+html:not([data-theme='dark']) .vendor-secondary-button:hover,
+html:not([data-theme='dark']) .admin-secondary-button:hover,
+html:not([data-theme='dark']) .vendor-page-button:hover:not(:disabled),
+html:not([data-theme='dark']) .admin-page-button:hover:not(:disabled),
+html:not([data-theme='dark']) .vendor-task:hover,
+html:not([data-theme='dark']) .vendor-list-item:hover,
+html:not([data-theme='dark']) .vendor-chat-item:hover,
+html:not([data-theme='dark']) .vendor-quick-reply:hover {
+  border-color: rgba(219, 52, 23, 0.34) !important;
+  background: #fff4ea !important;
+  color: #9a3412 !important;
+}
+
+html:not([data-theme='dark']) .vendor-table-head,
+html:not([data-theme='dark']) .admin-table-head {
+  border-color: rgba(144, 111, 105, 0.22) !important;
+  background: linear-gradient(180deg, #fff4ea 0%, #fffaf6 100%) !important;
+  color: #7b5a4b !important;
+}
+
+html:not([data-theme='dark']) .vendor-table-row,
+html:not([data-theme='dark']) .admin-table-row {
+  border-color: rgba(144, 111, 105, 0.14) !important;
+}
+
+html:not([data-theme='dark']) .vendor-table-row:hover,
+html:not([data-theme='dark']) .admin-table-row:hover {
+  background: #fff8f1 !important;
+}
+
+html:not([data-theme='dark']) .admin-primary-button,
+html:not([data-theme='dark']) .vendor-primary-button {
+  box-shadow: 0 16px 34px -22px rgba(219, 52, 23, 0.68);
+}
+
+html:not([data-theme='dark']) .admin-metric-card,
+html:not([data-theme='dark']) .vendor-stat-card,
+html:not([data-theme='dark']) .quota-banner,
+html:not([data-theme='dark']) .plan-card {
+  border-color: rgba(144, 111, 105, 0.24) !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fffaf6 100%) !important;
+  box-shadow: 0 20px 54px -42px rgba(15, 23, 42, 0.52);
+}
+
+.premium-page .chat-shell,
+.shop-home .chat-shell,
+.premium-page section[class~='bg-white'],
+.shop-home section[class~='bg-white'] {
+  border-color: rgba(144, 111, 105, 0.22) !important;
+  box-shadow: 0 26px 68px -48px rgba(19, 27, 46, 0.56);
+}
+
+/* Seller registration needs stronger interaction contrast on the dark seller
+   gateway so every form control reads as an actionable surface. */
+.bg-gradient-seller {
+  background:
+    radial-gradient(circle at 16% 0%, rgba(255, 106, 61, 0.22), transparent 26rem),
+    radial-gradient(circle at 86% 10%, rgba(109, 245, 225, 0.16), transparent 30rem),
+    linear-gradient(150deg, #071611 0%, #0e2f28 44%, #13252f 100%) !important;
+}
+
+.seller-auth-heading .pill {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 18px 42px -34px rgba(0,0,0,0.85);
+}
+
+.seller-auth-tabs {
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.1)) !important;
+  box-shadow: 0 22px 54px -42px rgba(0,0,0,0.95), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+.seller-auth-tab {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.seller-auth-tab.is-active {
+  box-shadow: 0 14px 34px -22px rgba(255, 106, 61, 0.72), inset 0 1px 0 rgba(255,255,255,0.82) !important;
+}
+
+.seller-register-card {
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.98) 0%, #fffaf6 100%) !important;
+  box-shadow:
+    0 34px 90px -44px rgba(0, 0, 0, 0.78),
+    0 0 0 1px rgba(255, 255, 255, 0.62) inset !important;
+}
+
+.seller-register-card-header {
+  border-bottom: 1px solid rgba(144, 111, 105, 0.16);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(255, 106, 61, 0.11), transparent 20rem),
+    linear-gradient(180deg, #ffffff, #fffaf6);
+  padding-bottom: 20px !important;
+}
+
+.seller-register-title {
+  color: #10241f !important;
+  font-size: 1.25rem !important;
+  font-weight: 900 !important;
+}
+
+.seller-register-subtitle,
+.seller-register-login-hint {
+  color: #66584f !important;
+  font-weight: 650;
+}
+
+.seller-register-card-content {
+  background: #fffdf9;
+}
+
+.seller-register-steps span {
+  font-weight: 850;
+}
+
+.seller-register-steps [class~='bg-gray-200'],
+.seller-register-card [class~='bg-gray-200'] {
+  border: 1px solid rgba(144, 111, 105, 0.22);
+  background: #f2e7dd !important;
+  color: #79685e !important;
+}
+
+.seller-register-form {
+  color: #13252f;
+}
+
+.seller-register-form p,
+.seller-register-form label {
+  color: #554a44;
+}
+
+.seller-register-section {
+  border-color: rgba(144, 111, 105, 0.24) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 106, 61, 0.07), transparent 18rem),
+    linear-gradient(180deg, #ffffff 0%, #fff7ef 100%) !important;
+  box-shadow:
+    0 24px 60px -48px rgba(19, 27, 46, 0.62),
+    0 1px 0 rgba(144, 111, 105, 0.08);
+}
+
+.seller-register-section h3 {
+  color: #10241f !important;
+  font-weight: 900;
+}
+
+.seller-register-section > div:first-child svg {
+  color: #db3417;
+}
+
+.seller-register-card .input-field,
+.seller-register-card input,
+.seller-register-card textarea,
+.seller-register-card select {
+  border-color: rgba(144, 111, 105, 0.28) !important;
+  background: #ffffff !important;
+  color: #13252f !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 14px 34px -30px rgba(19,27,46,0.58);
+}
+
+.seller-register-card .input-field::placeholder,
+.seller-register-card input::placeholder,
+.seller-register-card textarea::placeholder {
+  color: #9b8b82 !important;
+}
+
+.seller-register-card .input-field:focus,
+.seller-register-card input:focus,
+.seller-register-card textarea:focus,
+.seller-register-card select:focus {
+  border-color: rgba(219, 52, 23, 0.58) !important;
+  box-shadow: 0 0 0 4px rgba(219, 52, 23, 0.13), 0 18px 42px -32px rgba(219, 52, 23, 0.42) !important;
+}
+
+.seller-register-card input:disabled,
+.seller-register-card textarea:disabled,
+.seller-register-card .cursor-not-allowed {
+  border-color: rgba(144, 111, 105, 0.2) !important;
+  background: #f3ece5 !important;
+  color: #77685f !important;
+  opacity: 1 !important;
+}
+
+.seller-register-card button[aria-pressed='true'] {
+  border-color: rgba(219, 52, 23, 0.62) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 106, 61, 0.16), rgba(255, 244, 234, 0.96)) !important;
+  color: #b61b00 !important;
+  box-shadow: 0 0 0 4px rgba(219, 52, 23, 0.12), 0 18px 34px -30px rgba(219, 52, 23, 0.5);
+}
+
+.seller-register-card button[aria-pressed='false'] {
+  border-color: rgba(144, 111, 105, 0.22) !important;
+  background: #fffdf9 !important;
+  color: #3f3834 !important;
+}
+
+.seller-register-card button[aria-pressed='false']:hover {
+  border-color: rgba(219, 52, 23, 0.34) !important;
+  background: #fff4ea !important;
+  color: #b61b00 !important;
+}
+
+.seller-upload-zone,
+.seller-identity-result {
+  border-color: rgba(144, 111, 105, 0.28) !important;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fff8f1 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.88), 0 18px 40px -34px rgba(19,27,46,0.5);
+}
+
+.seller-upload-zone:hover {
+  border-color: rgba(219, 52, 23, 0.45) !important;
+  background: #fff4ea !important;
+}
+
+.seller-upload-zone img {
+  border-color: rgba(144, 111, 105, 0.24) !important;
+  box-shadow: 0 16px 34px -28px rgba(19,27,46,0.7);
+}
+
+.seller-upload-zone .text-gray-400,
+.seller-register-card .text-gray-400,
+.seller-register-card .text-gray-500 {
+  color: #7b6b63 !important;
+}
+
+.seller-register-card .text-gray-700,
+.seller-register-card .text-gray-900 {
+  color: #13252f !important;
+}
+
+.seller-register-card .border-gray-100,
+.seller-register-card .border-gray-200,
+.seller-register-card .border-gray-300 {
+  border-color: rgba(144, 111, 105, 0.24) !important;
+}
+
+.seller-register-card .bg-gray-50,
+.seller-register-card .from-gray-50,
+.seller-register-card .to-white {
+  background-color: #fff8f1 !important;
+}
+
+.seller-register-card .bg-emerald-50 {
+  border-color: rgba(5, 150, 105, 0.22) !important;
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+}
+
+.seller-register-card .bg-red-50 {
+  border-color: rgba(220, 38, 38, 0.24) !important;
+  background: #fff1f2 !important;
+  color: #b91c1c !important;
+}
+
+.seller-register-card .fixed .bg-white {
+  border: 1px solid rgba(144, 111, 105, 0.24);
+  background: linear-gradient(180deg, #ffffff 0%, #fff8f1 100%) !important;
+}

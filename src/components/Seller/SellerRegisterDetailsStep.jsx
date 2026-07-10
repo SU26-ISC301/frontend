@@ -128,13 +128,13 @@ function IdentityImageUpload({ label, value, onChange, error }) {
   const displayError = error || localError;
 
   return (
-    <div className="space-y-2">
+    <div className="seller-upload-field space-y-2">
       <label className="block text-sm font-semibold text-brand-dark/80">
         {label} *
       </label>
       <div
         className={cn(
-          'rounded-lg border-2 border-dashed bg-white p-4 transition-colors',
+          'seller-upload-zone rounded-lg border-2 border-dashed bg-white p-4 transition-colors',
           displayError ? 'border-red-300' : 'border-gray-300 hover:border-shopee/50'
         )}
       >
@@ -478,8 +478,8 @@ export function SellerRegisterDetailsStep({ email, otpResult, credentials, onNex
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <section className="rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 sm:p-5">
+      <form onSubmit={handleSubmit} className="seller-register-form space-y-6">
+        <section className="seller-register-section rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 sm:p-5">
           <div className="mb-4 flex items-center gap-2">
             <Building2 className="h-5 w-5 text-slate-700" />
             <h3 className="font-semibold text-gray-900">Thông tin shop</h3>
@@ -566,7 +566,7 @@ export function SellerRegisterDetailsStep({ email, otpResult, credentials, onNex
           </div>
         </section>
 
-        <section className="rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 sm:p-5">
+        <section className="seller-register-section rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 sm:p-5">
           <div className="mb-4 flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-slate-700" />
             <h3 className="font-semibold text-gray-900">Xác thực thông tin chủ shop</h3>
@@ -600,7 +600,7 @@ export function SellerRegisterDetailsStep({ email, otpResult, credentials, onNex
             </label>
             <div
               className={cn(
-                'rounded-lg border bg-white p-4',
+                'seller-upload-zone rounded-lg border bg-white p-4',
                 errors.facePhoto ? 'border-red-300' : 'border-gray-200'
               )}
             >
@@ -654,7 +654,7 @@ export function SellerRegisterDetailsStep({ email, otpResult, credentials, onNex
           </div>
 
           {(identityStatus.loading || identityStatus.error || identityInfo) && (
-            <div className="mt-4 space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+            <div className="seller-identity-result mt-4 space-y-3 rounded-lg border border-gray-200 bg-white p-4">
               {identityStatus.loading && (
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-gray-600">
@@ -731,7 +731,7 @@ export function SellerRegisterDetailsStep({ email, otpResult, credentials, onNex
           )}
         </section>
 
-        <section className="rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 sm:p-5">
+        <section className="seller-register-section rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 sm:p-5">
           <div className="mb-4 flex items-center gap-2">
             <User className="h-5 w-5 text-slate-700" />
             <h3 className="font-semibold text-gray-900">Thông tin chủ shop</h3>

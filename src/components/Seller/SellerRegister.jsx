@@ -50,14 +50,14 @@ export function SellerRegister({ onSwitchToLogin }) {
   }
 
   return (
-    <Card className="mx-auto max-w-2xl border-0 shadow-elevated">
-      <CardHeader>
-        <CardTitle>Đăng ký người bán</CardTitle>
-        <p className="text-sm text-gray-500">
+    <Card className="seller-register-card mx-auto max-w-3xl border-0 shadow-elevated">
+      <CardHeader className="seller-register-card-header">
+        <CardTitle className="seller-register-title">Đăng ký người bán</CardTitle>
+        <p className="seller-register-subtitle text-sm text-gray-500">
           Xác thực email, sau đó hoàn tất hồ sơ mở gian hàng
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="seller-register-card-content">
         <StepIndicator currentStep={step} />
 
         {step === STEPS.EMAIL && (
@@ -85,7 +85,7 @@ export function SellerRegister({ onSwitchToLogin }) {
           />
         )}
 
-        <p className="mt-6 text-center text-sm text-gray-600">
+        <p className="seller-register-login-hint mt-6 text-center text-sm text-gray-600">
           Đã có tài khoản?{' '}
           <button
             type="button"

@@ -9,7 +9,7 @@ const STEPS = [
 
 export function StepIndicator({ currentStep }) {
   return (
-    <nav aria-label="Tiến trình đăng ký" className="mb-8 flex justify-center px-2">
+    <nav aria-label="Tiến trình đăng ký" className="seller-register-steps mb-8 flex justify-center px-2">
       <div className="w-full max-w-lg">
         <div className="flex items-start justify-center">
           {STEPS.map((step, index) => {
