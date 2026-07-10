@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Eye,
+  Flag,
   Heart,
   Loader2,
   MapPin,
@@ -25,6 +26,7 @@ import { buyerMessageApi } from '../api/buyerMessageAPI';
 import { marketResearchApi } from '../api/marketResearchAPI';
 import { wishlistApi } from '../api/wishlistAPI';
 import { promotionApi } from '../api/promotionAPI';
+import { ReportDialog } from '../components/Report/ReportDialog';
 import { recordViewedCategory } from '../utils/viewedCategories';
 import { sellerApi } from '../api/sellerAPI';
 import { cn } from '../lib/utils';
@@ -294,6 +296,7 @@ export default function ProductDetail() {
   const [favorite, setFavorite] = useState(false);
   const [favoriteMessage, setFavoriteMessage] = useState('');
   const [pendingFavorite, setPendingFavorite] = useState(false);
+  const [reportTarget, setReportTarget] = useState(null);
   const recordedPromotionClicksRef = useRef(new Set());
 
   useEffect(() => {
@@ -518,6 +521,20 @@ export default function ProductDetail() {
     await addFavorite();
   };
 
+  const openReport = (targetType) => {
+    if (!loggedIn) {
+      setSendStatus('Vui lòng đăng nhập để gửi báo cáo. ShopVN chỉ nhận báo cáo từ tài khoản đã xác thực.');
+      setAuthOpen(true);
+      return;
+    }
+
+    setReportTarget({
+      targetType,
+      targetId: targetType === 'PRODUCT' ? product.id : product.vendorId,
+      targetLabel: targetType === 'PRODUCT' ? product.name : product.vendorName || 'Shop',
+    });
+  };
+
   useEffect(() => {
     if (!product?.name) return;
 
@@ -705,6 +722,15 @@ export default function ProductDetail() {
                     <Heart className={cn('h-4 w-4', favorite && 'fill-current')} />
                     {favorite ? 'Đã lưu' : 'Lưu tin'}
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full border-red-100 px-4 font-extrabold text-red-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                    onClick={() => openReport('PRODUCT')}
+                  >
+                    <Flag className="h-4 w-4" />
+                    Báo cáo
+                  </Button>
                 </div>
                 {favoriteMessage && (
                   <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
@@ -762,6 +788,10 @@ export default function ProductDetail() {
                   <Button type="button" className="h-12 rounded-2xl bg-[#ffcf20] text-slate-950 shadow-none hover:bg-[#ffd84d]" onClick={() => document.getElementById('detail-message-box')?.focus()}>
                     <MessageCircle className="h-4 w-4" />
                     Nhắn tin
+                  </Button>
+                  <Button type="button" variant="outline" className="h-12 rounded-2xl border-red-100 text-red-600 hover:bg-red-50" onClick={() => openReport('VENDOR')}>
+                    <Flag className="h-4 w-4" />
+                    Báo cáo shop
                   </Button>
                 </div>
 
@@ -840,6 +870,13 @@ export default function ProductDetail() {
 
       <Footer />
       <BuyerAuthModal open={authOpen} onClose={() => setAuthOpen(false)} onAuthenticated={handleAuthenticated} />
+      <ReportDialog
+        open={Boolean(reportTarget)}
+        onClose={() => setReportTarget(null)}
+        targetType={reportTarget?.targetType}
+        targetId={reportTarget?.targetId}
+        targetLabel={reportTarget?.targetLabel}
+      />
     </div>
   );
 }

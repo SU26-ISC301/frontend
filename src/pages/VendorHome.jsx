@@ -64,6 +64,7 @@ import { marketResearchApi } from "../api/marketResearchAPI";
 import { sellerApi } from "../api/sellerAPI";
 import { categoryApi } from "../api/categoryAPI";
 import { promotionApi } from "../api/promotionAPI";
+import { financeApi } from "../api/financeAPI";
 import { getSubscriptionStatus } from "../api/subscriptionApi";
 import {
   productStorage,
@@ -7009,14 +7010,15 @@ function FinancePage({ onToast }) {
     setLoading(true);
     setError("");
     try {
-      const [walletResult, transactionsResult, promotionsResult] = await Promise.allSettled([
+      const [financeResult, walletResult, transactionsResult, promotionsResult] = await Promise.allSettled([
+        financeApi.getFinanceReport(),
         promotionApi.getPromotionWallet(),
         promotionApi.getWalletTransactions(200),
         promotionApi.getPromotions(),
       ]);
 
-      if (walletResult.status === "rejected" && promotionsResult.status === "rejected") {
-        throw promotionsResult.reason || walletResult.reason;
+      if (financeResult.status === "rejected" && walletResult.status === "rejected" && promotionsResult.status === "rejected") {
+        throw financeResult.reason || promotionsResult.reason || walletResult.reason;
       }
 
       const promotionList =
@@ -7041,7 +7043,13 @@ function FinancePage({ onToast }) {
         }),
       );
 
-      setWallet(walletResult.status === "fulfilled" ? walletResult.value : null);
+      setWallet(
+        financeResult.status === "fulfilled"
+          ? financeResult.value
+          : walletResult.status === "fulfilled"
+            ? walletResult.value
+            : null,
+      );
       setTransactions(
         transactionsResult.status === "fulfilled" && Array.isArray(transactionsResult.value)
           ? transactionsResult.value
@@ -7060,6 +7068,20 @@ function FinancePage({ onToast }) {
   }, [loadReport]);
 
   const cashFlow = useMemo(() => {
+    if (Array.isArray(wallet?.cashFlow) && wallet.cashFlow.length > 0) {
+      return wallet.cashFlow
+        .slice()
+        .sort((left, right) => String(left.date).localeCompare(String(right.date)))
+        .map((item) => ({
+          date: item.date,
+          spend: Number(item.spend || 0),
+          clicks: Number(item.clicks || 0),
+          impressions: Number(item.impressions || 0),
+          averageRoiPerClick: Number(item.averageRoiPerClick || 0),
+          ctr: Number(item.ctr || 0),
+        }));
+    }
+
     const byDate = new Map();
 
     promotions.forEach((promotion) => {
@@ -7086,7 +7108,7 @@ function FinancePage({ onToast }) {
         averageRoiPerClick: item.clicks ? item.spend / item.clicks : 0,
         ctr: item.impressions ? (item.clicks / item.impressions) * 100 : 0,
       }));
-  }, [promotions]);
+  }, [promotions, wallet?.cashFlow]);
   const topUpTransactions = transactions.filter(
     (transaction) =>
       isWalletTopUpTransaction(transaction) &&
@@ -7115,20 +7137,23 @@ function FinancePage({ onToast }) {
   const totalSpent = Number(wallet?.totalSpent ?? fallbackSpent);
   const availableBalance = Number(wallet?.availableBalance ?? wallet?.balance ?? 0);
   const lockedBalance = Number(wallet?.lockedBalance ?? 0);
-  const marketingSpent = promotions.reduce(
+  const fallbackMarketingSpent = promotions.reduce(
     (sum, promotion) => sum + getPromotionSpendAmount(promotion),
     0,
   );
-  const marketingClicks = promotions.reduce(
+  const fallbackMarketingClicks = promotions.reduce(
     (sum, promotion) => sum + Number(promotion.customerClicks || 0),
     0,
   );
-  const marketingImpressions = promotions.reduce(
+  const fallbackMarketingImpressions = promotions.reduce(
     (sum, promotion) => sum + Number(promotion.impressions || 0),
     0,
   );
-  const averageRoiPerClick = marketingClicks ? marketingSpent / marketingClicks : 0;
-  const ctr = marketingImpressions ? (marketingClicks / marketingImpressions) * 100 : 0;
+  const marketingSpent = Number(wallet?.marketingSpent ?? fallbackMarketingSpent);
+  const marketingClicks = Number(wallet?.marketingClicks ?? fallbackMarketingClicks);
+  const marketingImpressions = Number(wallet?.marketingImpressions ?? fallbackMarketingImpressions);
+  const averageRoiPerClick = Number(wallet?.averageRoiPerClick ?? (marketingClicks ? marketingSpent / marketingClicks : 0));
+  const ctr = Number(wallet?.ctr ?? (marketingImpressions ? (marketingClicks / marketingImpressions) * 100 : 0));
   const activeCampaigns = promotions.filter((promotion) =>
     ["ACTIVE", "SCHEDULED", "PAUSED"].includes(String(promotion.status || "").toUpperCase()),
   ).length;

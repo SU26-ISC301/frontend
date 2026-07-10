@@ -117,7 +117,7 @@ export function ProductCard({ id, index, title, price, oldPrice, sold, rating, i
           onClick={(event) => {
             event.stopPropagation();
             if (vendorId) {
-              window.open(`/shop/${vendorId}`, '_blank', 'noopener,noreferrer');
+              navigate(`/shop/${vendorId}`);
             }
           }}
         >

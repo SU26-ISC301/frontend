@@ -60,15 +60,15 @@ function isMessageFromMe(message, mode) {
 const buyerQuickReplies = [
   'Shop ơi sản phẩm này còn hàng không?',
   'Mình muốn hỏi thêm về bảo hành.',
-  'Shop có hỗ trợ giao nhanh hôm nay không?',
+  'Mình muốn xem thêm ảnh thật của sản phẩm.',
   'Bạn tư vấn giúp mình sản phẩm phù hợp nhé.',
 ];
 
 const vendorQuickReplies = [
   'Dạ sản phẩm vẫn còn hàng ạ.',
-  'Shop hỗ trợ đổi trả trong 7 ngày.',
-  'Shop gửi bạn mã giảm 10% nhé.',
-  'Đơn sẽ được gửi trong hôm nay ạ.',
+  'Shop có thể gửi thêm ảnh/video thật cho bạn.',
+  'Bạn cần xem thêm thông tin nào của sản phẩm ạ?',
+  'Mình có thể hẹn thời gian trao đổi trực tiếp phù hợp.',
 ];
 
 const MAX_QUICK_REPLIES = 10;

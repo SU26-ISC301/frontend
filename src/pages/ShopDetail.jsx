@@ -8,14 +8,18 @@ import {
   Store,
   Loader2,
   AlertTriangle,
+  Flag,
   SlidersHorizontal,
 } from 'lucide-react';
 import { Header } from '../components/Home/Header';
 import { Footer } from '../components/layout/Footer';
 import { ProductCard } from '../components/Home/ProductCard';
+import { BuyerAuthModal } from '../components/Auth/BuyerAuthModal';
+import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { sellerApi } from '../api/sellerAPI';
 import { productApi } from '../api/productAPI';
+import { ReportDialog } from '../components/Report/ReportDialog';
 
 const PRODUCT_PAGE_SIZE = 20;
 const SHOP_PRODUCTS_PAGE_SIZE = 10;
@@ -79,6 +83,15 @@ function mapProductCard(product) {
   };
 }
 
+function hasBuyerSession() {
+  return Boolean(
+    localStorage.getItem('buyerAccessToken') ||
+      sessionStorage.getItem('buyerAccessToken') ||
+      localStorage.getItem('accessToken') ||
+      sessionStorage.getItem('accessToken')
+  );
+}
+
 export default function ShopDetail() {
   const { id } = useParams();
   const [vendor, setVendor] = useState(null);
@@ -88,6 +101,9 @@ export default function ShopDetail() {
   const [productPage, setProductPage] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -205,6 +221,16 @@ export default function ShopDetail() {
     return Array.from({ length: end - start }, (_, index) => start + index);
   }, [productPage, totalProductPages]);
 
+  const openShopReport = () => {
+    if (!hasBuyerSession()) {
+      setNotice('Vui lòng đăng nhập để gửi báo cáo shop.');
+      setAuthOpen(true);
+      return;
+    }
+    setNotice('');
+    setReportOpen(true);
+  };
+
   useEffect(() => {
     setProductPage(0);
   }, [selectedCategoryId, sortMode]);
@@ -284,7 +310,22 @@ export default function ShopDetail() {
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Sản phẩm</p>
                 </div>
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0 rounded-2xl border-red-100 text-red-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                onClick={openShopReport}
+              >
+                <Flag className="h-4 w-4" />
+                Báo cáo shop
+              </Button>
             </div>
+
+            {notice && (
+              <p className="mb-4 rounded-2xl bg-orange-50 px-4 py-3 text-sm font-bold text-orange-700">
+                {notice}
+              </p>
+            )}
 
             <hr className="my-5 border-slate-100" />
 
@@ -422,6 +463,22 @@ export default function ShopDetail() {
       </main>
 
       <Footer />
+      <BuyerAuthModal
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        onAuthenticated={() => {
+          setAuthOpen(false);
+          setNotice('');
+          setReportOpen(true);
+        }}
+      />
+      <ReportDialog
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType="VENDOR"
+        targetId={id}
+        targetLabel={vendor.shopName}
+      />
     </div>
   );
 }

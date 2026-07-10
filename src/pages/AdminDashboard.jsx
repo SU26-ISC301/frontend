@@ -45,6 +45,7 @@ import { authApi } from '../api/authAPI';
 import { adminApi } from '../api/adminAPI';
 import { mapBackendProductToLocal } from '../utils/productStorage';
 import { sellerApi } from '../api/sellerAPI';
+import { AdminReportModeration } from '../components/Report/AdminReportModeration';
 
 const adminNavItems = [
   { id: 'tong-quan', label: 'Tổng quan', icon: LayoutDashboard },
@@ -256,8 +257,6 @@ const DEFAULT_MARKET_CATEGORY_ID = 'op-lung-bao-da';
 const orders = [];
 
 const financeRows = [];
-
-const moderationItems = [];
 
 const recentOrders = [];
 
@@ -824,7 +823,7 @@ function AdminSection({ active, vendors, onNavigate, onToast, onVendorStatus }) 
   if (active === 'nhat-ky-van-hanh') return <AuditLogSection onToast={onToast} />;
   if (active === 'don-hang') return <DataSection title="Giám sát đơn hàng" subtitle="Theo dõi trạng thái đơn, SLA xử lý, người bán phụ trách và giá trị giao dịch." columns={['Mã đơn', 'Khách hàng', 'Shop', 'Giá trị', 'Trạng thái']} rows={orders} onToast={onToast} />;
   if (active === 'tai-chinh') return <DataSection title="Tài chính & đối soát" subtitle="Quản lý rút tiền, hoàn tiền, phí nền tảng và kỳ đối soát người bán." columns={['Hạng mục', 'Giá trị', 'Trạng thái', 'Ghi chú']} rows={financeRows} onToast={onToast} />;
-  if (active === 'kiem-duyet') return <DataSection title="Trung tâm kiểm duyệt" subtitle="Xử lý nội dung, khiếu nại, gian lận thanh toán và vi phạm người bán." columns={['Hàng đợi', 'Số lượng', 'Mô tả']} rows={moderationItems} onToast={onToast} />;
+  if (active === 'kiem-duyet') return <AdminReportModeration onToast={onToast} />;
   if (active === 'bao-cao') return <ReportsSection onToast={onToast} />;
   return <SettingsSection />;
 }

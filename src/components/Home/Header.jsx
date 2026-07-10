@@ -111,7 +111,7 @@ export function Header({ categoryMenuSlot = null }) {
   return (
     <>
       <header className="sticky top-0 z-50 w-full">
-        <div className="bg-[#13252f] text-white">
+        <div className="bg-[#0e2f28] text-white">
           <div className="mx-auto flex h-9 max-w-7xl items-center justify-between px-4 text-xs sm:px-6 lg:px-8">
             <Link
               to="/seller"
@@ -121,16 +121,16 @@ export function Header({ categoryMenuSlot = null }) {
               Kênh Người Bán
             </Link>
             <div className="hidden items-center gap-4 text-white/68 sm:flex">
-              <span className="transition-colors hover:text-white">Freeship cho đơn từ 99K</span>
+              <span className="transition-colors hover:text-white">Sàn C2C thông minh cho mọi nhà</span>
               <span className="h-3 w-px bg-white/20" />
               <span className="transition-colors hover:text-white">Tin đăng thật từ shop đã xác minh</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-[#fff3ef]/94 via-white/90 to-[#efffff]/92 py-2 shadow-[0_18px_48px_-36px_rgba(15,23,42,0.48)] backdrop-blur-2xl">
+        <div className="bg-gradient-to-r from-[#fff7f2]/88 via-white/76 to-[#eefdf8]/82 py-2 shadow-[0_18px_48px_-36px_rgba(19,27,46,0.48)] backdrop-blur-2xl">
           <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
-            <div className="relative flex flex-col gap-3 rounded-[1.75rem] border border-white/80 bg-white/78 p-2 shadow-[0_22px_55px_-42px_rgba(15,23,42,0.72)] backdrop-blur-2xl sm:flex-row sm:items-center sm:gap-4">
+            <div className="premium-glass relative flex flex-col gap-3 rounded-[1.35rem] p-2 sm:flex-row sm:items-center sm:gap-4">
               <div className="pointer-events-none absolute inset-x-8 -bottom-px h-px bg-gradient-to-r from-transparent via-orange-300/70 to-transparent" />
               <div className="flex items-center justify-between sm:justify-start">
                 <BrandLogo />
