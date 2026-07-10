@@ -17,7 +17,6 @@ import {
   ShoppingBag,
   Star,
   TicketPercent,
-  Truck,
   User,
   WalletCards,
 } from "lucide-react";
@@ -42,8 +41,8 @@ const navItems = [
   { slug: "tong-quan", label: "Tổng quan", icon: Home },
   { slug: "don-mua", label: "Đơn mua", icon: ShoppingBag },
   { slug: "thong-tin", label: "Thông tin người dùng", icon: User },
-  { slug: "dia-chi", label: "Sổ địa chỉ", icon: MapPin },
-  { slug: "vi-voucher", label: "Ví & Voucher", icon: WalletCards },
+  { slug: "dia-chi", label: "Khu vực giao dịch", icon: MapPin },
+  { slug: "vi-voucher", label: "Ưu đãi", icon: WalletCards },
   { slug: "danh-gia", label: "Đánh giá", icon: Star },
   { slug: "ho-tro", label: "Hỗ trợ", icon: MessageSquareText },
   { slug: "chatbox-ai", label: "Chatbox AI", icon: Bot },
@@ -54,15 +53,15 @@ const pageTitles = {
   "tong-quan": "Tổng quan tài khoản",
   "don-mua": "Đơn mua của tôi",
   "thong-tin": "Thông tin người dùng",
-  "dia-chi": "Sổ địa chỉ",
-  "vi-voucher": "Ví & Voucher",
+  "dia-chi": "Khu vực giao dịch",
+  "vi-voucher": "Ưu đãi",
   "danh-gia": "Đánh giá sản phẩm",
   "ho-tro": "Trung tâm hỗ trợ",
   "chatbox-ai": "Chatbox AI",
   "bao-mat": "Bảo mật tài khoản",
 };
 
-const orderTabs = ["Chờ xác nhận", "Đang giao", "Đã giao", "Đổi trả"];
+const orderTabs = ["Đang trao đổi", "Đã đặt hẹn", "Đã hoàn tất", "Khiếu nại"];
 const orders = [];
 
 function getApiMessage(error) {
@@ -100,11 +99,11 @@ function BuyerLayout({ profile, activeSlug, children }) {
   };
 
   return (
-    <div className="page-mesh min-h-screen">
+    <div className="premium-page min-h-screen">
       <Header />
-      <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[280px_1fr] lg:px-8">
+      <main className="premium-shell grid gap-6 py-6 lg:grid-cols-[280px_1fr]">
         <aside className="space-y-4">
-          <div className="shopvn-surface p-4">
+          <div className="premium-panel p-4">
             <div className="flex items-center gap-3">
               <img
                 src={getAvatarSrc(profile?.avatarUrl)}
@@ -112,24 +111,24 @@ function BuyerLayout({ profile, activeSlug, children }) {
                 className="h-14 w-14 rounded-full object-cover"
               />
               <div className="min-w-0">
-                <p className="truncate font-bold text-gray-950">
+                <p className="truncate font-black text-slate-950">
                   {profile?.fullName || "Tài khoản người mua"}
                 </p>
-                <p className="truncate text-sm text-gray-500">
+                <p className="truncate text-sm font-semibold text-slate-500">
                   {profile?.email}
                 </p>
               </div>
             </div>
           </div>
 
-          <nav className="shopvn-surface p-2">
+          <nav className="premium-panel p-2">
             {navItems.map(({ slug, label, icon: Icon }) => (
               <NavLink
                 key={slug}
                 to={`/buyer/${slug}`}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors",
                     isActive
                       ? "bg-orange-50 text-[#f05a22] ring-1 ring-orange-100"
                       : "text-gray-600 hover:bg-orange-50 hover:text-[#f05a22]",
@@ -143,7 +142,7 @@ function BuyerLayout({ profile, activeSlug, children }) {
             <button
               type="button"
               onClick={handleLogout}
-              className="mt-2 flex w-full items-center gap-3 border-t border-gray-100 px-3 py-2.5 pt-4 text-sm font-semibold text-red-600 hover:text-red-700"
+              className="mt-2 flex w-full items-center gap-3 border-t border-orange-100/60 px-3 py-2.5 pt-4 text-sm font-bold text-red-600 hover:text-red-700"
             >
               <LogOut className="h-4 w-4" />
               Đăng xuất
@@ -152,11 +151,11 @@ function BuyerLayout({ profile, activeSlug, children }) {
         </aside>
 
         <section className="min-w-0 space-y-6">
-          <div className="shopvn-surface p-5">
-            <p className="text-xs font-semibold uppercase text-gray-500">
+          <div className="premium-panel p-5">
+            <p className="premium-section-kicker">
               Tài khoản mua hàng
             </p>
-            <h1 className="mt-1 text-2xl font-bold text-gray-950">
+            <h1 className="mt-1 text-2xl font-black text-slate-950">
               {pageTitles[activeSlug]}
             </h1>
           </div>
@@ -173,13 +172,13 @@ function BuyerLayout({ profile, activeSlug, children }) {
 function OverviewPage({ profile }) {
   const cards = [
     {
-      label: "Đơn đang giao",
+      label: "Tin đang trao đổi",
       value: "0",
-      icon: Truck,
+      icon: MessageSquareText,
       tone: "bg-blue-50 text-blue-600",
     },
     {
-      label: "Voucher khả dụng",
+      label: "Ưu đãi khả dụng",
       value: "0",
       icon: TicketPercent,
       tone: "bg-orange-50 text-orange-600",
@@ -204,7 +203,7 @@ function OverviewPage({ profile }) {
         {cards.map(({ label, value, icon: Icon, tone }) => (
           <div
             key={label}
-            className="shopvn-surface p-4 transition hover:-translate-y-1"
+            className="premium-panel premium-glow-hover p-4 transition hover:-translate-y-1"
           >
             <span
               className={cn(
@@ -221,7 +220,7 @@ function OverviewPage({ profile }) {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="shopvn-surface p-4">
+        <div className="premium-panel p-4">
           <SectionHeader
             title="Đơn hàng gần đây"
             action="Xem tất cả"
@@ -229,7 +228,7 @@ function OverviewPage({ profile }) {
           />
           <OrderList />
         </div>
-        <div className="shopvn-surface p-4">
+        <div className="premium-panel p-4">
           <SectionHeader
             title="Hồ sơ của bạn"
             action="Cập nhật"
@@ -260,11 +259,11 @@ function OverviewPage({ profile }) {
 function SectionHeader({ title, action, to }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-3">
-      <h2 className="font-bold text-gray-950">{title}</h2>
+      <h2 className="font-black text-slate-950">{title}</h2>
       {action && (
         <NavLink
           to={to}
-          className="inline-flex items-center gap-1 text-sm font-semibold text-shopee"
+          className="inline-flex items-center gap-1 text-sm font-bold text-[#db3417]"
         >
           {action}
           <ChevronRight className="h-4 w-4" />
@@ -281,7 +280,7 @@ function OrderList() {
         orders.map((order) => (
           <div
             key={order.id}
-            className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white/70 p-3 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-3 rounded-2xl border border-orange-100/60 bg-white/70 p-3 sm:flex-row sm:items-center sm:justify-between"
           >
             <div>
               <p className="font-semibold">{order.product}</p>
@@ -310,7 +309,7 @@ function OrderList() {
 
 function OrdersPage() {
   return (
-    <div className="shopvn-surface p-4">
+    <div className="premium-panel p-4">
       <div className="mb-4 flex gap-2 overflow-x-auto">
         {orderTabs.map((tab, index) => (
           <button
@@ -318,7 +317,7 @@ function OrdersPage() {
             className={cn(
               "shrink-0 rounded-lg px-3 py-2 text-sm font-semibold",
               index === 0
-                ? "bg-shopee text-white"
+                ? "bg-[#db3417] text-white"
                 : "bg-gray-100 text-gray-600",
             )}
           >
@@ -333,7 +332,7 @@ function OrdersPage() {
 
 function SimplePanel({ icon: Icon, title, desc, items }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="premium-panel p-5">
       <div className="mb-5 flex items-center gap-3">
         <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-shopee-light text-shopee">
           <Icon className="h-5 w-5" />
@@ -347,7 +346,7 @@ function SimplePanel({ icon: Icon, title, desc, items }) {
         {items.map((item) => (
           <button
             key={item}
-            className="rounded-lg border border-gray-100 px-4 py-3 text-left text-sm font-semibold text-gray-700 hover:border-shopee/40 hover:bg-shopee-light/40"
+            className="rounded-2xl border border-orange-100/70 bg-white/70 px-4 py-3 text-left text-sm font-bold text-slate-700 hover:border-[#db3417]/30 hover:bg-orange-50/60"
           >
             {item}
           </button>
@@ -556,7 +555,7 @@ function ProfilePage({ profile, onProfileUpdated }) {
         onSubmit={saveProfile}
         className="grid gap-6 xl:grid-cols-[320px_1fr]"
       >
-        <div className="rounded-lg border border-gray-200 bg-white p-5 text-center shadow-sm">
+        <div className="premium-panel p-5 text-center">
           <img
             src={avatarPreview || getAvatarSrc(profile?.avatarUrl)}
             alt="Ảnh đại diện"
@@ -564,7 +563,7 @@ function ProfilePage({ profile, onProfileUpdated }) {
           />
           <p className="mt-4 text-sm text-gray-500">JPG, PNG, WEBP dưới 5MB</p>
           <div className="mt-4 grid gap-2">
-            <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 text-sm font-semibold text-brand-dark hover:bg-shopee-light">
+            <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-orange-100 bg-white px-4 text-sm font-bold text-slate-800 hover:bg-orange-50">
               <ImagePlus className="h-4 w-4" />
               Tải ảnh lên
               <input
@@ -581,7 +580,7 @@ function ProfilePage({ profile, onProfileUpdated }) {
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="premium-panel p-5">
           <div className="grid gap-4 md:grid-cols-2">
             <Input
               label="Họ và tên"
@@ -877,12 +876,12 @@ const pageComponents = {
     <SimplePanel
       {...props}
       icon={MapPin}
-      title="Sổ địa chỉ"
-      desc="Quản lý địa chỉ giao hàng thường dùng."
+      title="Khu vực giao dịch"
+      desc="Quản lý thông tin liên hệ và khu vực bạn thường trao đổi với shop."
       items={[
-        "Chưa có địa chỉ giao hàng",
-        "Thêm địa chỉ mới",
-        "Đặt địa chỉ mặc định",
+        "Chưa có khu vực giao dịch",
+        "Thêm khu vực thường dùng",
+        "Cập nhật thông tin liên hệ",
       ]}
     />
   ),
@@ -890,8 +889,8 @@ const pageComponents = {
     <SimplePanel
       {...props}
       icon={TicketPercent}
-      title="Ví & Voucher"
-      desc="Theo dõi ví, điểm thưởng và mã giảm giá."
+      title="Ưu đãi"
+      desc="Theo dõi ưu đãi và điểm thưởng khi hệ thống có dữ liệu thật."
       items={[
         "Chưa có voucher khả dụng",
         "Chưa có điểm tích lũy",
@@ -959,7 +958,7 @@ export default function BuyerHome() {
   if (!Page) return <Navigate to="/buyer/tong-quan" replace />;
   if (loading) {
     return (
-      <div className="page-mesh min-h-screen">
+      <div className="premium-page min-h-screen">
         <Header />
         <div className="mx-auto flex max-w-7xl items-center justify-center px-4 py-24">
           <Loader2 className="h-8 w-8 animate-spin text-shopee" />
@@ -969,10 +968,10 @@ export default function BuyerHome() {
   }
   if (error) {
     return (
-      <div className="page-mesh min-h-screen">
+      <div className="premium-page min-h-screen">
         <Header />
         <div className="mx-auto max-w-md px-4 py-24 text-center">
-          <p className="rounded-lg bg-white p-5 font-semibold text-gray-700 shadow-sm">
+          <p className="premium-panel p-5 font-bold text-slate-700">
             {error}
           </p>
         </div>

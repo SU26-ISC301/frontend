@@ -31,22 +31,22 @@ export function Modal({ open, onClose, title, children, className }) {
     >
       <button
         type="button"
-        className="absolute inset-0 bg-brand-darker/70 backdrop-blur-md"
+        className="absolute inset-0 bg-slate-950/64 backdrop-blur-md"
         aria-label="Đóng"
         onClick={onClose}
       />
       <div
         className={cn(
-          'relative z-10 w-full max-w-md max-h-[90vh] overflow-hidden rounded-3xl bg-white shadow-elevated',
+          'premium-panel relative z-10 max-h-[90vh] w-full max-w-md overflow-hidden rounded-[1.75rem] bg-white shadow-[0_34px_90px_-44px_rgba(15,23,42,0.72)]',
           className
         )}
       >
         {title && (
           <div className="relative overflow-hidden px-6 py-5">
-            <div className="absolute inset-0 bg-gradient-brand opacity-95" />
-            <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,#0f172a_0%,#0e2f28_48%,#db3417_100%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(113,248,228,0.22),transparent_20rem),radial-gradient(circle_at_88%_18%,rgba(255,218,211,0.22),transparent_18rem)]" />
             <div className="relative flex items-center justify-between">
-              <h2 id="modal-title" className="text-lg font-bold text-white">
+              <h2 id="modal-title" className="text-lg font-black text-white">
                 {title}
               </h2>
               <Button

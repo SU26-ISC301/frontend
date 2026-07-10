@@ -13,7 +13,6 @@ import {
   Phone,
   Send,
   ShieldCheck,
-  Star,
 } from 'lucide-react';
 import { Header } from '../components/Home/Header';
 import { Footer } from '../components/layout/Footer';
@@ -228,7 +227,7 @@ function MarketPriceBand({ range, currentPrice, isLoading }) {
     : null;
 
   return (
-    <div className="rounded-2xl bg-[#f2f2f2] p-4">
+    <div className="rounded-2xl border border-orange-100/70 bg-[linear-gradient(135deg,#fff7ed,#f8fafc)] p-4">
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(18rem,1.35fr)] md:items-center">
         <div>
           <p className="flex items-center gap-1.5 text-base font-extrabold text-slate-950">
@@ -252,7 +251,7 @@ function MarketPriceBand({ range, currentPrice, isLoading }) {
         <div className="pt-7">
           <div className="relative">
             <div className="h-1.5 rounded-full bg-white shadow-inner" />
-            <div className="absolute inset-y-0 left-[18%] right-[10%] rounded-full bg-[#2563eb]" />
+            <div className="absolute inset-y-0 left-[18%] right-[10%] rounded-full bg-gradient-to-r from-[#db3417] to-[#006b5f]" />
             <div
               className="absolute top-1/2 h-6 w-px -translate-y-1/2 bg-slate-300"
               style={{ left: '18%' }}
@@ -262,7 +261,7 @@ function MarketPriceBand({ range, currentPrice, isLoading }) {
               style={{ right: '10%' }}
             />
             <div
-              className="absolute -top-8 -translate-x-1/2 rounded-md bg-[#2563eb] px-2.5 py-1 text-xs font-black text-white shadow-sm after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-x-[5px] after:border-t-[5px] after:border-x-transparent after:border-t-[#2563eb]"
+              className="absolute -top-8 -translate-x-1/2 rounded-md bg-[#db3417] px-2.5 py-1 text-xs font-black text-white shadow-sm after:absolute after:left-1/2 after:top-full after:-translate-x-1/2 after:border-x-[5px] after:border-t-[5px] after:border-x-transparent after:border-t-[#db3417]"
               style={{ left: `${position}%` }}
             >
               {formatCompactPrice(currentPrice)}
@@ -625,7 +624,7 @@ export default function ProductDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#f6f4ef]">
+      <div className="premium-page">
         <Header />
         <div className="mx-auto flex max-w-7xl items-center justify-center px-4 py-20 text-slate-500">
           <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -637,7 +636,7 @@ export default function ProductDetail() {
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-[#f6f4ef]">
+      <div className="premium-page">
         <Header />
         <div className="mx-auto max-w-7xl px-4 py-16 text-center">
           <p className="text-lg font-extrabold text-slate-800">Không tìm thấy tin đăng</p>
@@ -648,26 +647,26 @@ export default function ProductDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f6f4ef] text-[#16202a]">
+    <div className="premium-page text-[#16202a]">
       <Header />
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <Link to="/" className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-[#ff4d2e]">
+      <main className="premium-shell py-6">
+        <Link to="/" className="premium-chip mb-4 normal-case tracking-normal">
           <ArrowLeft className="h-4 w-4" />
           Quay lại trang chủ
         </Link>
 
         <section className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
-          <Card className="border-white/80 bg-white/95 lg:sticky lg:top-28 lg:self-start">
-            <CardContent className="p-3 sm:p-4">
-              <div className="overflow-hidden rounded-[28px] bg-slate-950 p-2 shadow-2xl shadow-slate-950/10">
-                <div className="relative aspect-[4/3] overflow-hidden rounded-[22px] bg-slate-900">
+          <Card className="premium-panel border-white/80 bg-white/95 lg:sticky lg:top-28 lg:self-start">
+            <CardContent className="p-4 sm:p-5">
+              <div className="overflow-hidden rounded-[28px] border border-orange-100/70 bg-[linear-gradient(135deg,#fffaf7,#ffffff_52%,#f4fffb)] p-3 shadow-[0_26px_70px_-50px_rgba(15,23,42,0.72)]">
+                <div className="relative aspect-[4/3] overflow-hidden rounded-[22px] bg-white">
                   {selectedImage ? (
-                    <img src={selectedImage} alt={product.name} className="h-full w-full object-contain" />
+                    <img src={selectedImage} alt={product.name} className="h-full w-full object-contain transition duration-500 hover:scale-[1.02]" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-sm font-bold text-slate-400">Chưa có ảnh</div>
                   )}
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent p-4">
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/58 to-transparent p-4">
                     <p className="line-clamp-1 text-sm font-extrabold text-white">{product.name}</p>
                     <p className="mt-1 text-xs font-semibold text-white/70">{images.length || 1} ảnh sản phẩm</p>
                   </div>
@@ -698,18 +697,13 @@ export default function ProductDetail() {
           </Card>
 
           <div className="space-y-4">
-            <Card className="border-white/80 bg-white/95">
+            <Card className="premium-panel border-white/80 bg-white/95">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-bold text-[#ff5a2f]">{product.categoryName || 'Sản phẩm'}</p>
+                    <p className="premium-section-kicker">{product.categoryName || 'Sản phẩm'}</p>
                     <h1 className="mt-2 text-2xl font-extrabold leading-tight text-slate-950">{product.name}</h1>
                   </div>
-                  {product.premiumHighlighted && (
-                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-700 ring-1 ring-amber-100">
-                      Tin nổi bật
-                    </span>
-                  )}
                   <Button
                     type="button"
                     variant="outline"
@@ -739,12 +733,7 @@ export default function ProductDetail() {
                 )}
 
                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <p className="text-3xl font-black text-[#ff4d2e]">₫{formatPrice(currentPrice)}</p>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500">
-                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                    {product.avgRating ? Number(product.avgRating).toFixed(1) : '0.0'}
-                  </span>
-                  <span className="text-sm font-semibold text-slate-500">Đã bán {formatPrice(product.soldCount || 0)}</span>
+                  <p className="text-3xl font-black text-[#db3417]">₫{formatPrice(currentPrice)}</p>
                 </div>
 
                 <div className="mt-4 grid gap-2 text-sm font-semibold text-slate-600 sm:grid-cols-2">
@@ -760,7 +749,7 @@ export default function ProductDetail() {
               </CardContent>
             </Card>
 
-            <Card className="border-white/80 bg-white/95">
+            <Card className="premium-panel border-white/80 bg-white/95">
               <CardContent className="p-5">
                 <div 
                   className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-opacity group/shop"
@@ -775,9 +764,6 @@ export default function ProductDetail() {
                     <h2 className="truncate text-base font-extrabold text-slate-950 group-hover/shop:text-[#ff5a2f] transition-colors">{product.vendorName || 'Shop'}</h2>
                     <p className="mt-1 text-sm font-semibold text-slate-500">{product.vendorDescription || product.vendorCategory || 'Shop đã được xác minh'}</p>
                   </div>
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-700">
-                    {product.vendorPlanType || 'free'}
-                  </span>
                 </div>
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -789,25 +775,21 @@ export default function ProductDetail() {
                     <MessageCircle className="h-4 w-4" />
                     Nhắn tin
                   </Button>
-                  <Button type="button" variant="outline" className="h-12 rounded-2xl border-red-100 text-red-600 hover:bg-red-50" onClick={() => openReport('VENDOR')}>
-                    <Flag className="h-4 w-4" />
-                    Báo cáo shop
-                  </Button>
                 </div>
 
-                <div className="mt-4 rounded-2xl bg-slate-50 p-3">
+                <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
                   <textarea
                     id="detail-message-box"
                     value={message}
                     onChange={(event) => setMessage(event.target.value)}
                     placeholder={loggedIn ? 'Nhập tin nhắn cho shop...' : 'Đăng nhập để gửi tin nhắn, nội dung nhập ở đây vẫn được giữ lại...'}
-                    className="min-h-24 w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm font-semibold outline-none focus:border-[#ff6a3d] focus:ring-4 focus:ring-[#ff6a3d]/15"
+                    className="premium-input min-h-24 w-full resize-none p-3 text-sm font-semibold"
                   />
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <p className="text-xs font-semibold text-slate-500">
                       {!loggedIn && 'Số điện thoại đang được che 4 số cuối cho đến khi bạn đăng nhập.'}
                     </p>
-                    <Button type="button" disabled={isSending} onClick={handleSendMessage} className="rounded-full bg-[#ffcf20] px-5 text-slate-950 shadow-none hover:bg-[#ffd84d]">
+                    <Button type="button" disabled={isSending} onClick={handleSendMessage} className="rounded-full px-5">
                       {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                       Gửi
                     </Button>
@@ -825,7 +807,7 @@ export default function ProductDetail() {
         </section>
 
         <section className="mt-5 grid gap-5 lg:grid-cols-[1fr_0.75fr]">
-          <Card className="border-white/80 bg-white/95">
+          <Card className="premium-panel border-white/80 bg-white/95">
             <CardContent className="p-5">
               <h2 className="text-lg font-extrabold text-slate-950">Mô tả chi tiết</h2>
               <p className="mt-3 whitespace-pre-line text-sm font-semibold leading-7 text-slate-600">
@@ -834,7 +816,7 @@ export default function ProductDetail() {
             </CardContent>
           </Card>
 
-          <Card className="border-white/80 bg-white/95">
+          <Card className="premium-panel border-white/80 bg-white/95">
             <CardContent className="p-5">
               <h2 className="text-lg font-extrabold text-slate-950">Thông tin bài đăng</h2>
               <dl className="mt-3 space-y-2 text-sm">

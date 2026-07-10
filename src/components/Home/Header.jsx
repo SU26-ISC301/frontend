@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Heart, LogOut, Search, Store, UserCircle } from 'lucide-react';
+import { Heart, LogOut, Search, Store, UserCircle } from 'lucide-react';
 import { BrandLogo } from '../layout/BrandLogo';
 import { Button } from '../ui/button';
 import { BuyerAuthModal } from '../Auth/BuyerAuthModal';
@@ -162,7 +162,7 @@ export function Header({ categoryMenuSlot = null }) {
                 <Button
                   type="submit"
                   size="sm"
-                  className="absolute right-1.5 top-1/2 h-9 -translate-y-1/2 rounded-xl bg-gradient-to-r from-[#ff315c] to-[#ff6b2c] px-5 text-white shadow-md shadow-orange-200/60 hover:from-[#ef244f] hover:to-[#f05a22]"
+                  className="absolute right-1.5 top-1/2 h-9 -translate-y-1/2 rounded-xl bg-gradient-to-r from-[#ff315c] to-[#ff6b2c] px-5 text-white shadow-md shadow-orange-200/60 hover:-translate-y-1/2 hover:from-[#d91f44] hover:to-[#db3417] hover:shadow-md active:scale-100"
                 >
                   Tìm
                 </Button>
@@ -226,13 +226,6 @@ export function Header({ categoryMenuSlot = null }) {
 
               {isLoggedIn ? (
                 <div className="flex shrink-0 items-center gap-3">
-                  <button
-                    type="button"
-                    className="hidden h-11 w-11 items-center justify-center rounded-2xl bg-white text-slate-500 shadow-sm ring-1 ring-orange-100 transition-all hover:-translate-y-0.5 hover:text-[#ff4d2e] hover:ring-orange-200 sm:flex"
-                    title="Thông báo"
-                  >
-                    <Bell className="h-5 w-5" />
-                  </button>
                   <Link
                     to="/buyer"
                     className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border-2 border-white bg-gray-100 shadow-md shadow-slate-200/80 ring-1 ring-orange-100 transition-transform hover:scale-105"

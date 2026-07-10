@@ -23,13 +23,6 @@ const targetLabels = {
   CONVERSATION: 'hội thoại',
 };
 
-const priorityTone = {
-  LOW: 'bg-slate-100 text-slate-600',
-  MEDIUM: 'bg-amber-50 text-amber-700',
-  HIGH: 'bg-orange-50 text-orange-700',
-  CRITICAL: 'bg-red-50 text-red-700',
-};
-
 function getApiMessage(error) {
   return error?.response?.data?.message || error?.message || 'Có lỗi xảy ra. Vui lòng thử lại.';
 }
@@ -153,7 +146,7 @@ export function ReportDialog({
   const targetName = targetLabels[targetType] || 'nội dung';
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4" role="dialog" aria-modal="true">
       <button
         type="button"
         className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
@@ -162,9 +155,9 @@ export function ReportDialog({
       />
       <form
         onSubmit={submitReport}
-        className="relative z-10 w-full max-w-2xl overflow-hidden rounded-[1.75rem] border border-white/80 bg-white shadow-[0_34px_90px_-44px_rgba(15,23,42,0.72)]"
+        className="relative z-10 flex max-h-[calc(100vh-2rem)] w-full max-w-[min(800px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[1.4rem] border border-white/80 bg-white shadow-[0_34px_90px_-44px_rgba(15,23,42,0.72)]"
       >
-        <div className="relative overflow-hidden bg-[#12252f] px-6 py-5 text-white">
+        <div className="relative shrink-0 overflow-hidden bg-[#12252f] px-5 py-3.5 text-white">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,107,44,0.32),transparent_22rem),radial-gradient(circle_at_90%_20%,rgba(20,184,166,0.24),transparent_20rem)]" />
           <div className="relative flex items-start justify-between gap-4">
             <div>
@@ -172,8 +165,8 @@ export function ReportDialog({
                 <Flag className="h-3.5 w-3.5" />
                 Báo cáo vi phạm
               </p>
-              <h2 className="mt-3 text-2xl font-black tracking-tight">Gửi báo cáo {targetName}</h2>
-              <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-white/70">
+              <h2 className="mt-2 text-xl font-black tracking-normal sm:text-2xl">Gửi báo cáo {targetName}</h2>
+              <p className="mt-1.5 max-w-xl text-sm font-semibold leading-6 text-white/70">
                 {targetLabel || 'Nội dung bạn chọn'} sẽ được chuyển tới đội kiểm duyệt ShopVN cùng bằng chứng đính kèm.
               </p>
             </div>
@@ -190,7 +183,7 @@ export function ReportDialog({
         </div>
 
         {success ? (
-          <div className="p-6">
+          <div className="overflow-y-auto p-5 sm:p-6">
             <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-5 text-center">
               <CheckCircle2 className="mx-auto h-11 w-11 text-emerald-600" />
               <h3 className="mt-3 text-lg font-black text-slate-950">Đã gửi báo cáo</h3>
@@ -207,24 +200,21 @@ export function ReportDialog({
             </div>
           </div>
         ) : (
-          <div className="space-y-5 p-6">
-            <div className="grid gap-3 sm:grid-cols-2">
+          <div className="min-h-0 space-y-4 overflow-y-auto p-4 sm:p-5">
+            <div className="grid gap-2 sm:grid-cols-2">
               {reasons.map((reason) => (
                 <button
                   key={reason.reasonCode}
                   type="button"
                   onClick={() => setReasonCode(reason.reasonCode)}
                   className={cn(
-                    'rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50/60',
+                    'rounded-2xl border px-4 py-3 text-left transition hover:border-orange-200 hover:bg-orange-50/60',
                     reasonCode === reason.reasonCode
                       ? 'border-orange-300 bg-orange-50 shadow-lg shadow-orange-500/10'
                       : 'border-slate-200 bg-white',
                   )}
                 >
-                  <span className={cn('inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase', priorityTone[reason.defaultPriority] || priorityTone.LOW)}>
-                    {reason.defaultPriority || 'LOW'}
-                  </span>
-                  <span className="mt-2 block text-sm font-black text-slate-900">{reason.label}</span>
+                  <span className="block text-sm font-black leading-snug text-slate-900">{reason.label}</span>
                 </button>
               ))}
             </div>

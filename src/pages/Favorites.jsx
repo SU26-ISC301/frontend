@@ -92,12 +92,12 @@ export default function Favorites() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f6f4ef] text-[#16202a]">
+    <div className="premium-page flex min-h-screen flex-col text-[#16202a]">
       <Header />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-7 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-col gap-3 rounded-3xl bg-white/90 p-5 shadow-sm ring-1 ring-white/80 sm:flex-row sm:items-center sm:justify-between">
+      <main className="premium-shell w-full flex-1 py-7">
+        <div className="premium-panel mb-6 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <span className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[#ff4d2e]">
+            <span className="premium-section-kicker">
               <Heart className="h-4 w-4 fill-current" />
               Tin đã lưu
             </span>
@@ -114,12 +114,12 @@ export default function Favorites() {
         </div>
 
         {isLoading ? (
-          <div className="rounded-3xl bg-white/85 px-5 py-12 text-center text-sm font-bold text-slate-500">
+          <div className="premium-empty text-sm font-bold text-slate-500">
             <Loader2 className="mr-2 inline h-5 w-5 animate-spin" />
             Đang tải danh sách yêu thích...
           </div>
         ) : error ? (
-          <div className="rounded-3xl bg-white/85 px-5 py-12 text-center">
+          <div className="premium-empty">
             <p className="font-extrabold text-slate-800">{error}</p>
             <Button className="mt-4 rounded-full bg-[#ff5a2f] hover:bg-[#ff6a3d]" onClick={loadFavorites}>
               Thử lại
@@ -132,7 +132,7 @@ export default function Favorites() {
             ))}
           </div>
         ) : (
-          <div className="rounded-3xl bg-white/85 px-5 py-14 text-center shadow-sm ring-1 ring-white/80">
+          <div className="premium-empty">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-rose-50 text-rose-500">
               <Heart className="h-8 w-8" />
             </div>

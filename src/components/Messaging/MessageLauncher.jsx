@@ -192,7 +192,7 @@ export function MessageLauncher({ mode = 'buyer' }) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="group flex h-14 w-14 items-center justify-center rounded-2xl border border-orange-100 bg-white text-orange-500 shadow-xl shadow-orange-500/15 ring-1 ring-orange-100 transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
+          className="premium-glow-hover group flex h-14 w-14 items-center justify-center rounded-2xl border border-orange-100 bg-white/92 text-[#db3417] shadow-xl shadow-orange-500/15 ring-1 ring-orange-100 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-white"
           aria-label="Mở tin nhắn"
         >
           <span className="relative flex h-11 w-11 items-center justify-center">
@@ -207,10 +207,10 @@ export function MessageLauncher({ mode = 'buyer' }) {
       )}
 
       {open && (
-        <div className="w-[min(calc(100vw-2rem),980px)] overflow-hidden rounded-[1.6rem] border border-slate-700/50 bg-[#20232a] shadow-2xl shadow-slate-950/35">
-          <div className="flex h-16 items-center justify-between border-b border-white/10 px-5 text-white">
+        <div className="premium-panel-dark w-[min(calc(100vw-2rem),980px)] overflow-hidden rounded-[1.6rem]">
+          <div className="flex h-16 items-center justify-between border-b border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] px-5 text-white">
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-black tracking-tight">Messages</h2>
+              <h2 className="text-2xl font-black tracking-normal">Tin nhắn</h2>
               {unreadCount > 0 && (
                 <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-[#ff304c] px-2 text-sm font-black">
                   {unreadCount > 99 ? '99+' : unreadCount}

@@ -27,7 +27,7 @@ export const Input = forwardRef(function Input(
         )}
         {...props}
       />
-      {error && <p className="text-xs font-medium text-red-500">{error}</p>}
+      {error && <p className="text-xs font-bold text-red-500">{error}</p>}
     </div>
   );
 });

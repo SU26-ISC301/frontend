@@ -655,7 +655,7 @@ export function AiChatboxLauncher({ mode = 'buyer', fullPagePath }) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="group flex h-14 w-14 items-center justify-center rounded-2xl border border-orange-100 bg-white text-orange-500 shadow-xl shadow-orange-500/15 ring-1 ring-orange-100 transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
+          className="premium-glow-hover group flex h-14 w-14 items-center justify-center rounded-2xl border border-orange-100 bg-white/92 text-[#db3417] shadow-xl shadow-orange-500/15 ring-1 ring-orange-100 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-white"
           aria-label="Mở chatbox AI"
           title="Chatbox AI"
         >
@@ -665,16 +665,16 @@ export function AiChatboxLauncher({ mode = 'buyer', fullPagePath }) {
 
       {open && (
         <div className={cn(
-          'fixed right-4 top-1/2 flex h-[min(calc(100vh-2rem),660px)] -translate-y-1/2 flex-col overflow-hidden rounded-[1.4rem] border border-slate-700/50 bg-[#20232a] shadow-2xl shadow-slate-950/35 sm:right-6',
+          'premium-panel-dark fixed right-4 top-1/2 flex h-[min(calc(100vh-2rem),660px)] -translate-y-1/2 flex-col overflow-hidden rounded-[1.4rem] sm:right-6',
           expanded ? 'w-[min(calc(100vw-2rem),1080px)]' : 'w-[min(calc(100vw-2rem),880px)]'
         )}>
-          <div className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center border-b border-white/10 bg-[#20232a] px-4 text-white">
+          <div className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center border-b border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] px-4 text-white">
             <div className="flex min-w-0 items-center gap-3">
               <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-orange-300 ring-1 ring-white/10">
                 <Bot className="h-5 w-5" />
               </span>
               <div className="min-w-0">
-                <h2 className="truncate text-xl font-black tracking-tight text-white">Chatbox AI</h2>
+                <h2 className="truncate text-xl font-black tracking-normal text-white">Chatbox AI</h2>
                 <p className="truncate text-xs font-bold text-white/55">
                   {mode === 'vendor' ? 'Trợ lý người bán' : 'Trợ lý người mua'}
                 </p>
