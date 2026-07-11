@@ -2487,10 +2487,19 @@ html:not([data-theme='dark']) .plan-card {
 }
 
 .seller-auth-tab {
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(249, 255, 252, 0.96) !important;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.18);
+}
+
+.seller-auth-tab:not(.is-active):hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff !important;
 }
 
 .seller-auth-tab.is-active {
+  background: linear-gradient(180deg, #ffffff 0%, #fff8f1 100%) !important;
+  color: #10231d !important;
+  text-shadow: none;
   box-shadow: 0 14px 34px -22px rgba(255, 106, 61, 0.72), inset 0 1px 0 rgba(255,255,255,0.82) !important;
 }
 
