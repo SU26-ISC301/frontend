@@ -29,7 +29,7 @@ export function HeroBanner() {
           <div>
             <span className="inline-flex w-fit items-center gap-2 rounded-full border border-orange-100 bg-white/90 px-3 py-1.5 text-xs font-black uppercase tracking-[0.14em] text-[#f05a22] shadow-sm">
               <Sparkles className="h-3.5 w-3.5" />
-              ShopVN C2C Marketplace
+              ShopVN Marketplace – Kết nối mọi giao dịch.
             </span>
             <h1 className="mt-6 max-w-2xl text-[2.45rem] font-black leading-[1.02] tracking-tight text-slate-950 sm:text-5xl lg:text-[3.65rem]">
               Sàn thương mại điện tử thông minh, tiện lợi cho mọi nhà

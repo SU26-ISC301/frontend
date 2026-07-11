@@ -2,11 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   BarChart3,
   Bot,
-  ChevronLeft,
-  ExternalLink,
   Loader2,
   Maximize2,
   MessageSquarePlus,
+  Minus,
   Search,
   Send,
   Sparkles,
@@ -26,9 +25,11 @@ import {
 } from '../../utils/authSession';
 
 const MAX_CONTEXT_PRODUCTS = 80;
-const STORAGE_PREFIX = 'shopvn:ai-chatbox';
+const STORAGE_PREFIX = 'shopvn:ai-chatbot';
 const GUEST_QUESTION_LIMIT = 3;
 const guestQuestionUsage = new Map();
+const FLOATING_WIDGET_EVENT = 'shopvn-floating-widget-change';
+const WIDGET_NAME = 'chatbot';
 
 function formatVnd(value) {
   return `${new Intl.NumberFormat('vi-VN').format(Number(value || 0))} VND`;
@@ -125,8 +126,8 @@ function createInitialSession(mode) {
         createdAt: now,
         content:
           mode === 'vendor'
-            ? 'Chào shop, mình là Chatbox AI. Mình có thể phân tích số dư, giao dịch, ROI từng bài quảng bá và gợi ý cách tối ưu ngân sách quảng cáo.'
-            : 'Chào bạn, mình là Chatbox AI. Mình có thể gợi ý giá theo từ khóa, so sánh sản phẩm, tìm kiếm sản phẩm và gợi ý theo nhu cầu mua sắm.',
+            ? 'Chào shop, mình là Chatbot AI. Mình có thể phân tích số dư, giao dịch, ROI từng bài quảng bá và gợi ý cách tối ưu ngân sách quảng cáo.'
+            : 'Chào bạn, mình là Chatbot AI. Mình có thể gợi ý giá theo từ khóa, so sánh sản phẩm, tìm kiếm sản phẩm và gợi ý theo nhu cầu mua sắm.',
       },
     ],
   };
@@ -462,13 +463,20 @@ function AiChatboxPanel({ mode = 'buyer', variant = 'page' }) {
   };
 
   return (
-    <section className={cn('grid overflow-hidden bg-white', isPopup ? 'h-full min-h-0 grid-cols-[250px_minmax(0,1fr)]' : 'min-h-[720px] rounded-3xl border border-slate-200 shadow-xl shadow-slate-900/5 lg:grid-cols-[320px_minmax(0,1fr)]')}>
+    <section
+      className={cn(
+        'grid overflow-hidden bg-white',
+        isPopup
+          ? 'h-full min-h-0 grid-cols-[250px_minmax(0,1fr)]'
+          : 'h-[calc(100vh-13.25rem)] min-h-[520px] rounded-3xl border border-slate-200 shadow-xl shadow-slate-900/5 lg:grid-cols-[300px_minmax(0,1fr)]',
+      )}
+    >
       <aside className="flex min-h-0 flex-col border-r border-slate-100 bg-slate-50/80">
         <div className={cn('border-b border-slate-100 bg-white', isPopup ? 'p-3' : 'p-4')}>
           <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-orange-600">
             {isVendor ? 'AI người bán' : 'AI người mua'}
           </p>
-          <h2 className={cn('mt-1 font-black text-slate-950', isPopup ? 'text-xl' : 'text-2xl')}>Chatbox AI</h2>
+          <h2 className={cn('mt-1 font-black text-slate-950', isPopup ? 'text-xl' : 'text-2xl')}>Chatbot AI</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">
             {isVendor ? 'Phân tích tài chính, ROI và quảng bá.' : 'Tìm kiếm, so sánh và gợi ý mua hàng.'}
           </p>
@@ -531,7 +539,7 @@ function AiChatboxPanel({ mode = 'buyer', variant = 'page' }) {
               <Sparkles className={cn(isPopup ? 'h-5 w-5' : 'h-6 w-6')} />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-lg font-black text-slate-950">{activeSession?.title || 'Chatbox AI'}</p>
+              <p className="truncate text-lg font-black text-slate-950">{activeSession?.title || 'Chatbot AI'}</p>
               <p className="text-xs font-bold text-emerald-600">
                 Đang dùng dữ liệu thật từ hệ thống ShopVN
               </p>
@@ -562,7 +570,7 @@ function AiChatboxPanel({ mode = 'buyer', variant = 'page' }) {
           {loading && (
             <div className="flex items-center gap-3 text-sm font-bold text-slate-500">
               <Loader2 className="h-5 w-5 animate-spin text-orange-500" />
-              Chatbox AI đang phân tích dữ liệu...
+              Chatbot AI đang phân tích dữ liệu...
             </div>
           )}
         </div>
@@ -599,7 +607,7 @@ function AiChatboxPanel({ mode = 'buyer', variant = 'page' }) {
                 event.preventDefault();
                 sendPrompt();
               }}
-              placeholder={guestLimitReached ? 'Đăng nhập để tiếp tục dùng Chatbox AI...' : isVendor ? 'Hỏi AI về tài chính, ROI, hiệu quả quảng bá...' : 'Hỏi AI về giá, so sánh, tìm sản phẩm theo nhu cầu...'}
+              placeholder={guestLimitReached ? 'Đăng nhập để tiếp tục dùng Chatbot AI...' : isVendor ? 'Hỏi AI về tài chính, ROI, hiệu quả quảng bá...' : 'Hỏi AI về giá, so sánh, tìm sản phẩm theo nhu cầu...'}
               className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
             />
             <button
@@ -625,16 +633,16 @@ export function AiChatboxPage({ mode = 'buyer' }) {
 export function AiChatboxLauncher({ mode = 'buyer', fullPagePath }) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [suppressed, setSuppressed] = useState(false);
   const launcherRef = useRef(null);
+  const previousOpenRef = useRef(false);
   const navigate = useNavigate();
+  const isVendor = mode === 'vendor';
 
   const openFullPage = () => {
-    if (!fullPagePath) {
-      setExpanded((current) => !current);
-      return;
-    }
-    navigate(fullPagePath);
+    navigate(fullPagePath || (isVendor ? '/vendor/chatbox-ai' : '/buyer/chatbox-ai'));
     setOpen(false);
+    setExpanded(false);
   };
 
   useEffect(() => {
@@ -649,15 +657,44 @@ export function AiChatboxLauncher({ mode = 'buyer', fullPagePath }) {
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [open]);
 
+  useEffect(() => {
+    const handleFloatingWidgetChange = (event) => {
+      const { widget, mode: eventMode, open: eventOpen } = event.detail || {};
+
+      if (eventMode !== mode || widget === WIDGET_NAME) return;
+
+      if (eventOpen) {
+        setOpen(false);
+        setExpanded(false);
+        setSuppressed(true);
+        return;
+      }
+
+      setSuppressed(false);
+    };
+
+    window.addEventListener(FLOATING_WIDGET_EVENT, handleFloatingWidgetChange);
+    return () => window.removeEventListener(FLOATING_WIDGET_EVENT, handleFloatingWidgetChange);
+  }, [mode]);
+
+  useEffect(() => {
+    if (previousOpenRef.current === open) return;
+
+    previousOpenRef.current = open;
+    window.dispatchEvent(new CustomEvent(FLOATING_WIDGET_EVENT, {
+      detail: { widget: WIDGET_NAME, mode, open },
+    }));
+  }, [mode, open]);
+
   return (
     <div ref={launcherRef} className="fixed bottom-40 right-6 z-[100]">
-      {!open && (
+      {!open && !suppressed && (
         <button
           type="button"
           onClick={() => setOpen(true)}
           className="premium-glow-hover group flex h-14 w-14 items-center justify-center rounded-2xl border border-orange-100 bg-white/92 text-[#db3417] shadow-xl shadow-orange-500/15 ring-1 ring-orange-100 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-white"
-          aria-label="Mở chatbox AI"
-          title="Chatbox AI"
+          aria-label="Mở Chatbot AI"
+          title="Chatbot AI"
         >
           <Bot className="h-8 w-8" strokeWidth={2.2} />
         </button>
@@ -674,40 +711,63 @@ export function AiChatboxLauncher({ mode = 'buyer', fullPagePath }) {
                 <Bot className="h-5 w-5" />
               </span>
               <div className="min-w-0">
-                <h2 className="truncate text-xl font-black tracking-normal text-white">Chatbox AI</h2>
+                <h2 className="truncate text-xl font-black tracking-normal text-white">Chatbot AI</h2>
                 <p className="truncate text-xs font-bold text-white/55">
                   {mode === 'vendor' ? 'Trợ lý người bán' : 'Trợ lý người mua'}
                 </p>
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={openFullPage}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
-                aria-label="Mở trang chatbox AI"
-                title="Mở trang chatbox AI"
-              >
-                {fullPagePath ? <ExternalLink className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => setExpanded((current) => !current)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
-                aria-label="Phóng to chatbox AI"
-                title="Phóng to chatbox AI"
-              >
-                {expanded ? <ChevronLeft className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-red-500 hover:text-white"
-                aria-label="Đóng chatbox AI"
-                title="Đóng chatbox AI"
-              >
-                <X className="h-7 w-7" />
-              </button>
+              {isVendor ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={openFullPage}
+                    className="popup-window-action inline-flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+                    aria-label="Phóng to Chatbot AI"
+                    title="Phóng to"
+                  >
+                    <Maximize2 className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      setExpanded(false);
+                    }}
+                    className="popup-window-action inline-flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+                    aria-label="Thu nhỏ Chatbot AI"
+                    title="Thu nhỏ"
+                  >
+                    <Minus className="h-6 w-6" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      setExpanded(false);
+                    }}
+                    className="popup-window-action is-danger inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-red-500 hover:text-white"
+                    aria-label="Tắt Chatbot AI"
+                    title="Tắt"
+                  >
+                    <X className="h-7 w-7" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setExpanded(false);
+                  }}
+                  className="popup-window-action is-danger inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-red-500 hover:text-white"
+                  aria-label="Đóng Chatbot AI"
+                  title="Đóng"
+                >
+                  <X className="h-7 w-7" />
+                </button>
+              )}
             </div>
           </div>
           <div className="min-h-0 flex-1 bg-white">

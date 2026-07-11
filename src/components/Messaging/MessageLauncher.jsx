@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ExternalLink, Maximize2, MessageCircle, X } from 'lucide-react';
+import { Maximize2, MessageCircle, Minus, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { buyerMessageApi } from '../../api/buyerMessageAPI';
 import { vendorMessageApi } from '../../api/vendorMessageAPI';
 import { ChatWorkspace } from './ChatWorkspace';
+import { cn } from '../../lib/utils';
 import {
   hasAuthenticatedSession,
   subscribeAuthSessionChanges,
 } from '../../utils/authSession';
+
+const FLOATING_WIDGET_EVENT = 'shopvn-floating-widget-change';
+const WIDGET_NAME = 'message';
 
 function getApiMessage(error) {
   return error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Không thể tải tin nhắn';
@@ -16,10 +20,13 @@ function getApiMessage(error) {
 export function MessageLauncher({ mode = 'buyer' }) {
   const navigate = useNavigate();
   const launcherRef = useRef(null);
+  const previousOpenRef = useRef(false);
   const isVendor = mode === 'vendor';
   const api = isVendor ? vendorMessageApi : buyerMessageApi;
   const [authenticated, setAuthenticated] = useState(() => hasAuthenticatedSession(mode));
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [suppressed, setSuppressed] = useState(false);
   const [vendors, setVendors] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
@@ -134,6 +141,35 @@ export function MessageLauncher({ mode = 'buyer' }) {
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [open]);
 
+  useEffect(() => {
+    const handleFloatingWidgetChange = (event) => {
+      const { widget, mode: eventMode, open: eventOpen } = event.detail || {};
+
+      if (eventMode !== mode || widget === WIDGET_NAME) return;
+
+      if (eventOpen) {
+        setOpen(false);
+        setExpanded(false);
+        setSuppressed(true);
+        return;
+      }
+
+      setSuppressed(false);
+    };
+
+    window.addEventListener(FLOATING_WIDGET_EVENT, handleFloatingWidgetChange);
+    return () => window.removeEventListener(FLOATING_WIDGET_EVENT, handleFloatingWidgetChange);
+  }, [mode]);
+
+  useEffect(() => {
+    if (previousOpenRef.current === open) return;
+
+    previousOpenRef.current = open;
+    window.dispatchEvent(new CustomEvent(FLOATING_WIDGET_EVENT, {
+      detail: { widget: WIDGET_NAME, mode, open },
+    }));
+  }, [mode, open]);
+
   const selectConversation = (conversationId) => {
     setActiveConversationId(conversationId);
     setConversations((current) =>
@@ -180,6 +216,7 @@ export function MessageLauncher({ mode = 'buyer' }) {
   const openFullPage = () => {
     navigate(isVendor ? '/vendor/tin-nhan' : '/buyer/ho-tro');
     setOpen(false);
+    setExpanded(false);
   };
 
   if (!authenticated) {
@@ -188,7 +225,7 @@ export function MessageLauncher({ mode = 'buyer' }) {
 
   return (
     <div ref={launcherRef} className="fixed bottom-24 right-6 z-[80]">
-      {!open && (
+      {!open && !suppressed && (
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -207,7 +244,12 @@ export function MessageLauncher({ mode = 'buyer' }) {
       )}
 
       {open && (
-        <div className="premium-panel-dark w-[min(calc(100vw-2rem),980px)] overflow-hidden rounded-[1.6rem]">
+        <div className={cn(
+          'premium-panel-dark fixed right-4 top-1/2 flex -translate-y-1/2 flex-col overflow-hidden rounded-[1.6rem] sm:right-6',
+          expanded
+            ? 'h-[min(calc(100vh-2rem),820px)] w-[min(calc(100vw-2rem),1180px)]'
+            : 'h-[min(calc(100vh-2rem),720px)] w-[min(calc(100vw-2rem),980px)]'
+        )}>
           <div className="flex h-16 items-center justify-between border-b border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] px-5 text-white">
             <div className="flex items-center gap-3">
               <h2 className="text-2xl font-black tracking-normal">Tin nhắn</h2>
@@ -218,33 +260,59 @@ export function MessageLauncher({ mode = 'buyer' }) {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={openFullPage}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
-                aria-label="Mở trang tin nhắn"
-              >
-                <ExternalLink className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                onClick={openFullPage}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
-                aria-label="Phóng to tin nhắn"
-              >
-                <Maximize2 className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
-                aria-label="Đóng tin nhắn"
-              >
-                <X className="h-7 w-7" />
-              </button>
+              {isVendor ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={openFullPage}
+                    className="popup-window-action inline-flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+                    aria-label="Phóng to tin nhắn"
+                    title="Phóng to"
+                  >
+                    <Maximize2 className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      setExpanded(false);
+                    }}
+                    className="popup-window-action inline-flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+                    aria-label="Thu nhỏ tin nhắn"
+                    title="Thu nhỏ"
+                  >
+                    <Minus className="h-6 w-6" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      setExpanded(false);
+                    }}
+                    className="popup-window-action is-danger inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-red-500 hover:text-white"
+                    aria-label="Tắt tin nhắn"
+                    title="Tắt"
+                  >
+                    <X className="h-7 w-7" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setExpanded(false);
+                  }}
+                  className="popup-window-action is-danger inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-red-500 hover:text-white"
+                  aria-label="Đóng tin nhắn"
+                  title="Đóng"
+                >
+                  <X className="h-7 w-7" />
+                </button>
+              )}
             </div>
           </div>
-          <div className="h-[min(78vh,720px)] bg-white">
+          <div className="min-h-0 flex-1 bg-white">
             <ChatWorkspace
               mode={mode}
               variant="popup"

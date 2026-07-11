@@ -95,7 +95,7 @@ const navItems = [
   { slug: "san-pham", label: "Sản phẩm", icon: PackageSearch },
   { slug: "kho-hang", label: "Kho hàng", icon: Warehouse },
   { slug: "tin-nhan", label: "Tin nhắn", icon: MessageSquareText },
-  { slug: "chatbox-ai", label: "Chatbox AI", icon: Bot },
+  { slug: "chatbox-ai", label: "Chatbot AI", icon: Bot },
   {
     slug: "nghien-cuu-thi-truong",
     label: "Nghiên cứu thị trường",
@@ -139,7 +139,7 @@ const pageTitles = {
     "Phản hồi nhanh để duy trì điểm chăm sóc khách hàng của shop.",
   ],
   "chatbox-ai": [
-    "Chatbox AI",
+    "Chatbot AI",
     "Phân tích tài chính, ROI quảng bá và gợi ý tối ưu hiệu quả bài đăng.",
   ],
   "nghien-cuu-thi-truong": [
@@ -647,6 +647,7 @@ function VendorLayout({
   const vendorInfo = getVendorInfo();
   const navigate = useNavigate();
   const [title, subtitle] = pageTitles[activeSlug] || pageTitles.trangchu;
+  const isWorkspacePage = ["tin-nhan", "chatbox-ai"].includes(activeSlug);
   const searchResults = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return [];
@@ -1005,23 +1006,35 @@ function VendorLayout({
             </button>
           </div>
         </header>
-        <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className="mb-6">
+        <main
+          className={cn(
+            "px-4 sm:px-6 lg:px-8",
+            isWorkspacePage ? "py-4 lg:py-5" : "py-6 lg:py-8",
+          )}
+        >
+          <div className={cn(isWorkspacePage ? "mb-4" : "mb-6")}>
             <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-teal-700">
               {getTodayLabel()}
             </p>
-            <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-stone-950 sm:text-3xl">
+            <h1
+              className={cn(
+                "mt-1 font-extrabold tracking-tight text-stone-950",
+                isWorkspacePage ? "text-2xl" : "text-2xl sm:text-3xl",
+              )}
+            >
               {title}
             </h1>
-            <p className="mt-2 max-w-3xl text-sm font-medium text-stone-500">
+            <p className={cn("max-w-3xl text-sm font-medium text-stone-500", isWorkspacePage ? "mt-1" : "mt-2")}>
               {subtitle}
             </p>
           </div>
           {children}
         </main>
       </div>
-      <AiChatboxLauncher mode="vendor" fullPagePath="/vendor/chatbox-ai" />
-      <MessageLauncher mode="vendor" />
+      {!isWorkspacePage && (
+        <AiChatboxLauncher mode="vendor" fullPagePath="/vendor/chatbox-ai" />
+      )}
+      {!isWorkspacePage && <MessageLauncher mode="vendor" />}
       <HeaderTopUpModal
         open={headerTopUpModalOpen}
         amount={headerTopUpAmount}

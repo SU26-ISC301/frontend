@@ -45,7 +45,7 @@ const navItems = [
   { slug: "vi-voucher", label: "Ưu đãi", icon: WalletCards },
   { slug: "danh-gia", label: "Đánh giá", icon: Star },
   { slug: "ho-tro", label: "Hỗ trợ", icon: MessageSquareText },
-  { slug: "chatbox-ai", label: "Chatbox AI", icon: Bot },
+  { slug: "chatbox-ai", label: "Chatbot AI", icon: Bot },
   { slug: "bao-mat", label: "Bảo mật", icon: ShieldCheck },
 ];
 
@@ -57,7 +57,7 @@ const pageTitles = {
   "vi-voucher": "Ưu đãi",
   "danh-gia": "Đánh giá sản phẩm",
   "ho-tro": "Trung tâm hỗ trợ",
-  "chatbox-ai": "Chatbox AI",
+  "chatbox-ai": "Chatbot AI",
   "bao-mat": "Bảo mật tài khoản",
 };
 

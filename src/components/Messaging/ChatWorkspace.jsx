@@ -192,17 +192,17 @@ export function ChatWorkspace({
       'overflow-hidden bg-white',
       isPopup
         ? 'h-full rounded-none border-0 shadow-none'
-        : 'rounded-3xl border border-slate-200 shadow-xl shadow-slate-900/5',
+        : 'h-[calc(100vh-13.25rem)] min-h-[520px] rounded-3xl border border-slate-200 shadow-xl shadow-slate-900/5',
     )}>
       <div className={cn(
-        'grid',
+        'grid min-h-0',
         isPopup
           ? 'h-full min-h-0 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_260px]'
-          : 'min-h-[680px] lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)_300px]',
+          : 'h-full lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)_270px]',
       )}>
         <aside className={cn(
           'flex flex-col border-b border-slate-100 bg-slate-50/70 lg:border-b-0 lg:border-r',
-          isPopup ? 'min-h-0' : 'min-h-[640px]',
+          'min-h-0',
         )}>
           <div className="border-b border-slate-100 bg-white p-5">
             <div className="flex items-start justify-between gap-3">
@@ -322,7 +322,7 @@ export function ChatWorkspace({
           </div>
         </aside>
 
-        <main className={cn('flex min-w-0 flex-col bg-white', isPopup ? 'min-h-0' : 'min-h-[640px]')}>
+        <main className="flex min-h-0 min-w-0 flex-col bg-white">
           {activeChat ? (
             <>
               <div className="flex items-center justify-between gap-4 border-b border-slate-100 bg-white px-5 py-4">
@@ -469,7 +469,7 @@ export function ChatWorkspace({
           )}
         </main>
 
-        <aside className={cn('hidden border-l border-slate-100 bg-white xl:flex xl:flex-col', isPopup ? 'min-h-0' : 'min-h-[640px]')}>
+        <aside className="hidden min-h-0 border-l border-slate-100 bg-white xl:flex xl:flex-col">
           <div className="border-b border-slate-100 p-5">
             <p className="text-sm font-black text-slate-950">
               {isVendor ? 'Công cụ trả lời' : 'Shop gợi ý'}
@@ -480,7 +480,7 @@ export function ChatWorkspace({
           </div>
 
           {isVendor ? (
-            <div className="space-y-3 p-4">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
               <div className="rounded-3xl border border-orange-100 bg-orange-50/50 p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>

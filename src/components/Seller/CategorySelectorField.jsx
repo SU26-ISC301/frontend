@@ -298,7 +298,7 @@ export function CategorySelectorField({
   };
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className={cn('relative', open && 'z-30')}>
       {/* Trigger */}
       <button
         type="button"
@@ -338,7 +338,7 @@ export function CategorySelectorField({
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="relative z-20 mt-2 overflow-hidden rounded-xl border border-orange-100 bg-white shadow-[0_22px_70px_-42px_rgba(15,23,42,0.72)] ring-1 ring-orange-50 animate-in fade-in slide-in-from-top-1 duration-150">
           {/* Search */}
           <div className="p-2.5 border-b border-slate-100">
             <div className="relative">
@@ -416,9 +416,9 @@ export function CategorySelectorField({
 
           {/* 3-column drill-down (khi không search) */}
           {!search && (
-            <div className="flex" style={{ height: '260px' }}>
+            <div className="grid max-h-[420px] grid-cols-1 overflow-hidden sm:h-[260px] sm:grid-cols-3">
               {/* Cột 1: Danh mục cấp 1 */}
-              <div className="w-1/3 border-r border-slate-100 overflow-y-auto py-1">
+              <div className="min-h-0 max-h-48 overflow-y-auto border-b border-slate-100 py-1 sm:max-h-none sm:border-b-0 sm:border-r">
                 {categories.map((cat) => (
                   <button
                     key={cat.id}
@@ -441,7 +441,7 @@ export function CategorySelectorField({
               </div>
 
               {/* Cột 2: Danh mục cấp 2 */}
-              <div className="w-1/3 border-r border-slate-100 overflow-y-auto py-1">
+              <div className="min-h-0 max-h-48 overflow-y-auto border-b border-slate-100 py-1 sm:max-h-none sm:border-b-0 sm:border-r">
                 {l1Node?.children?.map((sub) => (
                   <button
                     key={sub.id}
@@ -469,7 +469,7 @@ export function CategorySelectorField({
               </div>
 
               {/* Cột 3: Danh mục cấp 3 (leaf — selectable) */}
-              <div className="w-1/3 overflow-y-auto py-1">
+              <div className="min-h-0 max-h-48 overflow-y-auto py-1 sm:max-h-none">
                 {l2Node?.children?.map((leaf) => (
                   <button
                     key={leaf.id}
