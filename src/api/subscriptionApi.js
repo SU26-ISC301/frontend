@@ -40,6 +40,22 @@ export async function createPaymentLink(planType, paymentMethod = 'payos') {
 }
 
 /**
+ * Nâng cấp gói bằng số dư ví người bán, yêu cầu mã PIN ví.
+ * @param {string} planType - 'plus' hoặc 'premium'
+ * @param {string} walletPin - mã PIN ví 6 số
+ */
+export async function upgradeSubscriptionWithWalletPin(planType, walletPin) {
+  const response = await axiosClient.post('/api/subscription/upgrade', {
+    planType,
+    paymentMethod: 'wallet',
+    walletPin,
+  }, {
+    headers: { 'X-Role-Token': 'vendor' },
+  });
+  return response.data.data ?? response.data;
+}
+
+/**
  * Polling: kiểm tra kết quả thanh toán
  * @param {string} orderCode
  * @returns {'pending' | 'paid' | 'cancelled' | 'failed'}

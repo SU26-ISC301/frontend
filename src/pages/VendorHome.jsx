@@ -30,8 +30,10 @@ import {
   EyeOff,
   ExternalLink,
   ImagePlus,
+  KeyRound,
   LayoutDashboard,
   Lock,
+  Loader2,
   LogOut,
   Megaphone,
   Menu,
@@ -63,9 +65,15 @@ import { vendorMessageApi } from "../api/vendorMessageAPI";
 import { marketResearchApi } from "../api/marketResearchAPI";
 import { sellerApi } from "../api/sellerAPI";
 import { categoryApi } from "../api/categoryAPI";
-import { promotionApi } from "../api/promotionAPI";
+import {
+  getTopUpOrderCode,
+  getTopUpPaymentUrl,
+  normalizeTopUpPaymentStatus,
+  promotionApi,
+} from "../api/promotionAPI";
 import { financeApi } from "../api/financeAPI";
 import { getSubscriptionStatus } from "../api/subscriptionApi";
+import { getWalletPinErrorCode, getWalletPinErrorMessage, isWalletPinEnabled, walletPinApi } from "../api/walletPinAPI";
 import {
   productStorage,
   mapBackendProductToLocal,
@@ -89,6 +97,7 @@ import PostingQuotaBanner from "../components/Seller/PostingQuotaBanner";
 import { ChatWorkspace } from "../components/Messaging/ChatWorkspace";
 import { MessageLauncher } from "../components/Messaging/MessageLauncher";
 import { AiChatboxLauncher, AiChatboxPage } from "../components/AiChatbox/AiChatbox";
+import { WalletPinConfirmModal, WalletPinSetupDialog } from "../components/Seller/WalletPinModal";
 
 const navItems = [
   { slug: "trangchu", label: "Tổng quan", icon: LayoutDashboard },
@@ -174,7 +183,7 @@ const PROMOTION_CONFIG = {
   minBudget: 10000,
   maxBudget: 50000000,
   minAmountPerClick: 1,
-  minTopUpAmount: 10000,
+  minTopUpAmount: 5000,
   minDurationDays: 1,
   maxDurationDays: 30,
   budgetPresets: [100000, 300000, 500000, 1000000],
@@ -591,7 +600,7 @@ function VendorToast({ toast, onClose }) {
   return (
     <div
       className={cn(
-        "vendor-toast fixed bottom-5 right-5 z-[70] flex max-w-sm items-start gap-3 rounded-xl border bg-white p-4 shadow-xl",
+        "vendor-toast fixed right-5 top-5 z-[120] flex max-w-sm items-start gap-3 rounded-xl border bg-white p-4 shadow-xl",
         isError
           ? "border-red-100 shadow-red-950/10"
           : "border-orange-100 shadow-orange-950/10",
@@ -642,7 +651,7 @@ function VendorLayout({
   const [walletError, setWalletError] = useState("");
   const [headerTopUpPayment, setHeaderTopUpPayment] = useState(null);
   const [headerTopUpModalOpen, setHeaderTopUpModalOpen] = useState(false);
-  const [headerTopUpAmount, setHeaderTopUpAmount] = useState(10000);
+  const [headerTopUpAmount, setHeaderTopUpAmount] = useState(5000);
   const [headerTopUpLoading, setHeaderTopUpLoading] = useState(false);
   const vendorInfo = getVendorInfo();
   const navigate = useNavigate();
@@ -727,8 +736,8 @@ function VendorLayout({
     const amount = Number(headerTopUpAmount || 0);
     if (!Number.isFinite(amount) || amount < PROMOTION_CONFIG.minTopUpAmount) {
       onToast?.({
-        title: "Số tiền nạp chưa hợp lệ",
-        message: `Số tiền nạp tối thiểu là ${formatCurrency(PROMOTION_CONFIG.minTopUpAmount)}.`,
+        title: "Số tiền tối thiểu nạp là 5.000 VND",
+        message: "Vui lòng nhập số tiền từ 5.000 VND trở lên để tạo link PayOS.",
         type: "error",
       });
       return;
@@ -1039,6 +1048,7 @@ function VendorLayout({
         open={headerTopUpModalOpen}
         amount={headerTopUpAmount}
         loading={headerTopUpLoading}
+        onToast={onToast}
         onAmountChange={setHeaderTopUpAmount}
         onClose={() => {
           setHeaderTopUpModalOpen(false);
@@ -1062,6 +1072,7 @@ function HeaderTopUpModal({
   open,
   amount,
   loading,
+  onToast,
   onAmountChange,
   onClose,
   onSubmit,
@@ -1070,7 +1081,7 @@ function HeaderTopUpModal({
 }) {
   if (!open) return null;
 
-  const quickAmounts = [10000, 50000, 100000];
+  const quickAmounts = [5000, 10000, 50000];
 
   return (
     <>
@@ -1104,7 +1115,7 @@ function HeaderTopUpModal({
             <input
               type="number"
               min={PROMOTION_CONFIG.minTopUpAmount}
-              step="10000"
+              step="1000"
               value={amount}
               onChange={(event) =>
                 onAmountChange(Number(event.target.value || 0))
@@ -1142,7 +1153,7 @@ function HeaderTopUpModal({
             <button
               type="button"
               className="vendor-primary-button"
-              disabled={loading || amount < PROMOTION_CONFIG.minTopUpAmount}
+              disabled={loading}
               onClick={onSubmit}
             >
               <CreditCard className="h-4 w-4" />
@@ -1155,6 +1166,14 @@ function HeaderTopUpModal({
         payment={payment}
         onClose={onClose}
         onPaid={onPaid}
+        onSuccess={() => {
+          onToast?.({
+            title: "Nạp tiền thành công",
+            message: "Số dư ví đã được cập nhật từ PayOS.",
+            type: "success",
+          });
+          onClose?.();
+        }}
       />
     </>
   );
@@ -4969,6 +4988,8 @@ function MarketingPage({ onToast, navigateTo }) {
     date.setDate(date.getDate() + 7);
     return toInputDate(date);
   });
+  const [pinConfirmOpen, setPinConfirmOpen] = useState(false);
+  const [pinConfirmError, setPinConfirmError] = useState("");
 
   const mapProductCandidate = useCallback((product) => {
     const firstVariant = product.variants?.[0];
@@ -5315,22 +5336,21 @@ function MarketingPage({ onToast, navigateTo }) {
 
   const handleTopUp = async (amount) => {
     const requestedAmount = Number(amount || 0);
-    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
+    if (
+      !Number.isFinite(requestedAmount) ||
+      requestedAmount < PROMOTION_CONFIG.minTopUpAmount
+    ) {
       onToast({
-        title: "Số tiền nạp chưa hợp lệ",
-        message: `Số tiền nạp tối thiểu là ${formatCurrency(PROMOTION_CONFIG.minTopUpAmount)}.`,
+        title: "Số tiền tối thiểu nạp là 5.000 VND",
+        message: "Vui lòng nhập số tiền từ 5.000 VND trở lên để tạo link PayOS.",
         type: "error",
       });
       return;
     }
-    const normalizedAmount = Math.max(
-      PROMOTION_CONFIG.minTopUpAmount,
-      requestedAmount,
-    );
     setActionLoading(true);
     try {
       const order = await promotionApi.createTopUp({
-        amount: normalizedAmount,
+        amount: requestedAmount,
       });
       setTopUpPayment(order);
       onToast({
@@ -5348,9 +5368,44 @@ function MarketingPage({ onToast, navigateTo }) {
     }
   };
 
+  const openWalletPinSetup = useCallback(() => {
+    setPinConfirmOpen(false);
+    setPinConfirmError("");
+    navigateTo?.("cai-dat-shop?walletPin=setup");
+  }, [navigateTo]);
+
   const handleCreatePromotion = async () => {
     if (!canSubmit) return;
     setActionLoading(true);
+    try {
+      const pinStatus = await walletPinApi.getStatus();
+      if (!isWalletPinEnabled(pinStatus)) {
+        onToast({
+          title: "Cần kích hoạt mã PIN",
+          message:
+            "Shop cần tạo mã PIN ví trước khi dùng số dư để chạy quảng cáo.",
+          type: "warning",
+        });
+        openWalletPinSetup();
+        return;
+      }
+      setPinConfirmError("");
+      setPinConfirmOpen(true);
+    } catch (err) {
+      onToast({
+        title: "Không thể kiểm tra mã PIN ví",
+        message: getWalletPinErrorMessage(err),
+        type: "error",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const submitCreatePromotionWithPin = async (walletPin) => {
+    if (!canSubmit) return;
+    setActionLoading(true);
+    setPinConfirmError("");
     try {
       await promotionApi.createPromotion({
         postId: Number(selectedPost.id),
@@ -5358,21 +5413,44 @@ function MarketingPage({ onToast, navigateTo }) {
         roiPerClick,
         startDate: toApiDate(startDate),
         endDate: toApiDate(endDate, true),
+        walletPin,
       });
       onToast({
         title: "Đã tạo quảng bá",
-        message:
-          "Bài đăng đã được đưa vào danh sách tiếp thị quảng cáo bằng dữ liệu thật.",
+        message: "Ngân sách đã được trừ từ ví và bài đăng bắt đầu quảng bá.",
       });
+      setPinConfirmOpen(false);
       setSelectedPostId("");
       window.dispatchEvent(new Event("seller-wallet-refresh"));
       await loadPromotionData();
     } catch (err) {
-      onToast({
-        title: "Không thể tạo quảng bá",
-        message: err.response?.data?.message || err.message,
-        type: "error",
-      });
+      const errorCode = getWalletPinErrorCode(err);
+      const message = getWalletPinErrorMessage(
+        err,
+        "Không thể tạo quảng bá. Vui lòng kiểm tra lại mã PIN hoặc số dư ví.",
+      );
+      if (errorCode === "PIN_NOT_SET" || errorCode === "WALLET_PIN_NOT_SET") {
+        onToast({
+          title: "Cần kích hoạt mã PIN",
+          message: "Vui lòng tạo mã PIN ví trước khi chạy quảng cáo.",
+          type: "warning",
+        });
+        openWalletPinSetup();
+        return;
+      }
+      if (
+        errorCode === "INSUFFICIENT_BALANCE" ||
+        errorCode === "WALLET_BALANCE_NOT_ENOUGH"
+      ) {
+        setPinConfirmOpen(false);
+        onToast({
+          title: "Số dư ví không đủ",
+          message: `Vui lòng nạp thêm tối thiểu ${formatCurrency(deficit)} trước khi chạy quảng cáo.`,
+          type: "error",
+        });
+        return;
+      }
+      setPinConfirmError(message);
     } finally {
       setActionLoading(false);
     }
@@ -5711,7 +5789,7 @@ function MarketingPage({ onToast, navigateTo }) {
                 />
               </label>
               <div className="mt-3 grid grid-cols-3 gap-2">
-                {[100000, 300000, 500000].map((amount) => (
+                {[5000, 10000, 50000].map((amount) => (
                   <button
                     key={amount}
                     type="button"
@@ -5730,9 +5808,7 @@ function MarketingPage({ onToast, navigateTo }) {
               <button
                 type="button"
                 className="vendor-primary-button mt-3 w-full justify-center"
-                disabled={
-                  actionLoading || topUpAmount < PROMOTION_CONFIG.minTopUpAmount
-                }
+                disabled={actionLoading}
                 onClick={() => handleTopUp(topUpAmount)}
               >
                 <CreditCard className="h-4 w-4" />
@@ -5798,6 +5874,14 @@ function MarketingPage({ onToast, navigateTo }) {
           payment={topUpPayment}
           onClose={() => setTopUpPayment(null)}
           onPaid={loadPromotionData}
+          onSuccess={() => {
+            onToast({
+              title: "Nạp tiền thành công",
+              message: "Số dư ví đã được cập nhật từ PayOS.",
+              type: "success",
+            });
+            setTopUpPayment(null);
+          }}
         />
       </div>
     );
@@ -5964,7 +6048,11 @@ function MarketingPage({ onToast, navigateTo }) {
                   type="button"
                   className="vendor-primary-button mt-3 bg-red-600 border-red-600 hover:bg-red-700"
                   disabled={actionLoading}
-                  onClick={() => handleTopUp(deficit)}
+                  onClick={() =>
+                    handleTopUp(
+                      Math.max(deficit, PROMOTION_CONFIG.minTopUpAmount),
+                    )
+                  }
                 >
                   <CreditCard className="h-4 w-4" />
                   Nạp thêm
@@ -6012,6 +6100,29 @@ function MarketingPage({ onToast, navigateTo }) {
         payment={topUpPayment}
         onClose={() => setTopUpPayment(null)}
         onPaid={loadPromotionData}
+        onSuccess={() => {
+          onToast({
+            title: "Nạp tiền thành công",
+            message: "Số dư ví đã được cập nhật từ PayOS.",
+            type: "success",
+          });
+          setTopUpPayment(null);
+        }}
+      />
+      <WalletPinConfirmModal
+        open={pinConfirmOpen}
+        title="Xác thực chạy quảng cáo"
+        description="Nhập mã PIN ví người bán để trừ ngân sách quảng bá từ số dư tài khoản."
+        amount={formatCurrency(budget)}
+        submitLabel="Xác nhận chạy quảng cáo"
+        loading={actionLoading}
+        error={pinConfirmError}
+        onClose={() => {
+          setPinConfirmOpen(false);
+          setPinConfirmError("");
+        }}
+        onConfirm={submitCreatePromotionWithPin}
+        onSetupPin={openWalletPinSetup}
       />
     </div>
   );
@@ -6559,18 +6670,44 @@ function PromotionStopConfirm({ promotion, onClose, onConfirm, loading }) {
   );
 }
 
-function PromotionTopUpModal({ payment, onClose, onPaid }) {
+function PromotionTopUpModal({ payment, onClose, onPaid, onSuccess }) {
   const [status, setStatus] = useState("pending");
   const [pollCount, setPollCount] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const orderCode = getTopUpOrderCode(payment);
+  const paymentUrl = getTopUpPaymentUrl(payment);
 
   useEffect(() => {
     setStatus("pending");
     setPollCount(0);
-  }, [payment?.orderCode]);
+    setChecking(false);
+  }, [orderCode]);
+
+  const confirmPaymentThenRefresh = useCallback(async () => {
+    if (!orderCode) return;
+    setChecking(true);
+    try {
+      const result = await promotionApi.checkTopUpPayment(orderCode);
+      const nextStatus = normalizeTopUpPaymentStatus(result);
+      if (nextStatus === "paid") {
+        setStatus("paid");
+        onPaid?.();
+        window.dispatchEvent(new Event("seller-wallet-refresh"));
+        onSuccess?.();
+      } else if (nextStatus === "cancelled" || nextStatus === "failed") {
+        setStatus(nextStatus);
+      } else {
+        setStatus("pending");
+        setPollCount((count) => count + 1);
+      }
+    } finally {
+      setChecking(false);
+    }
+  }, [onPaid, onSuccess, orderCode]);
 
   useEffect(() => {
-    if (!payment?.orderCode || status !== "pending") return undefined;
+    if (!orderCode || status !== "pending") return undefined;
     if (pollCount >= 75) {
       setStatus("timeout");
       return undefined;
@@ -6578,14 +6715,13 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
 
     const timer = setTimeout(async () => {
       try {
-        const result = await promotionApi.checkTopUpPayment(payment.orderCode);
-        const nextStatus = String(
-          result?.status || result || "pending",
-        ).toLowerCase();
-        if (nextStatus === "paid" || nextStatus === "success") {
+        const result = await promotionApi.checkTopUpPayment(orderCode);
+        const nextStatus = normalizeTopUpPaymentStatus(result);
+        if (nextStatus === "paid") {
           setStatus("paid");
           onPaid?.();
           window.dispatchEvent(new Event("seller-wallet-refresh"));
+          onSuccess?.();
         } else if (nextStatus === "cancelled" || nextStatus === "failed") {
           setStatus(nextStatus);
         } else {
@@ -6597,7 +6733,7 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
     }, 4000);
 
     return () => clearTimeout(timer);
-  }, [payment?.orderCode, pollCount, status, onPaid]);
+  }, [orderCode, pollCount, status, onPaid, onSuccess]);
 
   if (!payment) return null;
 
@@ -6611,7 +6747,7 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
     {
       pending: {
         title: "Đang chờ thanh toán",
-        text: "Hoàn tất thanh toán trên PayOS, hệ thống sẽ tự làm mới số dư tài khoản quảng cáo.",
+        text: "Số dư chỉ được làm mới sau khi PayOS xác nhận giao dịch đã thanh toán thành công.",
         className: "border-amber-100 bg-amber-50 text-amber-800",
         icon: <RefreshCw className="h-4 w-4 animate-spin" />,
       },
@@ -6673,7 +6809,7 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
                 Mã thanh toán
               </span>
               <span className="font-mono font-extrabold text-stone-900">
-                {payment.orderCode}
+                {orderCode || "Đang tạo"}
               </span>
             </div>
             <div className="mt-4 flex items-end justify-between gap-3 border-t border-dashed border-orange-200 pt-4">
@@ -6710,9 +6846,9 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2">
-            {payment.paymentUrl ? (
+            {paymentUrl ? (
               <a
-                href={payment.paymentUrl}
+                href={paymentUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="vendor-primary-button justify-center"
@@ -6732,10 +6868,15 @@ function PromotionTopUpModal({ payment, onClose, onPaid }) {
             <button
               type="button"
               className="vendor-secondary-button justify-center"
-              onClick={onPaid}
+              disabled={checking || status === "paid" || !orderCode}
+              onClick={confirmPaymentThenRefresh}
             >
-              <RefreshCw className="h-4 w-4" />
-              Làm mới số dư
+              {checking ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Kiểm tra thanh toán
             </button>
           </div>
 
@@ -7696,6 +7837,8 @@ function VendorToggle({ checked, onChange, disabled = false, label }) {
 }
 
 function SettingsPage({ onToast }) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [operationSettings, setOperationSettings] = useState({
     autoCod: false,
     lowStockAlert: true,
@@ -7720,6 +7863,23 @@ function SettingsPage({ onToast }) {
   const [saving, setSaving] = useState(false);
   const [showCccd, setShowCccd] = useState(false);
   const [showTaxCode, setShowTaxCode] = useState(false);
+  const [pinStatus, setPinStatus] = useState(null);
+  const [pinStatusLoading, setPinStatusLoading] = useState(true);
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
+  const [pinDialogMode, setPinDialogMode] = useState("setup");
+
+  const loadPinStatus = useCallback(async () => {
+    setPinStatusLoading(true);
+    try {
+      const status = await walletPinApi.getStatus();
+      setPinStatus(status || { enabled: false });
+    } catch (err) {
+      setPinStatus({ enabled: false, unavailable: true });
+      console.warn("Không thể tải trạng thái mã PIN ví:", err);
+    } finally {
+      setPinStatusLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchVendorProfile = async () => {
@@ -7755,6 +7915,20 @@ function SettingsPage({ onToast }) {
 
     fetchVendorProfile();
   }, [profileId, onToast]);
+
+  useEffect(() => {
+    loadPinStatus();
+  }, [loadPinStatus]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const requestedFlow = params.get("walletPin");
+    if (!requestedFlow) return;
+    const nextMode = requestedFlow === "change" ? "change" : "setup";
+    setPinDialogMode(nextMode);
+    setPinDialogOpen(true);
+    navigate(location.pathname, { replace: true });
+  }, [location.pathname, location.search, navigate]);
 
   const maskSensitive = (str, show) => {
     if (!str) return "Chưa cập nhật";
@@ -8043,6 +8217,42 @@ function SettingsPage({ onToast }) {
             subtitle="Trạng thái bảo vệ tài khoản"
           />
           <div className="mt-4 space-y-2">
+            <div className="rounded-2xl border border-orange-100 bg-[linear-gradient(135deg,#fff8f1,#ffffff_58%,#f4fffb)] p-4 shadow-sm">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#102820] text-orange-300 shadow-lg shadow-stone-950/10">
+                    <KeyRound className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-black text-stone-900">Mã PIN ví người bán</p>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-stone-500">
+                      {pinStatusLoading
+                        ? "Đang kiểm tra trạng thái bảo mật ví..."
+                        : isWalletPinEnabled(pinStatus)
+                          ? "Đã kích hoạt. Mọi giao dịch dùng tiền trong ví cần nhập mã PIN."
+                          : "Chưa kích hoạt. Hãy tạo mã PIN trước khi mua gói hoặc chạy quảng cáo."}
+                    </p>
+                    {pinStatus?.lockedUntil && (
+                      <p className="mt-1 text-xs font-bold text-red-600">
+                        PIN đang bị khóa đến {new Date(pinStatus.lockedUntil).toLocaleString("vi-VN")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className={isWalletPinEnabled(pinStatus) ? "vendor-secondary-button justify-center" : "vendor-primary-button justify-center"}
+                  disabled={pinStatusLoading}
+                  onClick={() => {
+                    setPinDialogMode(isWalletPinEnabled(pinStatus) ? "change" : "setup");
+                    setPinDialogOpen(true);
+                  }}
+                >
+                  <KeyRound className="h-4 w-4" />
+                  {isWalletPinEnabled(pinStatus) ? "Thay đổi mã PIN" : "Kích hoạt mã PIN"}
+                </button>
+              </div>
+            </div>
             {[
               [
                 "CCCD chủ shop",
@@ -8096,6 +8306,17 @@ function SettingsPage({ onToast }) {
           </div>
         </Panel>
       </div>
+      <WalletPinSetupDialog
+        open={pinDialogOpen}
+        mode={pinDialogMode}
+        vendorEmail={vendorData.email}
+        onClose={() => setPinDialogOpen(false)}
+        onCompleted={(status) => {
+          setPinStatus(status || { enabled: true });
+          loadPinStatus();
+        }}
+        onToast={onToast}
+      />
     </section>
   );
 }

@@ -12,10 +12,22 @@ import {
   Lock,
   Check,
   ExternalLink,
-  AlertCircle
+  AlertCircle,
+  CreditCard,
+  KeyRound,
+  Wallet,
+  X
 } from 'lucide-react';
-import { createPaymentLink, checkPaymentStatus, getSubscriptionStatus } from '../api/subscriptionApi';
+import { createPaymentLink, checkPaymentStatus, getSubscriptionStatus, upgradeSubscriptionWithWalletPin } from '../api/subscriptionApi';
+import {
+  getTopUpOrderCode,
+  getTopUpPaymentUrl,
+  normalizeTopUpPaymentStatus,
+  promotionApi,
+} from '../api/promotionAPI';
+import { getWalletPinErrorCode, getWalletPinErrorMessage, isWalletPinEnabled, walletPinApi } from '../api/walletPinAPI';
 import { VENDOR_PLANS } from '../components/Seller/SubscriptionPlanModal';
+import { WalletPinConfirmModal } from '../components/Seller/WalletPinModal';
 import { cn } from '../lib/utils';
 
 /* ─── Giá gói ─────────────────────────────────────────────────── */
@@ -24,11 +36,50 @@ const PLAN_PRICES = {
   premium: 20000,
 };
 
+const MIN_TOP_UP_AMOUNT = 5000;
+
 function formatCurrency(amount) {
   return new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
 }
 
+function CheckoutToast({ toast, onClose }) {
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timeout = window.setTimeout(onClose, 3500);
+    return () => window.clearTimeout(timeout);
+  }, [onClose, toast]);
+
+  if (!toast) return null;
+  const isError = toast.type === 'error';
+
+  return (
+    <div
+      className={cn(
+        'fixed right-5 top-5 z-[120] flex max-w-sm items-start gap-3 rounded-xl border bg-white p-4 shadow-xl',
+        isError ? 'border-red-100 shadow-red-950/10' : 'border-orange-100 shadow-orange-950/10',
+      )}
+    >
+      <span
+        className={cn(
+          'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+          isError ? 'bg-red-50 text-red-600' : 'bg-teal-50 text-teal-700',
+        )}
+      >
+        {isError ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-extrabold text-stone-800">{toast.title}</p>
+        <p className="mt-1 text-xs font-semibold leading-5 text-stone-500">{toast.message}</p>
+      </div>
+      <button type="button" aria-label="Đóng thông báo" onClick={onClose} className="text-stone-400 hover:text-stone-700">
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
 /* ─── Step 1: Tạo link thanh toán ────────────────────────────── */
+// eslint-disable-next-line no-unused-vars
 function CheckoutStep({ plan, onPaymentCreated }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -151,6 +202,7 @@ function CheckoutStep({ plan, onPaymentCreated }) {
 }
 
 /* ─── Step 2: Hiển thị QR + polling ─────────────────────────── */
+// eslint-disable-next-line no-unused-vars
 function PaymentQRStep({ paymentData, plan, onSuccess, onCancel }) {
   const [pollingStatus, setPollingStatus] = useState('pending');
   const [pollCount, setPollCount] = useState(0);
@@ -540,26 +592,160 @@ export default function VendorSubscriptionCheckout() {
   const planId = searchParams.get('plan') || 'plus';
   const plan = VENDOR_PLANS.find((p) => p.id === planId);
 
-  const [step, setStep] = useState('creating'); // 'creating' | 'qr' | 'success'
-  const [paymentData, setPaymentData] = useState(null);
-
-  const handlePaymentCreated = useCallback((data) => {
-    setPaymentData(data);
-    if (data?.paidByBalance || data?.paymentStatus === 'paid') {
-      getSubscriptionStatus().catch(() => {});
-      setStep('success');
-      window.dispatchEvent(new Event('seller-wallet-refresh'));
-      return;
-    }
-    setStep('qr');
-  }, []);
-
-  const handleSuccess = useCallback(() => {
-    getSubscriptionStatus().catch(() => {});
-    setStep('success');
-  }, []);
+  const [step, setStep] = useState('wallet'); // 'wallet' | 'success'
+  const [walletInfo, setWalletInfo] = useState(null);
+  const [pinStatus, setPinStatus] = useState(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [topUpNotice, setTopUpNotice] = useState('');
+  const [topUpOrder, setTopUpOrder] = useState(null);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [pinError, setPinError] = useState('');
+  const [toast, setToast] = useState(null);
 
   const Icon = plan && plan.id === 'premium' ? Crown : Zap;
+  const price = plan ? PLAN_PRICES[plan.id] || 0 : 0;
+  const availableBalance = Number(
+    walletInfo?.availableBalance ?? walletInfo?.balance ?? 0,
+  );
+  const deficit = Math.max(0, price - availableBalance);
+  const hasWalletPin = isWalletPinEnabled(pinStatus);
+
+  const loadCheckoutState = useCallback(async () => {
+    setCheckoutLoading(true);
+    try {
+      const [walletResult, pinResult] = await Promise.allSettled([
+        promotionApi.getAccountWallet(),
+        walletPinApi.getStatus(),
+      ]);
+      if (walletResult.status === 'fulfilled') {
+        setWalletInfo(walletResult.value);
+      }
+      if (pinResult.status === 'fulfilled') {
+        setPinStatus(pinResult.value);
+      }
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCheckoutState();
+  }, [loadCheckoutState]);
+
+  const openWalletPinSetup = useCallback(() => {
+    navigate('/vendor/cai-dat-shop?walletPin=setup');
+  }, [navigate]);
+
+  const handleStartWalletPayment = () => {
+    setPinError('');
+    if (!hasWalletPin) {
+      openWalletPinSetup();
+      return;
+    }
+    if (deficit > 0) return;
+    setPinModalOpen(true);
+  };
+
+  const handleTopUpWallet = async () => {
+    const amount = Math.max(deficit, MIN_TOP_UP_AMOUNT);
+    setActionLoading(true);
+    setTopUpNotice('');
+    try {
+      const order = await promotionApi.createTopUp({ amount });
+      setTopUpOrder(order);
+      const paymentUrl = getTopUpPaymentUrl(order);
+      if (paymentUrl) {
+        window.open(paymentUrl, '_blank', 'noopener,noreferrer');
+        setTopUpNotice(
+          'Đã mở cổng PayOS để nạp tiền. Sau khi thanh toán thành công, quay lại trang này và bấm kiểm tra thanh toán.',
+        );
+      } else {
+        setTopUpNotice(
+          'Đã tạo yêu cầu nạp tiền. Vui lòng kiểm tra ví hoặc lịch sử giao dịch để hoàn tất thanh toán.',
+        );
+      }
+    } catch (err) {
+      setTopUpNotice(
+        err?.response?.data?.message ||
+          err?.message ||
+          'Không thể tạo yêu cầu nạp tiền ví.',
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCheckTopUpPayment = async () => {
+    const orderCode = getTopUpOrderCode(topUpOrder);
+    if (!orderCode) {
+      setTopUpNotice('Chưa có mã thanh toán PayOS để kiểm tra. Vui lòng tạo link nạp tiền trước.');
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const result = await promotionApi.checkTopUpPayment(orderCode);
+      const nextStatus = normalizeTopUpPaymentStatus(result);
+      if (nextStatus === 'paid') {
+        setTopUpNotice('Thanh toán PayOS đã hoàn tất. Số dư ví đang được cập nhật từ máy chủ.');
+        await loadCheckoutState();
+        window.dispatchEvent(new Event('seller-wallet-refresh'));
+        setToast({
+          title: 'Nạp tiền thành công',
+          message: 'Số dư ví đã được cập nhật từ PayOS.',
+          type: 'success',
+        });
+      } else if (nextStatus === 'cancelled' || nextStatus === 'failed') {
+        setTopUpNotice('Giao dịch PayOS chưa thành công. Vui lòng tạo lại yêu cầu nạp tiền.');
+      } else {
+        setTopUpNotice('PayOS chưa ghi nhận thanh toán. Số dư ví sẽ không được cập nhật cho tới khi thanh toán thành công.');
+      }
+    } catch (err) {
+      setTopUpNotice(
+        err?.response?.data?.message ||
+          err?.message ||
+          'Không thể kiểm tra trạng thái thanh toán PayOS.',
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleWalletPinConfirm = async (walletPin) => {
+    setActionLoading(true);
+    setPinError('');
+    try {
+      await upgradeSubscriptionWithWalletPin(plan.id, walletPin);
+      await getSubscriptionStatus().catch(() => {});
+      await loadCheckoutState();
+      setPinModalOpen(false);
+      setStep('success');
+      window.dispatchEvent(new Event('seller-wallet-refresh'));
+    } catch (err) {
+      const errorCode = getWalletPinErrorCode(err);
+      const message = getWalletPinErrorMessage(
+        err,
+        'Không thể nâng cấp gói. Vui lòng kiểm tra mã PIN hoặc số dư ví.',
+      );
+      if (errorCode === 'PIN_NOT_SET' || errorCode === 'WALLET_PIN_NOT_SET') {
+        setPinModalOpen(false);
+        openWalletPinSetup();
+        return;
+      }
+      if (
+        errorCode === 'INSUFFICIENT_BALANCE' ||
+        errorCode === 'WALLET_BALANCE_NOT_ENOUGH'
+      ) {
+        setPinModalOpen(false);
+        await loadCheckoutState();
+        setTopUpNotice('Số dư ví không đủ. Vui lòng nạp tiền trước khi mua gói.');
+        return;
+      }
+      setPinError(message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   // Nếu plan không hợp lệ
   if (!plan || plan.id === 'free') {
@@ -581,8 +767,11 @@ export default function VendorSubscriptionCheckout() {
     );
   }
 
+  const currentStep = pinModalOpen ? 'pin' : step;
+
   return (
     <div className="vendor-app vendor-app-premium min-h-screen pb-16">
+      <CheckoutToast toast={toast} onClose={() => setToast(null)} />
       {/* Header */}
       <header className="vendor-topbar sticky top-0 z-30 flex h-[72px] items-center gap-4 border-b border-stone-200/50 bg-white/80 px-6 backdrop-blur-md">
         <button
@@ -611,10 +800,10 @@ export default function VendorSubscriptionCheckout() {
 
         {/* Steps indicator */}
         <div className="ml-auto flex items-center gap-3 text-xs font-bold bg-stone-100/80 px-4 py-2 rounded-2xl border border-stone-200/50">
-          {['creating', 'qr', 'success'].map((s, i) => {
-            const stepLabels = ['Khởi tạo', 'Thanh toán', 'Hoàn tất'];
-            const isActive = step === s;
-            const isCompleted = ['qr', 'success'].indexOf(step) > i;
+          {['wallet', 'pin', 'success'].map((s, i) => {
+            const stepLabels = ['Kiểm tra ví', 'Nhập PIN', 'Hoàn tất'];
+            const isActive = currentStep === s;
+            const isCompleted = ['pin', 'success'].indexOf(currentStep) > i;
 
             return (
               <div key={s} className="flex items-center gap-2">
@@ -645,23 +834,200 @@ export default function VendorSubscriptionCheckout() {
 
       {/* Body */}
       <main className="mx-auto max-w-6xl px-4 py-8">
-        {step === 'creating' && (
-          <CheckoutStep
-            plan={plan}
-            onPaymentCreated={handlePaymentCreated}
-          />
-        )}
-        {step === 'qr' && paymentData && (
-          <PaymentQRStep
-            paymentData={paymentData}
-            plan={plan}
-            onSuccess={handleSuccess}
-            onCancel={() => navigate(-1)}
-          />
+        {step === 'wallet' && (
+          <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+            <section
+              className={cn(
+                'relative overflow-hidden rounded-[28px] border p-7 text-white shadow-2xl',
+                plan.id === 'plus'
+                  ? 'border-orange-300/30 bg-gradient-to-br from-orange-500 via-orange-600 to-amber-700 shadow-orange-200/40'
+                  : 'border-violet-300/30 bg-gradient-to-br from-violet-600 via-indigo-700 to-slate-950 shadow-violet-200/40',
+              )}
+            >
+              <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-white/15 blur-3xl" />
+              <div className="absolute -bottom-20 left-10 h-52 w-52 rounded-full bg-black/20 blur-3xl" />
+              <div className="relative">
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] backdrop-blur">
+                  <Icon className="h-3.5 w-3.5" />
+                  Gói người bán
+                </span>
+                <h2 className="mt-5 text-4xl font-black tracking-tight">
+                  Nâng cấp gói {plan.name}
+                </h2>
+                <p className="mt-3 max-w-md text-sm font-semibold leading-6 text-white/78">
+                  Thanh toán bằng số dư ví người bán và xác thực bằng mã PIN.
+                  PayOS chỉ dùng khi bạn cần nạp thêm tiền vào ví.
+                </p>
+
+                <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/15 bg-white/12 p-4 backdrop-blur">
+                    <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-white/60">
+                      Chi phí gói
+                    </p>
+                    <p className="mt-2 text-3xl font-black">
+                      {formatCurrency(price)}
+                    </p>
+                    <p className="mt-1 text-xs font-bold text-white/60">
+                      {plan.displayDays} ngày sử dụng
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/15 bg-white/12 p-4 backdrop-blur">
+                    <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-white/60">
+                      Quyền lợi đăng tin
+                    </p>
+                    <p className="mt-2 text-3xl font-black">
+                      {plan.totalSlots === Infinity
+                        ? 'Không giới hạn'
+                        : `${plan.totalSlots} tin`}
+                    </p>
+                    <p className="mt-1 text-xs font-bold text-white/60">
+                      {plan.tagline}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-[28px] border border-stone-200 bg-white p-7 shadow-xl shadow-stone-200/50">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-orange-600">
+                    Ví người bán
+                  </p>
+                  <h3 className="mt-2 text-2xl font-black text-stone-950">
+                    Xác nhận thanh toán bằng ví
+                  </h3>
+                  <p className="mt-2 text-sm font-semibold leading-6 text-stone-500">
+                    Hệ thống sẽ trừ tiền trong ví sau khi mã PIN được xác thực.
+                  </p>
+                </div>
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-600">
+                  <Wallet className="h-6 w-6" />
+                </span>
+              </div>
+
+              <div className="mt-6 grid gap-3">
+                <div className="rounded-2xl border border-stone-100 bg-stone-50 p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-sm font-bold text-stone-500">
+                      Số dư khả dụng
+                    </span>
+                    <span className="text-xl font-black text-teal-700">
+                      {checkoutLoading ? 'Đang tải...' : formatCurrency(availableBalance)}
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-stone-100 bg-stone-50 p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-sm font-bold text-stone-500">
+                      Số tiền cần thanh toán
+                    </span>
+                    <span className="text-xl font-black text-orange-600">
+                      {formatCurrency(price)}
+                    </span>
+                  </div>
+                </div>
+                {deficit > 0 && (
+                  <div className="rounded-2xl border border-red-100 bg-red-50 p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="mt-0.5 h-5 w-5 text-red-600" />
+                      <div>
+                        <p className="text-sm font-extrabold text-red-700">
+                          Số dư ví chưa đủ
+                        </p>
+                        <p className="mt-1 text-xs font-semibold leading-5 text-red-600">
+                          Bạn cần nạp thêm {formatCurrency(deficit)} để nâng cấp gói này.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {!checkoutLoading && !hasWalletPin && (
+                  <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                    <div className="flex items-start gap-3">
+                      <KeyRound className="mt-0.5 h-5 w-5 text-amber-700" />
+                      <div>
+                        <p className="text-sm font-extrabold text-amber-800">
+                          Chưa kích hoạt mã PIN ví
+                        </p>
+                        <p className="mt-1 text-xs font-semibold leading-5 text-amber-700">
+                          Vui lòng tạo mã PIN để xác thực mọi giao dịch dùng tiền trong ví.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {topUpNotice && (
+                <p className="mt-4 rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3 text-sm font-semibold leading-6 text-orange-700">
+                  {topUpNotice}
+                </p>
+              )}
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                {deficit > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      className="vendor-primary-button flex-1 justify-center"
+                      disabled={actionLoading || checkoutLoading}
+                      onClick={handleTopUpWallet}
+                    >
+                      {actionLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CreditCard className="h-4 w-4" />
+                      )}
+                      Nạp tiền qua PayOS
+                    </button>
+                    <button
+                      type="button"
+                      className="vendor-secondary-button flex-1 justify-center"
+                      disabled={checkoutLoading}
+                      onClick={handleCheckTopUpPayment}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Kiểm tra thanh toán
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="vendor-primary-button w-full justify-center"
+                    disabled={actionLoading || checkoutLoading}
+                    onClick={handleStartWalletPayment}
+                  >
+                    {checkoutLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Lock className="h-4 w-4" />
+                    )}
+                    {hasWalletPin ? 'Thanh toán bằng ví' : 'Kích hoạt mã PIN'}
+                  </button>
+                )}
+              </div>
+            </section>
+          </div>
         )}
         {step === 'success' && (
           <SuccessStep planName={plan.name} navigate={navigate} />
         )}
+        <WalletPinConfirmModal
+          open={pinModalOpen}
+          title="Xác thực mua gói"
+          description="Nhập mã PIN ví người bán để xác nhận trừ tiền và nâng cấp gói."
+          amount={formatCurrency(price)}
+          submitLabel="Xác nhận mua gói"
+          loading={actionLoading}
+          error={pinError}
+          onClose={() => {
+            setPinModalOpen(false);
+            setPinError('');
+          }}
+          onConfirm={handleWalletPinConfirm}
+          onSetupPin={openWalletPinSetup}
+        />
       </main>
     </div>
   );
