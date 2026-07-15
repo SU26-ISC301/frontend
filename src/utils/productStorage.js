@@ -425,17 +425,35 @@ export function buildBackendPayloadFromLocal(product, status, categoriesList = [
 }
 
 export function mapBackendProductToLocal(beProd, categoriesList = []) {
-  const mediaList = beProd.mediaList || beProd.media_list || [];
+  const mediaList =
+    beProd.mediaList ||
+    beProd.media_list ||
+    beProd.media ||
+    beProd.productMedia ||
+    beProd.product_media ||
+    [];
   const images = mediaList
     .filter(m => (m.mediaType || m.media_type) === 'image')
     .sort((a, b) => ((a.sortOrder || a.sort_order) || 0) - ((b.sortOrder || b.sort_order) || 0))
     .map(m => {
-      const url = m.mediaUrl || m.media_url || '';
+      const url = m.mediaUrl || m.media_url || m.url || m.imageUrl || m.image_url || '';
       return { preview: url, name: url.split('/').pop() };
-    });
+    })
+    .filter((image) => image.preview);
+
+  const directImageUrl =
+    beProd.imageUrl ||
+    beProd.image_url ||
+    beProd.thumbnailUrl ||
+    beProd.thumbnail_url ||
+    beProd.productImage ||
+    beProd.product_image;
+  if (directImageUrl && images.length === 0) {
+    images.push({ preview: directImageUrl, name: String(directImageUrl).split('/').pop() });
+  }
 
   const videoMedia = mediaList.find(m => (m.mediaType || m.media_type) === 'video');
-  const video = videoMedia ? { name: 'video.mp4', preview: videoMedia.mediaUrl || videoMedia.media_url } : null;
+  const video = videoMedia ? { name: 'video.mp4', preview: videoMedia.mediaUrl || videoMedia.media_url || videoMedia.url } : null;
 
   const categoryId = beProd.categoryId || beProd.category_id;
   let categorySlug = '';
@@ -630,6 +648,14 @@ export function mapBackendProductToLocal(beProd, categoriesList = []) {
     stock = singleV.stock || 0;
     discount = singleV.discountPercent !== undefined ? singleV.discountPercent : (singleV.discount_percent || 0);
     sku = singleV.sku || '';
+  }
+
+  if (images.length === 0) {
+    const firstVariantImage = beVariants.find((variant) => variant.imageUrl || variant.image_url);
+    const variantImageUrl = firstVariantImage?.imageUrl || firstVariantImage?.image_url;
+    if (variantImageUrl) {
+      images.push({ preview: variantImageUrl, name: String(variantImageUrl).split('/').pop() });
+    }
   }
 
   const parcelWeightG = beProd.parcelWeightG || beProd.parcel_weight_g;

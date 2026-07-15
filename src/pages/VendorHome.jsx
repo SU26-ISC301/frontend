@@ -274,32 +274,46 @@ function hasStoredVendorIdentity(vendorInfo = getVendorInfo()) {
 
 function getProductsPageContent(data) {
   if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.content)) return data.content;
-  if (Array.isArray(data?.items)) return data.items;
-  if (Array.isArray(data?.data)) return data.data;
+  const candidates = [
+    data,
+    data?.data,
+    data?.page,
+    data?.data?.page,
+    data?.payload,
+    data?.result,
+  ];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
+    if (Array.isArray(candidate?.content)) return candidate.content;
+    if (Array.isArray(candidate?.items)) return candidate.items;
+    if (Array.isArray(candidate?.products)) return candidate.products;
+    if (Array.isArray(candidate?.data)) return candidate.data;
+  }
   return [];
 }
 
 function getProductsTotalPages(data) {
   if (Array.isArray(data)) return 1;
-  return Math.max(1, Number(data?.totalPages ?? data?.page?.totalPages ?? 1) || 1);
+  const pageData =
+    data?.content || data?.totalPages !== undefined
+      ? data
+      : data?.data?.content || data?.data?.totalPages !== undefined
+        ? data.data
+        : data?.page?.content || data?.page?.totalPages !== undefined
+          ? data.page
+          : data?.data?.page || data;
+  return Math.max(1, Number(pageData?.totalPages ?? 1) || 1);
 }
 
-async function getPublicProductsOwnedByVendor(vendorInfo = getVendorInfo()) {
-  const firstPage = await sellerApi.getPublicProducts({
-    page: 0,
-    size: PUBLIC_PRODUCTS_PAGE_SIZE,
-  });
+async function getAllProductsFromPagedFetcher(fetchPage) {
+  const firstPage = await fetchPage(0);
   const products = [...getProductsPageContent(firstPage)];
   const totalPages = getProductsTotalPages(firstPage);
 
   if (totalPages > 1) {
     const remainingPages = await Promise.all(
       Array.from({ length: totalPages - 1 }, (_, index) =>
-        sellerApi.getPublicProducts({
-          page: index + 1,
-          size: PUBLIC_PRODUCTS_PAGE_SIZE,
-        }).catch(() => null),
+        fetchPage(index + 1).catch(() => null),
       ),
     );
 
@@ -307,6 +321,40 @@ async function getPublicProductsOwnedByVendor(vendorInfo = getVendorInfo()) {
       products.push(...getProductsPageContent(page));
     });
   }
+
+  return products;
+}
+
+async function getPublicProductsOwnedByVendor(vendorInfo = getVendorInfo()) {
+  const vendorId = getStoredVendorId(vendorInfo);
+
+  try {
+    const myProducts = getProductsPageContent(await sellerApi.getMyProducts());
+    if (myProducts.length > 0) return myProducts;
+  } catch (error) {
+    console.warn("Không thể lấy sản phẩm qua /api/products/my-products:", error);
+  }
+
+  if (vendorId) {
+    try {
+      const vendorProducts = await getAllProductsFromPagedFetcher((page) =>
+        sellerApi.getProductsByVendor(vendorId, {
+          page,
+          size: PUBLIC_PRODUCTS_PAGE_SIZE,
+        }),
+      );
+      if (vendorProducts.length > 0) return vendorProducts;
+    } catch (error) {
+      console.warn("Không thể lấy sản phẩm theo vendorId:", error);
+    }
+  }
+
+  const products = await getAllProductsFromPagedFetcher((page) =>
+    sellerApi.getPublicProducts({
+      page,
+      size: PUBLIC_PRODUCTS_PAGE_SIZE,
+    }),
+  );
 
   return products.filter((product) =>
     isProductOwnedByStoredVendor(product, vendorInfo),

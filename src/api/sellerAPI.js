@@ -85,8 +85,15 @@ export const sellerApi = {
     return unwrap(response);
   },
 
-  getProductsByVendor: async (vendorId) => {
-    const response = await axiosClient.get(`/api/products/vendor/${vendorId}`);
+  getProductsByVendor: async (vendorId, params = {}) => {
+    const response = await axiosClient.get(`/api/products/vendor/${vendorId}`, { params });
+    return unwrap(response);
+  },
+
+  getMyProducts: async () => {
+    const response = await axiosClient.get('/api/products/my-products', {
+      headers: { 'X-Role-Token': 'vendor' },
+    });
     return unwrap(response);
   },
 

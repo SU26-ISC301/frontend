@@ -226,7 +226,13 @@ function isPromotedProduct(product) {
 }
 
 function mapProductCard(product) {
-  const images = (product.mediaList || [])
+  const mediaList =
+    product.mediaList ||
+    product.media ||
+    product.productMedia ||
+    product.product_media ||
+    [];
+  const images = mediaList
     .filter((media) => (media.mediaType || media.media_type) === "image")
     .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   const variants = product.variants || [];
@@ -244,7 +250,13 @@ function mapProductCard(product) {
     rating: product.avgRating ? Number(product.avgRating).toFixed(1) : "0.0",
     image:
       images[0]?.mediaUrl ||
+      images[0]?.media_url ||
+      images[0]?.url ||
       variants.find((variant) => variant.imageUrl)?.imageUrl ||
+      variants.find((variant) => variant.image_url)?.image_url ||
+      product.imageUrl ||
+      product.image_url ||
+      product.thumbnailUrl ||
       "",
     badge: product.vendorName || product.categoryName || "ShopVN",
     categoryId: product.categoryId || product.category_id || null,
@@ -304,9 +316,21 @@ function sortPublicProducts(left, right, sortMode = "newest") {
 
 function getPageContent(data) {
   if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.content)) return data.content;
-  if (Array.isArray(data?.items)) return data.items;
-  if (Array.isArray(data?.data)) return data.data;
+  const candidates = [
+    data,
+    data?.data,
+    data?.page,
+    data?.data?.page,
+    data?.payload,
+    data?.result,
+  ];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
+    if (Array.isArray(candidate?.content)) return candidate.content;
+    if (Array.isArray(candidate?.items)) return candidate.items;
+    if (Array.isArray(candidate?.products)) return candidate.products;
+    if (Array.isArray(candidate?.data)) return candidate.data;
+  }
   return [];
 }
 
@@ -322,21 +346,30 @@ function getPageMeta(data, fallbackPage = 0) {
     };
   }
 
+  const pageData =
+    data?.content || data?.totalPages !== undefined
+      ? data
+      : data?.data?.content || data?.data?.totalPages !== undefined
+        ? data.data
+        : data?.page?.content || data?.page?.totalPages !== undefined
+          ? data.page
+          : data?.data?.page || data;
+
   return {
-    page: Number(data?.number ?? data?.page ?? fallbackPage) || 0,
-    size: Number(data?.size ?? PRODUCTS_PAGE_SIZE) || PRODUCTS_PAGE_SIZE,
-    totalPages: Math.max(1, Number(data?.totalPages ?? 1) || 1),
+    page: Number(pageData?.number ?? pageData?.page ?? fallbackPage) || 0,
+    size: Number(pageData?.size ?? PRODUCTS_PAGE_SIZE) || PRODUCTS_PAGE_SIZE,
+    totalPages: Math.max(1, Number(pageData?.totalPages ?? 1) || 1),
     totalElements:
       Number(
-        data?.totalElements ?? data?.total ?? getPageContent(data).length,
+        pageData?.totalElements ?? pageData?.total ?? getPageContent(data).length,
       ) || 0,
     first: Boolean(
-      data?.first ?? Number(data?.number ?? data?.page ?? fallbackPage) <= 0,
+      pageData?.first ?? Number(pageData?.number ?? pageData?.page ?? fallbackPage) <= 0,
     ),
     last: Boolean(
-      data?.last ??
-      Number(data?.number ?? data?.page ?? fallbackPage) >=
-        Number(data?.totalPages ?? 1) - 1,
+      pageData?.last ??
+      Number(pageData?.number ?? pageData?.page ?? fallbackPage) >=
+        Number(pageData?.totalPages ?? 1) - 1,
     ),
   };
 }
