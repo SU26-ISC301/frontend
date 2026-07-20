@@ -2742,7 +2742,7 @@ function ProductsPage({
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] text-left text-sm">
+          <table className="w-full min-w-[780px] text-left text-sm">
             <thead className="vendor-table-head">
               <tr>
                 {[
@@ -2751,7 +2751,6 @@ function ProductsPage({
                   "Giá",
                   "Tồn kho",
                   "Đã bán",
-                  "Chất lượng",
                   "Trạng thái",
                   "",
                 ].map((column) => (
@@ -2803,9 +2802,6 @@ function ProductsPage({
                   </td>
                   <td className="px-5 py-4 font-bold text-stone-600">
                     {product.sold || 0}
-                  </td>
-                  <td className="px-5 py-4 font-bold text-teal-700">
-                    {product.quality || 90}/100
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex flex-col items-start gap-1">

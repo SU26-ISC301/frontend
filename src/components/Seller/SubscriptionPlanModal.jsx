@@ -10,8 +10,14 @@ import {
   Sparkles,
   ArrowRight,
   Shield,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import {
+  SUBSCRIPTION_PLAN_RANKS,
+  getSubscriptionStatus,
+  toStoredVendorPlan,
+} from '../../api/subscriptionApi';
 
 /* ─── Plan definitions ──────────────────────────────────────── */
 export const VENDOR_PLANS = [
@@ -88,14 +94,14 @@ export function getVendorPlan() {
       localStorage.setItem('vendorPlan', JSON.stringify(defaultPlan));
       return defaultPlan;
     }
-    return JSON.parse(raw);
+    return toStoredVendorPlan(JSON.parse(raw));
   } catch {
     return { planId: 'free', usedSlots: 0, totalSlots: 3 };
   }
 }
 
 export function saveVendorPlan(planData) {
-  localStorage.setItem('vendorPlan', JSON.stringify(planData));
+  localStorage.setItem('vendorPlan', JSON.stringify(toStoredVendorPlan(planData)));
 }
 
 export function getRemainingSlots() {
@@ -276,11 +282,30 @@ export default function SubscriptionPlanModal({
   currentPlanId,
 }) {
   const [planState, setPlanState] = useState(getVendorPlan);
+  const [loadingPlan, setLoadingPlan] = useState(false);
   const navigate = useNavigate();
 
-  // Re-read on open
+  // Luôn đồng bộ gói thật từ backend khi mở, localStorage chỉ là dữ liệu dự phòng.
   useEffect(() => {
-    if (isOpen) setPlanState(getVendorPlan());
+    if (!isOpen) return undefined;
+
+    let cancelled = false;
+    setPlanState(getVendorPlan());
+    setLoadingPlan(true);
+    getSubscriptionStatus()
+      .then((status) => {
+        if (!cancelled && status) setPlanState(toStoredVendorPlan(status));
+      })
+      .catch(() => {
+        // Giữ dữ liệu dự phòng đã lưu nếu phiên đăng nhập hoặc API tạm thời lỗi.
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPlan(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen]);
 
   // Close on Escape (unless blocking)
@@ -296,7 +321,11 @@ export default function SubscriptionPlanModal({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  const activePlanId = currentPlanId || planState.planId || 'free';
+  const activePlanId = planState.planId || currentPlanId || 'free';
+  const activeRank = SUBSCRIPTION_PLAN_RANKS[activePlanId] ?? 0;
+  const availablePlans = VENDOR_PLANS.filter(
+    (candidate) => (SUBSCRIPTION_PLAN_RANKS[candidate.id] ?? 0) >= activeRank,
+  );
 
   const handleSelect = (plan) => {
     if (plan.id === 'free') {
@@ -351,11 +380,14 @@ export default function SubscriptionPlanModal({
                     id="plan-modal-title"
                     className="text-xl font-extrabold text-stone-900"
                   >
-                    Chọn gói đăng tin phù hợp
+                    {activePlanId === 'premium'
+                      ? 'Gói đăng ký của bạn'
+                      : 'Xem và nâng cấp gói đăng ký'}
                   </h2>
                   <p className="mt-1.5 text-sm font-semibold text-stone-400">
-                    Nâng cấp để đăng thêm tin và ưu tiên hiển thị sản phẩm của
-                    bạn.
+                    {activePlanId === 'premium'
+                      ? 'Bạn đang sử dụng gói cao nhất với quyền đăng tin không giới hạn trong 30 ngày.'
+                      : 'Hệ thống chỉ hiển thị gói hiện tại và những gói bạn có thể nâng cấp.'}
                   </p>
                 </>
               )}
@@ -381,7 +413,16 @@ export default function SubscriptionPlanModal({
             <span className="text-xs font-extrabold text-stone-800 capitalize">
               {activePlanId}
             </span>
-            {planState.totalSlots !== -1 && (
+            {loadingPlan ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-stone-400" />
+            ) : planState.totalSlots === -1 ? (
+              <>
+                <span className="text-stone-300">•</span>
+                <span className="text-xs font-extrabold text-violet-600">
+                  Không giới hạn tin đăng
+                </span>
+              </>
+            ) : (
               <>
                 <span className="text-stone-300">•</span>
                 <span className="text-xs font-bold text-stone-500">
@@ -389,7 +430,7 @@ export default function SubscriptionPlanModal({
                   <span className="text-stone-800">
                     {planState.usedSlots || 0}
                   </span>
-                  /{planState.totalSlots || 3} lượt
+                  /{planState.totalSlots} lượt
                 </span>
               </>
             )}
@@ -398,8 +439,15 @@ export default function SubscriptionPlanModal({
 
         {/* Body */}
         <div className="plan-modal-body">
-          <div className="grid gap-5 pt-4 sm:grid-cols-3">
-            {VENDOR_PLANS.map((plan) => (
+          <div
+            className={cn(
+              'grid gap-5 pt-4',
+              availablePlans.length === 3 && 'sm:grid-cols-3',
+              availablePlans.length === 2 && 'mx-auto max-w-[570px] sm:grid-cols-2',
+              availablePlans.length === 1 && 'mx-auto max-w-[290px] grid-cols-1',
+            )}
+          >
+            {availablePlans.map((plan) => (
               <PlanCard
                 key={plan.id}
                 plan={plan}
@@ -411,8 +459,9 @@ export default function SubscriptionPlanModal({
 
           {/* Footer note */}
           <p className="mt-6 text-center text-[11px] font-semibold text-stone-400">
-            {/* <br /> */}
-            Gói được cập nhật ngay lập tức sau khi chọn.
+            {activePlanId === 'premium'
+              ? 'Gói Premium là gói cao nhất hiện có.'
+              : 'Chỉ hỗ trợ nâng cấp lên gói cao hơn; không hỗ trợ hạ gói trong thời hạn hiện tại.'}
           </p>
         </div>
       </div>

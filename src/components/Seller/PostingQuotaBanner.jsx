@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Package, Zap, Crown, AlertTriangle, CheckCircle, ArrowUpRight, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getVendorPlan, VENDOR_PLANS } from './SubscriptionPlanModal';
-import { getSubscriptionStatus } from '../../api/subscriptionApi';
+import { getSubscriptionStatus, normalizeSubscriptionStatus } from '../../api/subscriptionApi';
 
 const PLAN_META = {
   free: {
@@ -52,14 +52,13 @@ export default function PostingQuotaBanner({ onUpgradeClick, refreshKey }) {
         if (!cancelled) {
           // Fallback về localStorage nếu chưa đăng nhập / API lỗi
           const local = getVendorPlan();
-          setQuota({
+          setQuota(normalizeSubscriptionStatus({
             planType: local.planId || 'free',
-            totalSlots: local.totalSlots === -1 ? -1 : (local.totalSlots || 3),
+            totalSlots: local.totalSlots,
             usedSlots: local.usedSlots || 0,
-            remainingSlots: local.totalSlots === -1 ? -1 :
-              Math.max(0, (local.totalSlots || 3) - (local.usedSlots || 0)),
-            canPost: true,
-          });
+            remainingSlots: local.remainingSlots,
+            canPost: local.canPost,
+          }));
           setLoading(false);
         }
       });
@@ -78,9 +77,10 @@ export default function PostingQuotaBanner({ onUpgradeClick, refreshKey }) {
 
   if (!quota) return null;
 
-  const planId = quota.planType || 'free';
-  const used = quota.usedSlots || 0;
-  const total = quota.totalSlots === -1 ? Infinity : (quota.totalSlots || 3);
+  const normalizedQuota = normalizeSubscriptionStatus(quota);
+  const planId = normalizedQuota.planType;
+  const used = normalizedQuota.usedSlots;
+  const total = normalizedQuota.totalSlots === -1 ? Infinity : normalizedQuota.totalSlots;
   const isPremiumUnlimited = total === Infinity;
   const remaining = isPremiumUnlimited ? Infinity : Math.max(0, total - used);
   const pct = isPremiumUnlimited ? 100 : total > 0 ? Math.min(100, (used / total) * 100) : 100;
@@ -96,7 +96,7 @@ export default function PostingQuotaBanner({ onUpgradeClick, refreshKey }) {
   return (
     <div
       className={cn(
-        'quota-banner',
+        'quota-banner flex-wrap sm:flex-nowrap',
         isExhausted && 'is-exhausted',
         planId === 'premium' && 'is-premium',
       )}
@@ -170,22 +170,21 @@ export default function PostingQuotaBanner({ onUpgradeClick, refreshKey }) {
         )}
       </div>
 
-      {/* Upgrade button */}
-      {planId !== 'premium' && (
-        <button
-          type="button"
-          onClick={onUpgradeClick}
-          className={cn(
-            'shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold transition-all',
-            isExhausted
-              ? 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-500/30'
-              : 'border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100',
-          )}
-        >
-          {isExhausted ? 'Nâng cấp ngay' : 'Nâng cấp'}
-          <ArrowUpRight className="h-3 w-3" />
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={onUpgradeClick}
+        className={cn(
+          'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold transition-all max-sm:w-full',
+          isExhausted
+            ? 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-500/30'
+            : planId === 'premium'
+              ? 'border border-violet-200 bg-white text-violet-700 hover:bg-violet-50'
+              : 'border border-orange-200 bg-white text-orange-700 hover:bg-orange-50',
+        )}
+      >
+        {isExhausted ? 'Nâng cấp ngay' : 'Xem gói đăng ký'}
+        <ArrowUpRight className="h-3 w-3" />
+      </button>
     </div>
   );
 }

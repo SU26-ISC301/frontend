@@ -18,7 +18,13 @@ import {
   Wallet,
   X
 } from 'lucide-react';
-import { createPaymentLink, checkPaymentStatus, getSubscriptionStatus, upgradeSubscriptionWithWalletPin } from '../api/subscriptionApi';
+import {
+  canUpgradeSubscription,
+  createPaymentLink,
+  checkPaymentStatus,
+  getSubscriptionStatus,
+  upgradeSubscriptionWithWalletPin,
+} from '../api/subscriptionApi';
 import {
   getTopUpOrderCode,
   getTopUpPaymentUrl,
@@ -595,6 +601,8 @@ export default function VendorSubscriptionCheckout() {
   const [step, setStep] = useState('wallet'); // 'wallet' | 'success'
   const [walletInfo, setWalletInfo] = useState(null);
   const [pinStatus, setPinStatus] = useState(null);
+  const [currentSubscription, setCurrentSubscription] = useState(null);
+  const [subscriptionCheckFailed, setSubscriptionCheckFailed] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [topUpNotice, setTopUpNotice] = useState('');
@@ -614,15 +622,22 @@ export default function VendorSubscriptionCheckout() {
   const loadCheckoutState = useCallback(async () => {
     setCheckoutLoading(true);
     try {
-      const [walletResult, pinResult] = await Promise.allSettled([
+      const [walletResult, pinResult, subscriptionResult] = await Promise.allSettled([
         promotionApi.getAccountWallet(),
         walletPinApi.getStatus(),
+        getSubscriptionStatus(),
       ]);
       if (walletResult.status === 'fulfilled') {
         setWalletInfo(walletResult.value);
       }
       if (pinResult.status === 'fulfilled') {
         setPinStatus(pinResult.value);
+      }
+      if (subscriptionResult.status === 'fulfilled' && subscriptionResult.value) {
+        setCurrentSubscription(subscriptionResult.value);
+        setSubscriptionCheckFailed(false);
+      } else {
+        setSubscriptionCheckFailed(true);
       }
     } finally {
       setCheckoutLoading(false);
@@ -639,6 +654,12 @@ export default function VendorSubscriptionCheckout() {
 
   const handleStartWalletPayment = () => {
     setPinError('');
+    if (
+      !currentSubscription ||
+      !canUpgradeSubscription(currentSubscription.planType, plan?.id)
+    ) {
+      return;
+    }
     if (!hasWalletPin) {
       openWalletPinSetup();
       return;
@@ -716,12 +737,36 @@ export default function VendorSubscriptionCheckout() {
     setPinError('');
     try {
       await upgradeSubscriptionWithWalletPin(plan.id, walletPin);
-      await getSubscriptionStatus().catch(() => {});
+      const activatedPlan = await getSubscriptionStatus();
+      if (activatedPlan?.planType !== plan.id) {
+        const activationError = new Error(
+          'Ví đã ghi nhận thanh toán nhưng gói chưa được kích hoạt. Không nhập lại mã PIN để tránh bị trừ tiền lần nữa.',
+        );
+        activationError.code = 'SUBSCRIPTION_NOT_ACTIVATED';
+        throw activationError;
+      }
       await loadCheckoutState();
       setPinModalOpen(false);
       setStep('success');
       window.dispatchEvent(new Event('seller-wallet-refresh'));
+      window.dispatchEvent(
+        new CustomEvent('vendor-subscription-updated', {
+          detail: { planId: activatedPlan.planType },
+        }),
+      );
     } catch (err) {
+      if (err?.code === 'SUBSCRIPTION_NOT_ACTIVATED') {
+        setPinModalOpen(false);
+        setTopUpNotice(err.message);
+        setToast({
+          title: 'Gói chưa được kích hoạt',
+          message: err.message,
+          type: 'error',
+        });
+        await loadCheckoutState();
+        window.dispatchEvent(new Event('seller-wallet-refresh'));
+        return;
+      }
       const errorCode = getWalletPinErrorCode(err);
       const message = getWalletPinErrorMessage(
         err,
@@ -761,6 +806,54 @@ export default function VendorSubscriptionCheckout() {
             onClick={() => navigate('/vendor/san-pham')}
           >
             Quay lại trang chính
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (subscriptionCheckFailed) {
+    return (
+      <div className="vendor-app vendor-app-premium flex min-h-screen items-center justify-center px-4">
+        <div className="max-w-sm rounded-3xl border border-orange-100 bg-white p-8 text-center shadow-xl">
+          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-orange-500" />
+          <p className="text-lg font-extrabold text-stone-800">Chưa thể xác minh gói hiện tại</p>
+          <p className="mt-2 text-sm text-stone-500">
+            Hệ thống chưa tải được trạng thái gói nên chưa thể mở thanh toán an toàn.
+          </p>
+          <button
+            type="button"
+            className="vendor-primary-button mt-6 w-full justify-center"
+            onClick={loadCheckoutState}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Kiểm tra lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    currentSubscription &&
+    !canUpgradeSubscription(currentSubscription.planType, plan.id)
+  ) {
+    const currentPlanName = String(currentSubscription.planType || 'free');
+    return (
+      <div className="vendor-app vendor-app-premium flex min-h-screen items-center justify-center px-4">
+        <div className="max-w-sm rounded-3xl border border-violet-100 bg-white p-8 text-center shadow-xl">
+          <Shield className="mx-auto mb-4 h-12 w-12 text-violet-600" />
+          <p className="text-lg font-extrabold text-stone-800">Gói này không thể đăng ký</p>
+          <p className="mt-2 text-sm leading-6 text-stone-500">
+            Tài khoản đang sử dụng gói <strong className="capitalize text-stone-700">{currentPlanName}</strong>.
+            Bạn chỉ có thể nâng cấp lên gói cao hơn gói hiện tại.
+          </p>
+          <button
+            type="button"
+            className="vendor-primary-button mt-6 w-full justify-center"
+            onClick={() => navigate('/vendor/san-pham')}
+          >
+            Xem gói đăng ký
           </button>
         </div>
       </div>
