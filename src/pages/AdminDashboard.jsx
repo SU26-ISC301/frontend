@@ -49,7 +49,6 @@ import { AdminReportModeration } from '../components/Report/AdminReportModeratio
 
 const adminNavItems = [
   { id: 'tong-quan', label: 'Tổng quan', icon: LayoutDashboard },
-  { id: 'duyet-shop', label: 'Duyệt shop', icon: Store },
   { id: 'nguoi-dung', label: 'Người dùng', icon: Users },
   { id: 'san-pham', label: 'Sản phẩm', icon: Boxes },
   { id: 'nghien-cuu-thi-truong', label: 'Nghiên cứu thị trường', icon: TrendingUp },
@@ -416,8 +415,6 @@ export default function AdminDashboard() {
     }
   }, [session, handleLogout, fetchVendors]);
 
-  const pendingCount = vendors.filter((vendor) => !['Đã duyệt', 'Từ chối'].includes(vendor.status)).length;
-
   function handleLogin(admin, remember) {
     const nextSession = {
       name: admin.name || admin.email.split('@')[0] || 'admin',
@@ -458,7 +455,6 @@ export default function AdminDashboard() {
       <AdminSidebar
         active={active}
         mobileOpen={mobileOpen}
-        pendingCount={pendingCount}
         session={session}
         onClose={() => setMobileOpen(false)}
         onLogout={handleLogout}
@@ -476,7 +472,7 @@ export default function AdminDashboard() {
   );
 }
 
-function AdminSidebar({ active, mobileOpen, pendingCount, session, onClose, onLogout, onNavigate }) {
+function AdminSidebar({ active, mobileOpen, session, onClose, onLogout, onNavigate }) {
   return (
     <>
       {mobileOpen && <button type="button" aria-label="Đóng menu" className="fixed inset-0 z-40 bg-slate-950/50 lg:hidden" onClick={onClose} />}
@@ -504,9 +500,6 @@ function AdminSidebar({ active, mobileOpen, pendingCount, session, onClose, onLo
             >
               <Icon className="h-[18px] w-[18px]" />
               <span>{label}</span>
-              {id === 'duyet-shop' && pendingCount > 0 && (
-                <span className="ml-auto rounded-full bg-orange-400 px-2 py-0.5 text-[10px] font-extrabold text-slate-950">{pendingCount}</span>
-              )}
             </button>
           ))}
         </nav>
